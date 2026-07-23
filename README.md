@@ -219,7 +219,7 @@ https://twitterarchiver.github.io/<仓库>/accounts/<账号>/wayback_snapshots/
 </p>
 
 <p align="center">
-  <strong>如果您喜欢我的项目，请赞助我以支持开发</strong>
+  <strong>如果您喜欢这个项目，请赞助我以维护运行</strong>
 </p>
 
 ---
