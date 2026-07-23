@@ -21,6 +21,12 @@
 
 目前收录 140 余个账号。项目最初是为了纪念 [@AnIncandescence](https://twitterarchiver.github.io/AnIncanescence/)（炽烈已极）。
 
+### 成品示例：
+<img src="https://free.picui.cn/free/2026/07/23/6a618e07abb86.jpg" width="100%" style="max-width: 1100px; border-radius: 8px;"  alt=""/>
+
+
+
+
 **本仓库是这个存档的 Android 客户端。** 网页版阅读器已经能用，但手机上翻起来总归不够顺手，所以有了这个原生应用——完整的时间线、跨账号的全站视图、本地书签，以及一整套存档管理工具。
 
 ---
