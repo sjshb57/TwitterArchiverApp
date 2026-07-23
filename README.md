@@ -51,9 +51,9 @@
 
 | 项目 | 说明 | 技术 / 协议 |
 | --- | --- | --- |
+| [**TwitterArchiverApp**](https://github.com/sjshb57/TwitterArchiverApp) | 本仓库。Android 客户端，分阅读版与管理版两个构建 | Kotlin · AGPL-3.0 |
 | [**IncandescenceArchiver**](https://github.com/sjshb57/IncandescenceArchiver) | 存档工具 `archive.py`。从 Wayback CDX 抓快照、下载图片视频头像、清洗 HTML 路径、生成 `index.json`；支持断点续传、精确重试与增量更新，并附 GitHub Actions 工作流 | Python · AGPL-3.0 |
 | [**IncandescenceReader**](https://github.com/sjshb57/IncandescenceReader) | 桌面离线阅读器。Electron 打包成免安装的便携应用，多账号切换，更新存档无需重新打包 | Electron · AGPL-3.0 |
-| [**TwitterArchiverApp**](https://github.com/sjshb57/TwitterArchiverApp) | 本仓库。Android 客户端，分阅读版与管理版两个构建 | Kotlin · AGPL-3.0 |
 
 ### 存档
 
@@ -61,8 +61,8 @@
 | --- | --- |
 | [**TwitterArchiver**](https://github.com/TwitterArchiver) | 存档组织，每个账号一个独立仓库，各自托管 GitHub Pages |
 | [**TwitterArchiver/home**](https://github.com/TwitterArchiver/home) | 门户与聚合数据：账号清单、全站搜索索引、跨账号回复索引 |
-| [**门户站点**](https://twitterarchiver.github.io/home/portal.html) | 网页版入口，可浏览全部账号与全站搜索 |
-| [**存档申请**](https://twitterarchiver.github.io/home/guestbook.html) | 提交想要留档的账号（应用内也可直接申请） |
+| [**TwitterArchiver/search**](https://twitterarchiver.github.io/home/search.html) | 网页版入口，可浏览全部账号与全站搜索 |
+| [**TwitterArchiver/guestbook**](https://twitterarchiver.github.io/home/guestbook.html) | 提交想要留档的账号（应用内也可直接申请） |
 
 ---
 
