@@ -212,6 +212,18 @@ https://twitterarchiver.github.io/<仓库>/accounts/<账号>/wayback_snapshots/
 
 ---
 
+## 赞助
+
+<p align="center">
+  <img src="https://free.picui.cn/free/2026/06/24/6a3b25866f0fd.jpg" width="100%" alt="赞助图片">
+</p>
+
+<p align="center">
+  <strong>如果您喜欢我的项目，请赞助我以支持开发</strong>
+</p>
+
+---
+
 ## 致谢
 
 **特别致谢**
