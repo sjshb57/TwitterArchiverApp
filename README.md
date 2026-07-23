@@ -1,5 +1,3 @@
-<div align="center">
-
 # 推文存档 · TwitterArchiver
 
 **基于 Wayback Machine 的推特账号存档 Android 客户端**
@@ -11,8 +9,6 @@
 
 *互联网是现实的避难所。而这里，是那个避难所的避难所。*
 
-</div>
-
 ---
 
 ## 关于
@@ -22,12 +18,51 @@
 > 目前收录 140 余个账号。项目最初是为了纪念 [@AnIncandescence](https://twitterarchiver.github.io/AnIncanescence/)（炽烈已极）。
 
 ### 成品示例：
-<img src="https://free.picui.cn/free/2026/07/23/6a618e07abb86.jpg" width="100%" style="max-width: 1100px; border-radius: 8px;"  alt=""/>
 
-
-
+![](https://free.picui.cn/free/2026/07/23/6a618e07abb86.jpg)
 
 **本仓库是这个存档的 Android 客户端。** 网页版阅读器已经能用，但手机上翻起来总归不够顺手，所以有了这个原生应用——完整的时间线、跨账号的全站视图、本地书签，以及一整套存档管理工具。
+
+---
+
+## 项目生态
+
+整个体系由「抓取 → 存放 → 阅读」三层构成，本仓库是阅读层里的移动端。
+
+```
+                    Wayback Machine
+                          │
+                          ▼
+              IncandescenceArchiver
+              抓取快照 · 下载媒体 · 清洗 · 建索引
+                          │
+                          ▼
+              TwitterArchiver 组织
+              140+ 账号仓库 · GitHub Pages 托管
+                          │
+          ┌───────────────┼───────────────┐
+          ▼               ▼               ▼
+      网页阅读器      桌面阅读器        Android
+   twitterarchiver  Incandescence   TwitterArchiverApp
+     .github.io        Reader          ← 本仓库
+```
+
+### 工具
+
+| 项目 | 说明 | 技术 / 协议 |
+| --- | --- | --- |
+| [**IncandescenceArchiver**](https://github.com/sjshb57/IncandescenceArchiver) | 存档工具 `archive.py`。从 Wayback CDX 抓快照、下载图片视频头像、清洗 HTML 路径、生成 `index.json`；支持断点续传、精确重试与增量更新，并附 GitHub Actions 工作流 | Python · AGPL-3.0 |
+| [**IncandescenceReader**](https://github.com/sjshb57/IncandescenceReader) | 桌面离线阅读器。Electron 打包成免安装的便携应用，多账号切换，更新存档无需重新打包 | Electron · GPL-3.0 |
+| **TwitterArchiverApp** | 本仓库。Android 客户端，分阅读版与管理版两个构建 | Kotlin · AGPL-3.0 |
+
+### 存档
+
+| 仓库 | 说明 |
+| --- | --- |
+| [**TwitterArchiver**](https://github.com/TwitterArchiver) | 存档组织，每个账号一个独立仓库，各自托管 GitHub Pages |
+| [**TwitterArchiver/home**](https://github.com/TwitterArchiver/home) | 门户与聚合数据：账号清单、全站搜索索引、跨账号回复索引 |
+| [**门户站点**](https://twitterarchiver.github.io/home/portal.html) | 网页版入口，可浏览全部账号与全站搜索 |
+| [**存档申请**](https://twitterarchiver.github.io/home/guestbook.html) | 提交想要留档的账号（应用内也可直接申请） |
 
 ---
 
@@ -118,6 +153,8 @@ cd TwitterArchiverApp
 
 产物在 `app/build/outputs/apk/<flavor>/release/`。
 
+> Android SDK 37 在 SDK Manager 里的包名是 `platforms;android-37.0`（带小数点）。
+
 ---
 
 ## 技术栈
@@ -174,7 +211,7 @@ app/src/main/java/io/github/twitterarchiver/
 
 ## 数据来源
 
-所有内容托管在 GitHub Pages，应用只是读取端：
+所有内容由 [IncandescenceArchiver](https://github.com/sjshb57/IncandescenceArchiver) 生成、托管在 GitHub Pages，应用只是读取端：
 
 ```
 https://twitterarchiver.github.io/<仓库>/accounts/<账号>/wayback_snapshots/
@@ -214,13 +251,9 @@ https://twitterarchiver.github.io/<仓库>/accounts/<账号>/wayback_snapshots/
 
 ## 赞助
 
-<p align="center">
-  <img src="https://free.picui.cn/free/2026/06/24/6a3b25866f0fd.jpg" width="100%" alt="赞助图片">
-</p>
+![赞助图片](https://free.picui.cn/free/2026/06/24/6a3b25866f0fd.jpg)
 
-<p align="center">
-  <strong>如果您喜欢这个项目，请赞助我以维护运行</strong>
-</p>
+**如果您喜欢这个项目，请赞助我以维护运行**
 
 ---
 
@@ -242,10 +275,6 @@ X@10Lystra · X@11andpr89648964 · X@acnekot · X@CaffFrog · X@nyaepheia
 
 ---
 
-<div align="center">
-
 **愿世间再无痛苦，唯爱永不独行**
 
 *烛火熄灭之后，光还在。*
-
-</div>
