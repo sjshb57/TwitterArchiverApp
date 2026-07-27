@@ -1,0 +1,369 @@
+package io.github.twitterarchiver.ui
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import io.github.twitterarchiver.BuildConfig
+import io.github.twitterarchiver.ui.components.ProfileDialog
+import io.github.twitterarchiver.ui.screens.*
+import io.github.twitterarchiver.viewmodel.*
+import kotlinx.coroutines.launch
+
+/** 应用内的"页面"状态（简单栈式导航） */
+sealed class Screen {
+    data object Tabs : Screen()
+    data class Reader(val repo: String, val account: String, val name: String) : Screen()
+    data class AccountFeed(val repo: String, val account: String, val name: String) : Screen()
+    data class Images(val repo: String, val account: String, val name: String) : Screen()
+    data object Theme : Screen()
+    data object Bookmarks : Screen()
+    data object Request : Screen()
+    data object About : Screen()
+    data object Thanks : Screen()
+    data object DefaultTab : Screen()
+    data object FollowSelect : Screen()
+    data class AdminDash(val dash: DashRepo) : Screen()
+    data class AdminEditYml(val repo: String, val path: String) : Screen()
+    data object AdminDeleteTweets : Screen()
+    data object AdminNewArchive : Screen()
+    data class AdminArchive(val repo: String) : Screen()
+    data class AdminEditProfile(val repo: String, val account: String) : Screen()
+    data object AdminRequests : Screen()
+}
+
+/** 弹窗目标账号（统一 ListScreen 和 GlobalScreen 的来源） */
+data class DialogTarget(
+    val repo: String, val account: String,
+    val name: String, val handle: String, val bio: String,
+    val avatar: String = ""
+)
+
+@Composable
+fun AppNav(
+    // 受限 token：访客版申请存档用，由 MainActivity 在构建时注入
+    restrictedToken: String = ""
+) {
+    val homeVm: HomeViewModel = viewModel()
+    val globalVm: GlobalTimelineViewModel = viewModel()
+    val adminVm: AdminViewModel = viewModel()
+    // 管理操作结果 Toast
+    val adminState by adminVm.state.collectAsState()
+    val ctx = LocalContext.current
+    androidx.compose.runtime.LaunchedEffect(adminState.message) {
+        adminState.message?.let {
+            android.widget.Toast.makeText(ctx, it, android.widget.Toast.LENGTH_SHORT).show()
+            adminVm.clearMessage()
+        }
+    }
+
+    var screen by remember { mutableStateOf<Screen>(Screen.Tabs) }
+    // 导航栈：记录来路，返回时弹栈回上一级（而非总是回 Tabs）
+    // 列表/全站的滚动位置：提升到导航层，避免进二级页再返回时丢失位置
+    val globalListState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val homeListState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val followListState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val tabScope = androidx.compose.runtime.rememberCoroutineScope()
+
+    val backStack = remember { mutableListOf<Screen>() }
+    fun navTo(s: Screen) { backStack.add(screen); screen = s }
+    fun navBack() { screen = if (backStack.isNotEmpty()) backStack.removeAt(backStack.size - 1) else Screen.Tabs }
+    // 默认启动 Tab（从设置读取，仅首次生效）
+    val settingsVm: SettingsViewModel = viewModel()
+    val defaultTab by settingsVm.defaultTab.collectAsState()
+    var selectedTab by remember { mutableIntStateOf(0) }
+    var appliedDefault by remember { mutableStateOf(false) }
+    LaunchedEffect(defaultTab) {
+        // -1 表示还没从存储加载完；只有拿到真实值(0/1)才应用一次
+        if (!appliedDefault && defaultTab >= 0) {
+            selectedTab = defaultTab.coerceIn(0, 1); appliedDefault = true
+        }
+    }
+    var dialogTarget by remember { mutableStateOf<DialogTarget?>(null) }
+    var imagePreview by remember { mutableStateOf<Pair<List<String>, Int>?>(null) }
+
+    // 关注状态（用于动态插入"关注"Tab）
+    val followEnabled by settingsVm.followEnabled.collectAsState()
+    val followRepo by settingsVm.followRepo.collectAsState()
+    val followAccount by settingsVm.followAccount.collectAsState()
+    val followName by settingsVm.followName.collectAsState()
+
+    val tabs = if (io.github.twitterarchiver.BuildConfig.IS_ADMIN) {
+        buildList {
+            add(TabItem("列表"))
+            add(TabItem("全站"))
+            if (followEnabled && followAccount.isNotBlank()) add(TabItem("关注"))
+            add(TabItem("管理"))
+            add(TabItem("设置"))
+        }
+    } else {
+        buildList {
+            add(TabItem("列表"))
+            add(TabItem("全站"))
+            if (followEnabled && followAccount.isNotBlank()) add(TabItem("关注"))
+            add(TabItem("设置"))
+        }
+    }
+
+    // 返回键：二级页面返回到主 Tab；主 Tab 时不拦截（交系统，可退出）
+    BackHandler(enabled = screen !is Screen.Tabs) {
+        navBack()
+    }
+    // 主 Tab 时：双击返回退出，首次按给 Toast 提示
+    val backCtx = LocalContext.current
+    var lastBackAt by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
+    BackHandler(enabled = screen is Screen.Tabs) {
+        val now = System.currentTimeMillis()
+        if (now - lastBackAt < 2000) {
+            // 2秒内再次返回 → 退出
+            (backCtx as? android.app.Activity)?.finish()
+        } else {
+            lastBackAt = now
+            android.widget.Toast.makeText(backCtx, "再按一次返回键退出", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    when (val s = screen) {
+        is Screen.Tabs -> {
+            AppScaffold(tabs, selectedTab.coerceIn(0, tabs.size - 1), { selectedTab = it },
+                onTabReselected = { idx ->
+                    // 双击(重复点击)当前 Tab → 回到顶部
+                    when (tabs[idx].label) {
+                        "列表" -> tabScope.launch { homeListState.animateScrollToItem(0) }
+                        "全站" -> tabScope.launch { globalListState.animateScrollToItem(0) }
+                        "关注" -> tabScope.launch { followListState.animateScrollToItem(0) }
+                    }
+                }) { tab ->
+                when (tabs[tab].label) {
+                    "列表" -> ListScreen(
+                        vm = homeVm,
+                        listState = homeListState,
+                        onOpenAccount = { navTo(Screen.AccountFeed(it.repoName, it.account, it.displayName)) },
+                        onAvatarClick = {
+                            dialogTarget = DialogTarget(it.repoName, it.account, it.displayName, it.handle, it.description ?: "", it.avatar ?: "")
+                        }
+                    )
+                    "全站" -> GlobalScreen(
+                        vm = globalVm,
+                        listState = globalListState,
+                        onAvatarClick = { post ->
+                            dialogTarget = DialogTarget(post.account.r, post.account.a, post.account.n, post.account.u, "", if (post.account.av.isNotBlank()) "avatar/${post.account.av}" else "")
+                        },
+                        onImageClick = { urls, idx -> imagePreview = urls to idx }
+                    )
+                    "关注" -> AccountFeedScreen(
+                        repo = followRepo,
+                        account = followAccount,
+                        displayName = followName,
+                        onImageClick = { urls, idx -> imagePreview = urls to idx },
+                        externalListState = followListState
+                    )
+                    "管理" -> AdminScreen(
+                        vm = adminVm,
+                        onOpenDash = { navTo(Screen.AdminDash(it)) },
+                        onOpenRequests = { navTo(Screen.AdminRequests) },
+                        onNewArchive = { navTo(Screen.AdminNewArchive) }
+                    )
+                    "设置" -> SettingsScreen(
+                        followSummary = if (followEnabled && followName.isNotBlank())
+                            "已关注：$followName" else "在底栏固定显示某个账号",
+                        onOpenFollow = { navTo(Screen.FollowSelect) },
+                        onOpenTheme = { navTo(Screen.Theme) },
+                        onOpenDefaultTab = { navTo(Screen.DefaultTab) },
+                        onOpenBookmarks = { navTo(Screen.Bookmarks) },
+                        onOpenRequest = { navTo(Screen.Request) },
+                        onOpenAbout = { navTo(Screen.About) }
+                    )
+                }
+            }
+            // 样式2 弹窗（统计只拉该账号 index.json，数字从0跳动到最终值）
+            dialogTarget?.let { t ->
+                val statsVm: ProfileStatsViewModel = viewModel(key = "stats_${t.repo}_${t.account}")
+                androidx.compose.runtime.LaunchedEffect(t.repo, t.account) {
+                    statsVm.load(t.repo, t.account)
+                }
+                val stats by statsVm.stats.collectAsState()
+                ProfileDialog(
+                    repo = io.github.twitterarchiver.data.ArchiveRepo(
+                        repo = t.repo, name = t.name, acct = t.account,
+                        username = t.handle, description = t.bio, avatar = t.avatar
+                    ),
+                    profile = null,
+                    tweetCount = stats.tweets,
+                    imageCount = stats.images,
+                    onDismiss = { dialogTarget = null },
+                    onOpenReader = {
+                        navTo(Screen.Reader(t.repo, t.account, t.name))
+                        dialogTarget = null
+                    },
+                    onOpenImages = {
+                        navTo(Screen.Images(t.repo, t.account, t.name))
+                        dialogTarget = null
+                    }
+                )
+            }
+            // 全站图片预览
+            imagePreview?.let { (urls, idx) ->
+                io.github.twitterarchiver.ui.components.ImagePreviewOverlay(
+                    urls = urls, startIndex = idx,
+                    onDismiss = { imagePreview = null }
+                )
+            }
+        }
+        is Screen.Reader -> AccountReaderScreen(
+            repo = s.repo, account = s.account, displayName = s.name,
+            onBack = { navBack() }
+        )
+        is Screen.AccountFeed -> AccountFeedScreen(
+            repo = s.repo, account = s.account, displayName = s.name,
+            onImageClick = { urls, idx -> imagePreview = urls to idx }
+        )
+        is Screen.Images -> {
+            val imagesVm: ImagesViewModel = viewModel()
+            androidx.compose.runtime.LaunchedEffect(s.account) { imagesVm.load(s.repo, s.account) }
+            ImagesScreen(vm = imagesVm, title = s.name, onBack = { navBack() })
+        }
+        is Screen.Theme -> {
+            val ctx = LocalContext.current
+            val settings = remember { io.github.twitterarchiver.data.Settings(ctx) }
+            val mode by settings.themeMode.collectAsState(initial = io.github.twitterarchiver.data.ThemeMode.SYSTEM)
+            val dyn by settings.dynamicColor.collectAsState(initial = false)
+            val bar by settings.barStyle.collectAsState(initial = "text")
+            val scope = androidx.compose.runtime.rememberCoroutineScope()
+            ThemeScreen(
+                current = mode, dynamicColor = dyn, barStyle = bar,
+                onSetTheme = { scope.launch { settings.setTheme(it) } },
+                onSetDynamic = { scope.launch { settings.setDynamicColor(it) } },
+                onSetBarStyle = { scope.launch { settings.setBarStyle(it) } },
+                onBack = { navBack() }
+            )
+        }
+        is Screen.Bookmarks -> {
+            val bmVm: BookmarkViewModel = viewModel()
+            val list by bmVm.bookmarks.collectAsState()
+            val bmCtx = LocalContext.current
+            // 导出：写到用户选择的文件
+            val exportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+                androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")
+            ) { uri ->
+                uri?.let {
+                    try {
+                        bmCtx.contentResolver.openOutputStream(it)?.use { os ->
+                            os.write(bmVm.exportJson(list).toByteArray())
+                        }
+                        android.widget.Toast.makeText(bmCtx, "已导出 ${list.size} 条书签", android.widget.Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {
+                        android.widget.Toast.makeText(bmCtx, "导出失败", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            // 导入：从用户选择的文件读
+            val importLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+                androidx.activity.result.contract.ActivityResultContracts.GetContent()
+            ) { uri ->
+                uri?.let {
+                    try {
+                        val content = bmCtx.contentResolver.openInputStream(it)?.use { input ->
+                            input.readBytes().decodeToString()
+                        } ?: ""
+                        bmVm.importJson(content) { count ->
+                            android.widget.Toast.makeText(bmCtx, "已导入 $count 条书签", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    } catch (e: Exception) {
+                        android.widget.Toast.makeText(bmCtx, "导入失败", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            var previewBookmark by remember { mutableStateOf<io.github.twitterarchiver.data.Bookmark?>(null) }
+            BookmarkScreen(
+                bookmarks = list,
+                onRemove = { bmVm.remove(it) },
+                onExport = { exportLauncher.launch("twitterarchiver-bookmarks.json") },
+                onImport = { importLauncher.launch("application/json") },
+                onOpen = { previewBookmark = it },
+                onBack = { navBack() }
+            )
+            // 点书签 → 弹出单条推文卡片（不跳页）
+            previewBookmark?.let { b ->
+                io.github.twitterarchiver.ui.components.SingleTweetDialog(
+                    repo = b.repo,
+                    account = b.account,
+                    tweetId = b.tweetId,
+                    fallbackName = b.authorName,
+                    onDismiss = { previewBookmark = null },
+                    onImageClick = { urls, idx -> imagePreview = urls to idx },
+                    isBookmarked = list.any { it.tweetId == b.tweetId },
+                    onBookmark = { bmVm.remove(b.tweetId); previewBookmark = null }
+                )
+            }
+            // 卡片内点图 → 全屏预览
+            imagePreview?.let { (urls, idx) ->
+                io.github.twitterarchiver.ui.components.ImagePreviewOverlay(
+                    urls = urls, startIndex = idx,
+                    onDismiss = { imagePreview = null }
+                )
+            }
+        }
+        is Screen.Request -> {
+            val reqVm: RequestViewModel = viewModel()
+            RequestScreen(vm = reqVm, restrictedToken = restrictedToken, onBack = { navBack() })
+        }
+        is Screen.About -> AboutScreen(onBack = { navBack() }, onOpenThanks = { navTo(Screen.Thanks) })
+        is Screen.Thanks -> ThanksScreen(onBack = { navBack() })
+        is Screen.DefaultTab -> DefaultTabScreen(onBack = { navBack() })
+        is Screen.FollowSelect -> FollowSelectScreen(
+            homeVm = homeVm,
+            settingsVm = settingsVm,
+            onBack = { navBack() }
+        )
+        is Screen.AdminDash -> AdminDetailScreen(
+            vm = adminVm,
+            dash = (screen as Screen.AdminDash).dash,
+            onBack = { navBack() },
+            onEditYml = { repo, path -> navTo(Screen.AdminEditYml(repo, path)) },
+            onDeleteTweets = { navTo(Screen.AdminDeleteTweets) },
+            onNewArchive = { navTo(Screen.AdminNewArchive) },
+            onOpenArchive = { navTo(Screen.AdminArchive(it)) }
+        )
+        is Screen.AdminEditYml -> AdminEditYmlScreen(
+            vm = adminVm,
+            repo = (screen as Screen.AdminEditYml).repo,
+            path = (screen as Screen.AdminEditYml).path,
+            onBack = { navBack() }
+        )
+        is Screen.AdminDeleteTweets -> AdminDeleteTweetsScreen(
+            vm = adminVm,
+            onBack = { navBack() }
+        )
+        is Screen.AdminNewArchive -> AdminNewArchiveScreen(
+            vm = adminVm,
+            onBack = { navBack() },
+            onOpenArchive = { repoName -> navTo(Screen.AdminArchive(repoName)) }
+        )
+        is Screen.AdminArchive -> AdminArchiveScreen(
+            vm = adminVm,
+            repo = (screen as Screen.AdminArchive).repo,
+            onBack = { navBack() },
+            onEditProfile = { r, a -> navTo(Screen.AdminEditProfile(r, a)) },
+            onOpenReader = { r, a -> navTo(Screen.Reader(r, a, r)) },
+            onOpenFeed = { r, a -> navTo(Screen.AccountFeed(r, a, r)) }
+        )
+        is Screen.AdminEditProfile -> AdminEditProfileScreen(
+            vm = adminVm,
+            repo = (screen as Screen.AdminEditProfile).repo,
+            account = (screen as Screen.AdminEditProfile).account,
+            onBack = { navBack() }
+        )
+        is Screen.AdminRequests -> AdminRequestsScreen(
+            vm = adminVm,
+            onBack = { navBack() }
+        )
+    }
+}

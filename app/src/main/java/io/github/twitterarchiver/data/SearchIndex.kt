@@ -1,0 +1,90 @@
+package io.github.twitterarchiver.data
+
+import kotlinx.serialization.Serializable
+
+/** search-index.json 的账号条目 */
+@Serializable
+data class IndexAccount(
+    val r: String = "",   // repo
+    val a: String = "",   // account
+    val u: String = "",   // @username
+    val n: String = "",   // name
+    val av: String = ""   // avatar 文件名
+)
+
+/** 视频扩展名，用于把 media 列表分流到 image/ 与 video/ 两个目录 */
+private val VIDEO_EXTS = setOf("mp4", "m4v", "mov", "webm")
+
+/**
+ * 全站一条推文（从 search-index.json 的 posts 解析）。
+ * posts 格式：[账号索引, 正文, tweet_id, 时间, [媒体], 回复数, 引用标记]
+ */
+data class GlobalPost(
+    val acctIndex: Int,
+    val text: String,
+    val tweetId: String,
+    val time: String,
+    val media: List<String>,
+    val replyCount: Int,
+    val hasQuote: Boolean,
+    val account: IndexAccount
+) {
+    val avatarUrl: String
+        get() = if (account.av.isNotBlank())
+            "${Config.snapshotsBase(account.r, account.a)}/avatar/${account.av}"
+        else ""
+
+    /** 媒体按扩展名分流：视频存在 video/ 目录，图片在 image/ 目录 */
+    private val isVideoName: (String) -> Boolean
+        get() = { n -> n.substringAfterLast('.', "").lowercase() in VIDEO_EXTS }
+
+    /** 图片直链（不含视频） */
+    val mediaUrls: List<String>
+        get() = media.filterNot(isVideoName)
+            .map { "${Config.snapshotsBase(account.r, account.a)}/image/$it" }
+
+    /** 视频直链 */
+    val videoUrls: List<String>
+        get() = media.filter(isVideoName)
+            .map { "${Config.snapshotsBase(account.r, account.a)}/video/$it" }
+
+    val displayDate: String
+        get() = if (time.contains("T")) time.substringBefore("T") else time
+
+    /** 是否转推（RT @xxx: ...）。RT 的引用原推在 html 里，需按需解析 */
+    val isRetweet: Boolean get() = text.startsWith("RT @")
+
+    /** 是否应显示"查看引用"（quote 引用 或 RT 转推） */
+    val hasQuoteOrRt: Boolean get() = hasQuote || isRetweet
+}
+
+/** 跨账号回复（cross-replies.json 的一条） */
+data class CrossReply(
+    val acctIndex: Int,
+    val tweetId: String,
+    val text: String,
+    val time: String,
+    val replyToId: String
+)
+
+/** 回复链里的一项（统一主人回复、跨账号回复、被引用对象） */
+data class ThreadItem(
+    val tweetId: String,
+    val authorName: String,
+    val authorUsername: String,
+    val authorAvatarUrl: String,
+    val text: String,
+    val images: List<String>,
+    val time: String,
+    val isOwner: Boolean,       // 是否本账号主人
+    val isQuoted: Boolean       // 是否被引用/回复的对象（标"引用"）
+)
+
+/** 主推文的引用原推（转推/引用显示用） */
+data class QuotedTweet(
+    val authorName: String,
+    val authorUsername: String,
+    val authorAvatarUrl: String,
+    val text: String,
+    val images: List<String>
+)

@@ -1,0 +1,231 @@
+package io.github.twitterarchiver.ui.screens
+
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import io.github.twitterarchiver.viewmodel.AdminViewModel
+
+/** 建立新存档 + 待完善列表（建档完成但缺 banner/置顶的仓库，可点击去处理） */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AdminNewArchiveScreen(vm: AdminViewModel, onBack: () -> Unit, onOpenArchive: (String) -> Unit) {
+    var repoName by remember { mutableStateOf("") }
+    var since by remember { mutableStateOf("") }
+    var showConfirm by remember { mutableStateOf(false) }
+    val state by vm.state.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) { vm.loadMissingCache(); vm.loadNewlyCreated() }
+
+    if (showConfirm) {
+        io.github.twitterarchiver.ui.components.ConfirmDialog(
+            title = "建立新存档",
+            message = "将创建仓库「${repoName.trim()}」并触发首次建档。建档完成后不会自动增量，需回来上传 banner + 设置置顶，再手动触发增量更新。",
+            confirmText = "建档",
+            onConfirm = { vm.createArchive(repoName.trim(), since.trim()) },
+            onDismiss = { showConfirm = false }
+        )
+    }
+
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        TopAppBar(
+            title = { Text("建立新存档", fontSize = 16.sp) },
+            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.background,
+                titleContentColor = MaterialTheme.colorScheme.onBackground,
+                navigationIconContentColor = MaterialTheme.colorScheme.onBackground)
+        )
+        androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+            item {
+                Text("输入账号用户名作为仓库名，从模板创建新仓库并触发首次建档（setup）。建档完成后回来上传 banner、设置置顶，再手动触发增量更新。",
+                    fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 14.dp))
+                Field2("新仓库名 / 账号", repoName) { repoName = it }
+                Spacer(Modifier.height(10.dp))
+                Field2("起始日期 YYYYMMDD（留空全量）", since) { since = it }
+                Spacer(Modifier.height(20.dp))
+                Button(
+                    onClick = { if (repoName.isNotBlank()) showConfirm = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("开始建档") }
+                Spacer(Modifier.height(28.dp))
+            }
+
+            // 新建记录：批准/手动新建的仓库，带状态灯，点击进入
+            if (state.newlyCreated.isNotEmpty()) {
+                item {
+                    androidx.compose.material3.HorizontalDivider(
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
+                    Spacer(Modifier.height(14.dp))
+                    Text("新建的存档", fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground)
+                    Text("刚建档的仓库（建档中→完成），点击进入处理", fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 10.dp))
+                }
+                items(state.newlyCreated) { repoName ->
+                    val status = state.repoStatus[repoName] ?: ""
+                    NewlyCreatedRow(
+                        repoName = repoName,
+                        status = status,
+                        onOpen = { onOpenArchive(repoName) },
+                        onRemove = { vm.removeNewlyCreated(repoName) }
+                    )
+                }
+                item { Spacer(Modifier.height(20.dp)) }
+            }
+
+            // 待完善列表：缺 banner
+            item {
+                androidx.compose.material3.HorizontalDivider(
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
+                Spacer(Modifier.height(14.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("待完善存档", fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.weight(1f))
+                    if (state.checking) {
+                        Text("检测中 ${state.checkProgress}/${state.checkTotal}", fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
+                        Text("🔄 重新检测", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clickable { vm.runIntegrityCheck() })
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+                Text("建档完成但缺 banner 或置顶的仓库，点击去处理", fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 10.dp))
+            }
+
+            item {
+                Text("缺少 Banner（${state.missingBanner.size}）", fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 6.dp, bottom = 4.dp))
+            }
+            if (state.missingBanner.isEmpty()) item {
+                Text(if (state.hasCheckedOnce) "全部已设置 ✓" else "尚未检测",
+                    fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            items(state.missingBanner) { m ->
+                MissingRow(m.displayName, "上传 banner") { onOpenArchive(m.repo) }
+            }
+
+            item {
+                Text("缺少 置顶推文（${state.missingPinned.size}）", fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 16.dp, bottom = 4.dp))
+            }
+            if (state.missingPinned.isEmpty()) item {
+                Text(if (state.hasCheckedOnce) "全部已设置 ✓" else "尚未检测",
+                    fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            items(state.missingPinned) { m ->
+                MissingRow(m.displayName, "设置置顶") { onOpenArchive(m.repo) }
+            }
+            item { Spacer(Modifier.height(30.dp)) }
+        }
+    }
+}
+
+@Composable
+private fun MissingRow(name: String, action: String, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable { onClick() }.padding(vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(name, fontSize = 13.sp, color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.weight(1f),
+            maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+        Text("$action ›", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Medium)
+    }
+}
+
+@Composable
+private fun Field2(hint: String, value: String, onChange: (String) -> Unit) {
+    Box(
+        Modifier.fillMaxWidth().height(44.dp)
+            .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f), RoundedCornerShape(10.dp))
+            .padding(horizontal = 14.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        BasicTextField(
+            value = value, onValueChange = onChange, singleLine = true,
+            textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onBackground, fontSize = 13.sp),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            modifier = Modifier.fillMaxWidth()
+        ) { inner ->
+            if (value.isEmpty()) Text(hint, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            inner()
+        }
+    }
+}
+
+/** 新建记录行：状态灯 + 仓库名 + 进入 + 移除 */
+@Composable
+private fun NewlyCreatedRow(
+    repoName: String,
+    status: String,
+    onOpen: () -> Unit,
+    onRemove: () -> Unit
+) {
+    val (dotColor, label) = when (status) {
+        "running" -> androidx.compose.ui.graphics.Color(0xFFF5A623) to "建档中"
+        "success" -> androidx.compose.ui.graphics.Color(0xFF34C759) to "完成"
+        "failure" -> androidx.compose.ui.graphics.Color(0xFFFF3B30) to "失败"
+        else -> MaterialTheme.colorScheme.onSurfaceVariant to ""
+    }
+    Row(
+        Modifier.fillMaxWidth().clickable { onOpen() }.padding(vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(Modifier.size(9.dp)
+            .background(dotColor, androidx.compose.foundation.shape.CircleShape))
+        Spacer(Modifier.width(10.dp))
+        Text(repoName, fontSize = 13.sp, color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.weight(1f),
+            maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+        if (label.isNotBlank()) {
+            Text(label, fontSize = 11.sp, color = dotColor,
+                modifier = Modifier.padding(end = 10.dp))
+        }
+        Text("移除", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.clickable { onRemove() }.padding(horizontal = 6.dp, vertical = 2.dp))
+    }
+}
