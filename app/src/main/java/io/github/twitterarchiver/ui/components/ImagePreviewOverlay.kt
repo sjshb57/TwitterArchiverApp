@@ -143,7 +143,6 @@ fun ImagePreviewOverlay(
                 }
             }
 
-            // 顶部：关闭 + 页码
             IconButton(
                 onClick = onDismiss,
                 modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(8.dp)
@@ -158,7 +157,6 @@ fun ImagePreviewOverlay(
                 )
             }
 
-            // 下载：右下角完整圆形按钮
             IconButton(
                 onClick = {
                     scope.launch {

@@ -54,7 +54,6 @@ fun AppNav(
     val homeVm: HomeViewModel = viewModel()
     val globalVm: GlobalTimelineViewModel = viewModel()
     val adminVm: AdminViewModel = viewModel()
-    // 管理操作结果 Toast
     val adminState by adminVm.state.collectAsState()
     val ctx = LocalContext.current
     androidx.compose.runtime.LaunchedEffect(adminState.message) {
@@ -65,8 +64,6 @@ fun AppNav(
     }
 
     var screen by remember { mutableStateOf<Screen>(Screen.Tabs) }
-    // 导航栈：记录来路，返回时弹栈回上一级（而非总是回 Tabs）
-    // 列表/全站的滚动位置：提升到导航层，避免进二级页再返回时丢失位置
     val globalListState = androidx.compose.foundation.lazy.rememberLazyListState()
     val homeListState = androidx.compose.foundation.lazy.rememberLazyListState()
     val followListState = androidx.compose.foundation.lazy.rememberLazyListState()

@@ -107,7 +107,6 @@ fun SingleTweetDialog(
             modifier = Modifier.fillMaxWidth(0.94f).heightIn(max = 620.dp)
         ) {
             Column {
-                // 顶部：标题 + 关闭
                 Row(
                     Modifier.fillMaxWidth().padding(start = 18.dp, end = 6.dp, top = 6.dp),
                     verticalAlignment = Alignment.CenterVertically

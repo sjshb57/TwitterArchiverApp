@@ -193,8 +193,8 @@ class GitHubApi {
         fun grabContent(): String {
             val m = Regex("class=\"tweet-content\"[^>]*>([\\s\\S]*?)</div>").find(seg) ?: return ""
             return m.groupValues[1]
-                .replace(Regex("<br\\s*/?>"), "\n")   // <br/> → 换行
-                .replace(Regex("<[^>]+>"), "")         // 去掉其他标签
+                .replace(Regex("<br\\s*/?>"), "\n")
+                .replace(Regex("<[^>]+>"), "")
                 .replace(Regex("https://t\\.co/\\S+"), "")
                 .lines().joinToString("\n") { it.trim() }
                 .replace(Regex("\n{2,}"), "\n")
@@ -531,16 +531,7 @@ class GitHubApi {
     }
 
     /** 关闭申请 Issue（处理完/拒绝） */
-    suspend fun closeIssue(pat: String, number: Int, comment: String? = null): Result<Unit> = try {
-        // 可选先评论
-        if (!comment.isNullOrBlank()) {
-            client.post("${Config.apiRequestIssues()}/$number/comments") {
-                header("Authorization", "Bearer $pat")
-                header("Accept", "application/vnd.github+json")
-                contentType(ContentType.Application.Json)
-                setBody(buildJsonObject { put("body", comment) })
-            }
-        }
+    suspend fun closeIssue(pat: String, number: Int): Result<Unit> = try {
         val resp = client.patch("${Config.apiRequestIssues()}/$number") {
             header("Authorization", "Bearer $pat")
             header("Accept", "application/vnd.github+json")

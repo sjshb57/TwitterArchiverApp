@@ -79,7 +79,7 @@ fun AdminRequestsScreen(vm: AdminViewModel, onBack: () -> Unit) {
                         },
                         onReject = {
                             confirm = Triple("拒绝申请", "确定拒绝并关闭这条申请？"
-                            ) { vm.rejectRequest(req.number, "") }
+                            ) { vm.rejectRequest(req.number) }
                         }
                     )
                 }

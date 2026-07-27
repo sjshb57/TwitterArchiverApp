@@ -71,7 +71,6 @@ fun GlobalScreen(
         modifier = Modifier.fillMaxSize().statusBarsPadding()
     ) {
     Column(Modifier.fillMaxSize()) {
-        // 顶部
         Column(
             Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -167,7 +166,7 @@ fun GlobalScreen(
     }
     }
 
-    // 账号筛选面板（多选）
+    // 账号筛选面板
     if (showFilter) {
         io.github.twitterarchiver.ui.components.AccountFilterSheet(
             accounts = state.accounts,

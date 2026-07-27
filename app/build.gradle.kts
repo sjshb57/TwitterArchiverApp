@@ -1,8 +1,15 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
 }
+
+val reqToken: String = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }
+        ?.inputStream()?.use { load(it) }
+}.getProperty("REQ_TOKEN") ?: ""
 
 android {
     namespace = "io.github.twitterarchiver"
@@ -30,6 +37,8 @@ android {
             versionNameSuffix = "-visitor"
             resValue("string", "app_name", "推文存档")
             buildConfigField("boolean", "IS_ADMIN", "false")
+            // 受限申请 token：只能对 requests 仓库开 Issue，权限极小
+            buildConfigField("String", "REQ_TOKEN", "\"$reqToken\"")
         }
         create("admin") {
             dimension = "mode"
@@ -37,6 +46,7 @@ android {
             versionNameSuffix = "-admin"
             resValue("string", "app_name", "存档管理")
             buildConfigField("boolean", "IS_ADMIN", "true")
+            buildConfigField("String", "REQ_TOKEN", "\"$reqToken\"")
         }
     }
 

@@ -20,34 +20,30 @@ enum class DashRepo(val repo: String, val title: String) {
     HOME("home", "Home 聚合"),
     DISPATCHER("Dispatcher", "调度中心"),
     STARTER("project-starter", "存档模板"),
-    ALL_ARCHIVES("", "所有存档")   // 特殊：所有账号仓库
+    ALL_ARCHIVES("", "所有存档")
 }
 
 data class AdminState(
     val pat: String? = null,
     val hasPat: Boolean = false,
     val message: String? = null,
-    // 各仪表盘的运行状态缓存
     val runsByRepo: Map<String, List<WorkflowRun>> = emptyMap(),
     val loadingRepo: String? = null,
-    // 所有存档仓库列表
     val allArchives: List<ArchiveRepo> = emptyList(),
     val archivesLoading: Boolean = false,
-    val pinnedRepos: List<String> = emptyList(),      // 最近操作的仓库（置顶）
-    val repoStatus: Map<String, String> = emptyMap(), // repo -> running/success/failure
-    // 申请
+    val pinnedRepos: List<String> = emptyList(),
+    val repoStatus: Map<String, String> = emptyMap(),
     val requests: List<GitHubIssue> = emptyList(),
     val requestsLoading: Boolean = false,
-    // 完整性检测（缺 banner / 缺置顶）
     val checking: Boolean = false,
     val checkProgress: Int = 0,
     val checkTotal: Int = 0,
     val missingBanner: List<MissingItem> = emptyList(),
     val missingPinned: List<MissingItem> = emptyList(),
     val missingAvatar: List<MissingItem> = emptyList(),
-    val newlyCreated: List<String> = emptyList(),   // 新建记录（批准/手动新建的仓库，存本地）
+    val newlyCreated: List<String> = emptyList(),
     val checkDone: Boolean = false,
-    val hasCheckedOnce: Boolean = false,   // 是否检测过（区分"无缓存"和"检测完无缺失"）
+    val hasCheckedOnce: Boolean = false,
     val busy: Boolean = false
 )
 
@@ -141,8 +137,6 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                 checkTotal = archives.size, missingBanner = emptyList(),
                 missingPinned = emptyList(), missingAvatar = emptyList())
 
-            // 最新推文引用的头像文件名，取自聚合数据（timeline-recent 只有几百 KB，
-            // 逐个读各仓库 index.json 动辄十几 MB，不现实）
             val latestAvatar: Map<String, String> = try {
                 repo.getRecentTimelineAccounts().associate { it.r to it.av }
             } catch (e: Exception) { emptyMap() }
@@ -163,9 +157,10 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                                 val hasBanner = repo.bannerExists(arc.repoName, arc.account, prof.banner)
                                 if (!hasBanner) noBanner.add(item)
                                 if (prof.pinned.isBlank()) noPinned.add(item)
-                                // 最新推文头像：文件名与主头像不同且文件不存在才算缺
                                 val av = latestAvatar[arc.repoName].orEmpty()
-                                if (av.isNotBlank() && av != prof.avatar.substringAfterLast('/') &&
+                                val listAv = arc.avatar.orEmpty().substringAfterLast('/')
+                                    .ifBlank { "avatar.jpg" }
+                                if (av.isNotBlank() && av != listAv &&
                                     !repo.snapshotFileExists(arc.repoName, arc.account, "avatar/$av")
                                 ) noAvatar.add(item.copy(avatarName = av))
                             } catch (e: Exception) {
@@ -329,7 +324,7 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                 .onSuccess {
                     kotlinx.coroutines.delay(6000)
                     repo.dispatchWorkflow(pat, account, "setup.yml", mapOf("since" to ""))
-                    repo.closeIssue(pat, number, "已建档：$account，感谢申请！")
+                    repo.closeIssue(pat, number)
                     addNewlyCreated(account)   // 加入新建记录
                     _state.value = _state.value.copy(busy = false, message = "已批准并建档：$account")
                     loadRequests()
@@ -339,11 +334,11 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** 拒绝申请：关闭 Issue */
-    fun rejectRequest(number: Int, reason: String) {
+    fun rejectRequest(number: Int) {
         val pat = _state.value.pat ?: return
         viewModelScope.launch {
             _state.value = _state.value.copy(busy = true)
-            repo.closeIssue(pat, number, reason.ifBlank { "抱歉，此申请未通过。" })
+            repo.closeIssue(pat, number)
                 .onSuccess { _state.value = _state.value.copy(busy = false, message = "已拒绝申请"); loadRequests() }
                 .onFailure { _state.value = _state.value.copy(busy = false, message = "操作失败：${it.message}") }
         }

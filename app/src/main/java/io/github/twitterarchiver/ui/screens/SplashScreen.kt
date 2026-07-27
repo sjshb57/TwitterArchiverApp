@@ -39,15 +39,12 @@ import kotlinx.coroutines.delay
 @Composable
 fun SplashScreen(onFinish: () -> Unit) {
     var stage by remember { mutableIntStateOf(0) }
-    // 整体上移动画
     val scrollY = remember { Animatable(40f) }
 
     LaunchedEffect(Unit) {
-        // 整体缓缓上移
         scrollY.animateTo(0f, tween(1600, easing = LinearEasing))
     }
     LaunchedEffect(Unit) {
-        // 逐行浮现
         for (i in 1..5) {
             stage = i
             delay(280)

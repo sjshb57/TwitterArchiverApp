@@ -84,7 +84,6 @@ fun AdminScreen(
         if (!state.hasPat) {
             PatSetup(onSave = { vm.savePat(it) })
         } else {
-            // 2×2 仪表盘
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp)

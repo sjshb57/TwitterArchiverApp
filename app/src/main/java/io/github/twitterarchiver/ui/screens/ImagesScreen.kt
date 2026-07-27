@@ -156,17 +156,15 @@ private fun MediaCell(item: MediaItem, onClick: () -> Unit) {
     ) {
         when (item.type) {
             MediaType.VIDEO -> {
-                // 视频：用 VideoFrameDecoder 提取一帧当缩略图（只拉够解帧的数据）
                 AsyncImage(
                     model = ImageRequest.Builder(context)
                         .data(item.url)
-                        .videoFrameMillis(0)   // 取第0帧
+                        .videoFrameMillis(0)
                         .build(),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize().background(Color(0xFF16181C))
                 )
-                // 播放角标
                 Box(
                     Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center

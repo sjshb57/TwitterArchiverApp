@@ -128,10 +128,6 @@ class Repository(private val api: GitHubApi = GitHubApi()) {
             try {
                 val base = "accounts/$account/wayback_snapshots"
 
-                // 1. 目标文件名：优先用调用方给的，否则查聚合账号表。
-                //    统一以聚合表为准——它正是列表页 / 全站时间线 / 筛选面板显示账号头像时
-                //    用的文件名，也是最容易看出破图的地方；而且只有几百 KB，
-                //    比逐个读十几 MB 的 index.json 可靠也便宜得多。
                 val targetName = knownTarget?.trim()?.takeIf { it.isNotBlank() } ?: run {
                     val accts = try { api.fetchRecentTimeline().first } catch (e: Exception) { emptyList() }
                     accts.firstOrNull { it.r == repo }?.av?.trim().orEmpty()
@@ -139,10 +135,9 @@ class Repository(private val api: GitHubApi = GitHubApi()) {
                 if (targetName.isBlank())
                     return@withContext Result.failure(Exception("聚合数据里没有该账号的头像文件名"))
 
-                // 2. 源文件：profile.json 的 avatar 字段（各仓库命名不统一，以它为准）
-                val profile = try { api.fetchProfile(repo, account) } catch (e: Exception) { Profile() }
-                val srcName = profile.avatar.substringAfterLast('/').trim()
-                    .ifBlank { "avatar.jpg" }
+                val srcName = (
+                    try { getRepos().firstOrNull { it.repoName == repo }?.avatar } catch (e: Exception) { null }
+                ).orEmpty().substringAfterLast('/').trim().ifBlank { "avatar.jpg" }
 
                 if (srcName == targetName)
                     return@withContext Result.success("最新推文用的就是主头像，无需修复")
@@ -172,7 +167,7 @@ class Repository(private val api: GitHubApi = GitHubApi()) {
             api.createArchiveRequest(token, account, note)
         }
 
-    suspend fun closeIssue(pat: String, number: Int, comment: String? = null) = api.closeIssue(pat, number, comment)
+    suspend fun closeIssue(pat: String, number: Int) = api.closeIssue(pat, number)
     suspend fun getRequests(pat: String): List<GitHubIssue> =
         withContext(Dispatchers.IO) { api.fetchArchiveRequests(pat) }
 }

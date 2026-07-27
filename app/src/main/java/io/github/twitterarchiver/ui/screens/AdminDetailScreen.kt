@@ -374,7 +374,7 @@ private fun AllArchivesView(
             ) {
                 Text(
                     if (checking) "检测中… $checkProgress / $checkTotal"
-                    else "🔍 检测缺失 Banner / 置顶",
+                    else "🔍 检测缺失 Banner / 置顶 / 头像",
                     fontSize = 14.sp, fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.tertiary)
             }

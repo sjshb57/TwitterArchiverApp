@@ -159,14 +159,11 @@ fun AccountFeedScreen(
         val statusBarH = androidx.compose.foundation.layout.WindowInsets.statusBars
             .asPaddingValues().calculateTopPadding()
         LazyColumn(Modifier.fillMaxSize(), state = listState) {
-            // 1. 账号头（随滚动滑走）
             item {
                 ProfileHeader(state.profile, repo, account, displayName,
                     showHamburger = true, onHamburger = { showDateTree = true })
             }
-            // 2. 吸顶：搜索框 + Tab（stickyHeader）
             stickyHeader {
-                // 账号头(第0项)滑出视口后 = 搜索栏吸顶，此时搜索框左侧显示汉堡
                 val stuck by remember {
                     androidx.compose.runtime.derivedStateOf { listState.firstVisibleItemIndex >= 1 }
                 }
@@ -190,7 +187,6 @@ fun AccountFeedScreen(
                             modifier = Modifier.weight(1f)
                         )
                     }
-                    // 推文 / 回复 Tab
                     Row(Modifier.fillMaxWidth()) {
                         TabBtn("推文", tab == 0, Modifier.weight(1f)) { tab = 0 }
                         TabBtn("回复", tab == 1, Modifier.weight(1f)) { tab = 1 }
@@ -198,7 +194,6 @@ fun AccountFeedScreen(
                     HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
                 }
             }
-            // 3. 推文流
             when {
                 state.loading -> item {
                     Box(Modifier.fillMaxWidth().padding(40.dp), Alignment.Center) {
@@ -282,7 +277,6 @@ private fun HamburgerIcon(onBanner: Boolean, modifier: Modifier = Modifier) {
             if (onBanner) {
                 // banner 上：白线 + 深色描边（阴影），白/深 banner 都可见
                 Box(Modifier.width(17.dp).height(2.dp)) {
-                    // 描边（略大深色）
                     Box(Modifier.fillMaxWidth().height(2.dp)
                         .clip(RoundedCornerShape(1.dp))
                         .background(Color.Black.copy(alpha = 0.45f)))
@@ -487,7 +481,6 @@ private fun DateTreeSheet(
                 item {
                     var yearOpen by remember(year) { mutableStateOf(true) }
                     Column {
-                        // 年
                         Row(Modifier.fillMaxWidth().clickable { yearOpen = !yearOpen }
                             .padding(horizontal = 16.dp, vertical = 11.dp),
                             verticalAlignment = Alignment.CenterVertically) {
