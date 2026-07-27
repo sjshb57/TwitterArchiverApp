@@ -87,7 +87,6 @@ class Repository(private val api: GitHubApi = GitHubApi()) {
     suspend fun snapshotFileExists(repo: String, account: String, relPath: String): Boolean =
         withContext(Dispatchers.IO) { api.snapshotFileExists(repo, account, relPath) }
 
-    // 认证
     suspend fun verifyToken(pat: String): AuthUser? =
         withContext(Dispatchers.IO) { api.verifyToken(pat) }
 
@@ -105,7 +104,6 @@ class Repository(private val api: GitHubApi = GitHubApi()) {
 
     suspend fun fetchWorkflowRuns(pat: String, repo: String) =
         api.fetchWorkflowRuns(pat, repo)
-
 
     /**
      * 修复"最新推文头像"缺失：把 profile.json 指向的主头像复制一份，

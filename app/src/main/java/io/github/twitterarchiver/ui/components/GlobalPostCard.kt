@@ -144,7 +144,6 @@ fun GlobalPostCard(
                 }
             }
 
-            // 回复链 + 收藏
             Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (post.replyCount > 0 || (loaded && thread.isNotEmpty())) {
                     Text(
@@ -165,7 +164,6 @@ fun GlobalPostCard(
                 )
             }
 
-            // 展开的回复链
             AnimatedVisibility(visible = expanded) {
                 Column(
                     Modifier.fillMaxWidth().padding(top = 8.dp)
@@ -187,7 +185,6 @@ fun GlobalPostCard(
         }
     }
 
-    // 分享弹层
     if (showShare) {
         ShareSheet(
             username = post.account.u,
@@ -197,7 +194,6 @@ fun GlobalPostCard(
         )
     }
 
-    // 视频播放（全屏）
     playVideo?.let { url ->
         VideoPlayerOverlay(url = url, onDismiss = { playVideo = null })
     }
@@ -390,7 +386,6 @@ private fun ShareSheet(
                     copy(shortCode)
                 }
             }
-            // 系统分享
             Box(
                 Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 20.dp)
                     .clip(RoundedCornerShape(10.dp))

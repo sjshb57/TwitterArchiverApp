@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.twitterarchiver.util.TweetIdUtil
 import io.github.twitterarchiver.viewmodel.AdminViewModel
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -120,7 +121,7 @@ fun AdminEditProfileScreen(
                                                 "bio" -> put("bio", bio)
                                                 "location" -> put("location", location)
                                                 "link" -> put("link", link)
-                                                "pinned" -> put("pinned", pinned)
+                                                "pinned" -> put("pinned", TweetIdUtil.normalize(pinned))
                                                 else -> put(k, v)
                                             }
                                         }
@@ -161,7 +162,12 @@ fun AdminEditProfileScreen(
                 Field(link, { link = it })
                 Spacer(Modifier.height(12.dp))
                 Label("置顶推文 ID")
-                Field(pinned, { pinned = it })
+                // 粘贴推文链接时自动只取末尾 ID，省去手动删前缀
+                Field(pinned, { pinned = TweetIdUtil.normalize(it) })
+                Text("可直接粘贴推文链接，会自动提取 ID",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp))
                 Spacer(Modifier.height(24.dp))
             }
         }

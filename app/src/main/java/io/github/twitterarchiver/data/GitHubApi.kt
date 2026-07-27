@@ -31,7 +31,6 @@ import kotlinx.serialization.json.put
 
 /** 统一的网络层：读公开数据 + 带 PAT 的写操作 */
 class GitHubApi {
-
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
@@ -554,7 +553,6 @@ class GitHubApi {
             emptyList()
         }
     }
-
 }
 
 /** JsonReader 遇到 null 时安全取字符串 */

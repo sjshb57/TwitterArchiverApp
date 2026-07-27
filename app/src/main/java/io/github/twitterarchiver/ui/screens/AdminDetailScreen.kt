@@ -139,9 +139,12 @@ private fun DashDetailView(
                 modifier = Modifier.padding(vertical = 6.dp))
             when (dash) {
                 DashRepo.HOME -> {
-                    ActionItem("触发 重建搜索索引") { pending = Triple("触发工作流", "确定触发「重建搜索索引」？") { vm.triggerWorkflow("home", "build_search_index.yml") } }
-                    ActionItem("触发 更新仓库列表") { pending = Triple("触发工作流", "确定触发「更新仓库列表」？") { vm.triggerWorkflow("home", "update-repos.yml") } }
-                    ActionItem("触发 聚合头像") { pending = Triple("触发工作流", "确定触发「聚合头像」？") { vm.triggerWorkflow("home", "aggregate_avatars.yml") } }
+                    ActionItem("触发 更新仓库列表") { pending = Triple("触发工作流", "确定触发「更新仓库列表」？将重新汇总 repos.json。") { vm.triggerWorkflow("home", "update-repos.yml") } }
+                    ActionItem("触发 重建搜索索引") { pending = Triple("触发工作流", "确定触发「重建搜索索引」？将重建全站 search-index.json，耗时较长。") { vm.triggerWorkflow("home", "build_search_index.yml") } }
+                    ActionItem("触发 生成索引清单") { pending = Triple("触发工作流", "确定触发「生成索引清单」？将为各仓库生成月度清单，供 App 离线增量更新使用。") { vm.triggerWorkflow("home", "build-manifest.yml") } }
+                    ActionItem("触发 聚合头像池") { pending = Triple("触发工作流", "确定触发「聚合头像池」？将扫描所有仓库，把最清晰的头像收进共享池。") { vm.triggerWorkflow("home", "aggregate_avatars.yml") } }
+                    ActionItem("推送清晰头像 · 试运行") { pending = Triple("试运行", "只打印将要推送的清单，不会真正修改任何仓库。建议先跑这个确认无误。") { vm.triggerWorkflow("home", "push_best_avatars.yml", mapOf("dry_run" to "true")) } }
+                    ActionItem("推送清晰头像 · 实际执行") { pending = Triple("实际推送", "将把头像池里更清晰的版本推回各存档仓库，会产生真实提交。\n\n确认已先跑过试运行？") { vm.triggerWorkflow("home", "push_best_avatars.yml", mapOf("dry_run" to "false")) } }
                     ActionItem("编辑 build_search_index.yml") { onEditYml("home", ".github/workflows/build_search_index.yml") }
                 }
                 DashRepo.DISPATCHER -> {
