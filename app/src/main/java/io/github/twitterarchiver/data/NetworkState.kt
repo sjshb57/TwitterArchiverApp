@@ -30,6 +30,7 @@ object NetworkState {
     private val failed = mutableStateMapOf<String, Unit>()
     private var cm: ConnectivityManager? = null
     private var registered = false
+    private var lastValidated = false
     private val main = Handler(Looper.getMainLooper())
 
     fun isFailed(url: String) = failed.containsKey(url)
@@ -67,6 +68,17 @@ object NetworkState {
         c.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) = post(true)
             override fun onLost(network: Network) = post(false)
+
+            /**
+             * 挂 VPN / 代理时，默认网络始终是 VPN 接口，底层断开重连不会走
+             * onAvailable / onLost（Network 对象没变），只有能力会变。
+             * 这里捕捉 VALIDATED（系统已探测到真正连通）来触发重试。
+             */
+            override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
+                val validated = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                if (validated && !lastValidated) post(true)
+                lastValidated = validated
+            }
         })
     }
 
