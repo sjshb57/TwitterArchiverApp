@@ -68,6 +68,7 @@ fun AppNav(
     val homeListState = androidx.compose.foundation.lazy.rememberLazyListState()
     val followListState = androidx.compose.foundation.lazy.rememberLazyListState()
     val adminListState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val newArchiveListState = androidx.compose.foundation.lazy.rememberLazyListState()
     val tabScope = androidx.compose.runtime.rememberCoroutineScope()
 
     val backStack = remember { mutableListOf<Screen>() }
@@ -343,6 +344,7 @@ fun AppNav(
         )
         is Screen.AdminNewArchive -> AdminNewArchiveScreen(
             vm = adminVm,
+            listState = newArchiveListState,
             onBack = { navBack() },
             onOpenArchive = { repoName -> navTo(Screen.AdminArchive(repoName)) }
         )

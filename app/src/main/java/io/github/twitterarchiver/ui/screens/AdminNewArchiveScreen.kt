@@ -47,7 +47,13 @@ import io.github.twitterarchiver.viewmodel.AdminViewModel
 /** 建立新存档 + 待完善列表（建档完成但缺 banner/置顶的仓库，可点击去处理） */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AdminNewArchiveScreen(vm: AdminViewModel, onBack: () -> Unit, onOpenArchive: (String) -> Unit) {
+fun AdminNewArchiveScreen(
+    vm: AdminViewModel,
+    listState: androidx.compose.foundation.lazy.LazyListState =
+        androidx.compose.foundation.lazy.rememberLazyListState(),
+    onBack: () -> Unit,
+    onOpenArchive: (String) -> Unit
+) {
     var repoName by remember { mutableStateOf("") }
     var since by remember { mutableStateOf("") }
     var showConfirm by remember { mutableStateOf(false) }
@@ -114,7 +120,8 @@ fun AdminNewArchiveScreen(vm: AdminViewModel, onBack: () -> Unit, onOpenArchive:
             },
             modifier = Modifier.fillMaxSize()
         ) {
-        androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+        androidx.compose.foundation.lazy.LazyColumn(
+            Modifier.fillMaxSize().padding(horizontal = 20.dp), state = listState) {
             item {
                 Text("输入账号用户名作为仓库名，从模板创建新仓库并触发首次建档（setup）。建档完成后回来上传 banner、设置置顶，再手动触发增量更新。",
                     fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,

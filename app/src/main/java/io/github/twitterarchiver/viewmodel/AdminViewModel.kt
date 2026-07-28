@@ -133,11 +133,13 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                     async {
                         gate.withPermit {
                             repo.fetchWorkflowRuns(pat, name).onSuccess { runs ->
-                                val latest = runs.firstOrNull()
+                                val own = runs.filterNot {
+                                    (it.name ?: "").contains("pages", ignoreCase = true)
+                                }
                                 result[name] = when {
-                                    latest == null -> "unknown"
-                                    latest.status != "completed" -> "running"
-                                    latest.conclusion == "success" -> "success"
+                                    own.isEmpty() -> "unknown"
+                                    own.any { it.status == "queued" || it.status == "in_progress" } -> "running"
+                                    own.first().conclusion == "success" -> "success"
                                     else -> "failure"
                                 }
                             }
