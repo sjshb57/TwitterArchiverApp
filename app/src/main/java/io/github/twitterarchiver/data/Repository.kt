@@ -61,13 +61,13 @@ class Repository(private val api: GitHubApi = GitHubApi()) {
             if (!forceRefresh) profileCache[key]?.let { return@withContext it }
             val p = try {
                 api.fetchProfile(repo, account).also { fresh ->
-                    metaFile("profile_$repo.json")?.let { f ->
+                    metaFile("profile_${repo}_$account.json")?.let { f ->
                         try { f.writeText(diskJson.encodeToString(Profile.serializer(), fresh)) }
                         catch (e: Exception) { }
                     }
                 }
             } catch (e: Exception) {
-                metaFile("profile_$repo.json")?.takeIf { it.isFile }?.let { f ->
+                metaFile("profile_${repo}_$account.json")?.takeIf { it.isFile }?.let { f ->
                     try { diskJson.decodeFromString<Profile>(f.readText()) }
                     catch (e2: Exception) { null }
                 } ?: Profile()
@@ -128,7 +128,7 @@ class Repository(private val api: GitHubApi = GitHubApi()) {
 
                 val targetName = knownTarget?.trim()?.takeIf { it.isNotBlank() } ?: run {
                     val accts = try { api.fetchRecentTimeline().first } catch (e: Exception) { emptyList() }
-                    accts.firstOrNull { it.r == repo }?.av?.trim().orEmpty()
+                    accts.firstOrNull { it.r == repo && it.a == account }?.av?.trim().orEmpty()
                 }
                 if (targetName.isBlank())
                     return@withContext Result.failure(Exception("聚合数据里没有该账号的头像文件名"))

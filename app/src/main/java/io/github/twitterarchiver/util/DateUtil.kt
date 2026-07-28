@@ -30,19 +30,4 @@ object DateUtil {
         } catch (e: Exception) { "" }
     }
 
-    /** 从 tweets 构建 年->月->日 树 */
-    fun buildDateTree(dates: List<String>): Map<String, Map<String, List<String>>> {
-        val tree = sortedMapOf<String, MutableMap<String, MutableList<String>>>(compareByDescending { it })
-        for (d in dates) {
-            val parts = d.split("-")
-            if (parts.size != 3) continue
-            val (y, m, day) = parts
-            val yearMap = tree.getOrPut(y) { sortedMapOf(compareByDescending { it }) }
-            val monthList = yearMap.getOrPut(m) { mutableListOf() }
-            if (day !in monthList) monthList.add(day)
-        }
-        // 日按降序
-        tree.values.forEach { it.values.forEach { days -> days.sortDescending() } }
-        return tree
-    }
 }

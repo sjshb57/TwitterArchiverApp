@@ -86,8 +86,6 @@ class SecureStore(private val context: Context) {
         }
     }
 
-    /** 是否已保存 PAT */
-
     /** 清除 PAT（登出） */
     suspend fun clearPat() {
         context.dataStore.edit { prefs ->

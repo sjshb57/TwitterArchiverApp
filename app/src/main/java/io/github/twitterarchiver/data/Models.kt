@@ -143,7 +143,7 @@ data class MonthSpan(
     val hash: String = "",
 )
 
-/** 本地已缓存月份的状态（存 index_cache/{repo}/_state.json） */
+/** 本地已缓存月份的状态（存 index_cache/{repo}/{account}/_state.json） */
 @Serializable
 data class LocalIndexState(
     val months: Map<String, String> = emptyMap(),   // 月份 -> 清单哈希

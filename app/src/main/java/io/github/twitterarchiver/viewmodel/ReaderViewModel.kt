@@ -16,7 +16,6 @@ data class ReaderState(
     val profile: Profile = Profile(),
     val allTweets: List<Tweet> = emptyList(),
     val visibleTweets: List<Tweet> = emptyList(),
-    val dateTree: Map<String, Map<String, List<String>>> = emptyMap(),
     val activeDay: String? = null,
     val searchQuery: String = "",
     val ascending: Boolean = false,
@@ -41,16 +40,13 @@ class ReaderViewModel(private val repo: Repository = Repository()) : ViewModel()
             try {
                 val profile = repo.getProfile(repoName, account, forceRefresh)
                 val tweets = repo.getTweets(repoName, account, forceRefresh)
-                    .filter { it.hasFile || it.isVirtual }  // 显示实体+虚拟
-                val realDated = tweets.filter { it.date.isNotBlank() }
-                val tree = DateUtil.buildDateTree(realDated.map { it.date })
+                    .filter { it.hasFile || it.isVirtual }
                 val prev = _state.value
                 _state.value = prev.copy(
                     loading = false,
                     error = null,
                     profile = profile,
                     allTweets = tweets,
-                    dateTree = tree,
                     visibleTweets = applyFilters(tweets, prev)
                 )
             } catch (e: Exception) {

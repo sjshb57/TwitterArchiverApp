@@ -48,8 +48,10 @@ data class GlobalPost(
         get() = media.filter(isVideoName)
             .map { "${Config.snapshotsBase(account.r, account.a)}/video/$it" }
 
+    /** 本地时区日期。不能直接截 T 前面——那是 UTC 日期，与卡片里的本地时间、日期树会对不上 */
     val displayDate: String
-        get() = if (time.contains("T")) time.substringBefore("T") else time
+        get() = io.github.twitterarchiver.util.DateUtil.localDate(time)
+            .ifBlank { if (time.contains("T")) time.substringBefore("T") else time }
 
     /** 是否转推（RT @xxx: ...）。RT 的引用原推在 html 里，需按需解析 */
     val isRetweet: Boolean get() = text.startsWith("RT @")

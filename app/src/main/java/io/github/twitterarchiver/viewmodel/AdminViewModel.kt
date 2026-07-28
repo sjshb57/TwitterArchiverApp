@@ -138,12 +138,12 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                 missingPinned = emptyList(), missingAvatar = emptyList())
 
             val latestAvatar: Map<String, String> = try {
-                repo.getRecentTimelineAccounts().associate { it.r to it.av }
+                repo.getRecentTimelineAccounts().associate { "${it.r}/${it.a}" to it.av }
             } catch (e: Exception) { emptyMap() }
 
-            val noBanner = java.util.Collections.synchronizedList(mutableListOf<MissingItem>())
-            val noPinned = java.util.Collections.synchronizedList(mutableListOf<MissingItem>())
-            val noAvatar = java.util.Collections.synchronizedList(mutableListOf<MissingItem>())
+            val noBanner = java.util.concurrent.CopyOnWriteArrayList<MissingItem>()
+            val noPinned = java.util.concurrent.CopyOnWriteArrayList<MissingItem>()
+            val noAvatar = java.util.concurrent.CopyOnWriteArrayList<MissingItem>()
             var done = 0
 
             kotlinx.coroutines.coroutineScope {
@@ -157,7 +157,7 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                                 val hasBanner = repo.bannerExists(arc.repoName, arc.account, prof.banner)
                                 if (!hasBanner) noBanner.add(item)
                                 if (prof.pinned.isBlank()) noPinned.add(item)
-                                val av = latestAvatar[arc.repoName].orEmpty()
+                                val av = latestAvatar["${arc.repoName}/${arc.account}"].orEmpty()
                                 val listAv = arc.avatar.orEmpty().substringAfterLast('/')
                                     .ifBlank { "avatar.jpg" }
                                 if (av.isNotBlank() && av != listAv &&

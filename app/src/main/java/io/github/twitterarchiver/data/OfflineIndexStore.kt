@@ -10,7 +10,7 @@ import java.security.MessageDigest
  * 只有发生变化的月份才通过 HTTP Range 重新下载对应字节段。
  *
  * 服务端不真正分片；分片只存在于本地：
- *   files/index_cache/{repo}/
+ *   files/index_cache/{repo}/{account}/
  *     _state.json    已缓存月份 -> 清单哈希
  *     2026-07.json   该月记录的原始字节片段（不含外层 [ ]，与服务端字节一致）
  *
@@ -29,8 +29,8 @@ class OfflineIndexStore(private val api: GitHubApi) {
         explicitNulls = false
     }
 
-    private fun dirFor(repo: String): File? =
-        AppDirs.root?.let { File(it, "index_cache/$repo") }
+    private fun dirFor(repo: String, account: String): File? =
+        AppDirs.root?.let { File(it, "index_cache/$repo/$account") }
 
     /**
      * 加载某账号的推文列表。
@@ -38,7 +38,7 @@ class OfflineIndexStore(private val api: GitHubApi) {
      * 由调用方退回旧的直连路径。
      */
     suspend fun load(repo: String, account: String, force: Boolean = false): List<Tweet>? {
-        val dir = dirFor(repo) ?: return null
+        val dir = dirFor(repo, account) ?: return null
         return try {
             if (force) fullRefresh(dir, repo, account) ?: readLocal(dir)
             else sync(dir, repo, account)
@@ -51,8 +51,9 @@ class OfflineIndexStore(private val api: GitHubApi) {
 
     private suspend fun sync(dir: File, repo: String, account: String): List<Tweet>? {
         val manifest = api.fetchIndexManifest(repo)
+            ?.takeIf { it.account.isBlank() || it.account == account }
 
-        // 清单不可用 / 标记不可 Range：全量路径（失败退本地）
+        // 清单不可用 / 不属于本账号 / 标记不可 Range：全量路径（失败退本地）
         if (manifest == null || !manifest.range || manifest.months.isEmpty()) {
             return fullRefresh(dir, repo, account) ?: readLocal(dir)
         }

@@ -75,11 +75,9 @@ class Bookmarks(private val context: Context) {
         var added = 0
         update { list ->
             val existing = list.map { it.tweetId }.toSet()
-            val merged = list.toMutableList()
-            backup.bookmarks.forEach {
-                if (it.tweetId !in existing) { merged.add(it); added++ }
-            }
-            merged
+            val fresh = backup.bookmarks.filter { it.tweetId !in existing }
+            added = fresh.size
+            list + fresh
         }
         return added
     }

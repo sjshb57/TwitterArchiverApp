@@ -23,9 +23,9 @@ object Config {
     fun crossRepliesUrl() = "$HOME_BASE/cross-replies.json"
     fun indexManifestUrl(repo: String) = "$HOME_BASE/manifest/$repo.json"
     // GitHub Actions 最近运行
-    fun apiRepoRuns(repo: String) = "https://api.github.com/repos/$ORG/$repo/actions/runs?per_page=20"
-    fun apiCancelRun(repo: String, runId: Long) = "https://api.github.com/repos/$ORG/$repo/actions/runs/$runId/cancel"
-    fun apiRerunRun(repo: String, runId: Long) = "https://api.github.com/repos/$ORG/$repo/actions/runs/$runId/rerun"
+    fun apiRepoRuns(repo: String) = "$API_BASE/repos/$ORG/$repo/actions/runs?per_page=20"
+    fun apiCancelRun(repo: String, runId: Long) = "$API_BASE/repos/$ORG/$repo/actions/runs/$runId/cancel"
+    fun apiRerunRun(repo: String, runId: Long) = "$API_BASE/repos/$ORG/$repo/actions/runs/$runId/rerun"
 
     // 从模板仓库创建新仓库（建档）
     const val TEMPLATE_REPO = "project-starter"

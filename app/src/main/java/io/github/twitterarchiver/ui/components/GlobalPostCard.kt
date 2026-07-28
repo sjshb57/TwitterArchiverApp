@@ -36,8 +36,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
 import coil.request.videoFrameMillis
 import io.github.twitterarchiver.data.GlobalPost
@@ -101,14 +103,8 @@ fun GlobalPostCard(
             if (imgs.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
                 imgs.take(4).forEachIndexed { idx, url ->
-                    AsyncImage(
-                        model = url, contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxWidth().aspectRatio(16f / 10f)
-                            .clip(RoundedCornerShape(14.dp))
-                            .clickable { onImageClick(imgs, idx) }
-                            .padding(bottom = if (idx < imgs.size - 1) 6.dp else 0.dp)
-                    )
+                    PostImage(url, 14.dp,
+                        if (idx < imgs.size - 1) 6.dp else 0.dp) { onImageClick(imgs, idx) }
                 }
             }
             val vids = post.videoUrls
@@ -201,6 +197,30 @@ fun GlobalPostCard(
 
 /** 引用原推卡片（带边框，区别于主推文） */
 /**
+ * 推文图片。加载失败（离线、文件缺失）时整块收起，
+ * 否则会留下一片与图片等高的空白，离线时满屏都是。
+ */
+@Composable
+private fun PostImage(
+    url: String,
+    corner: Dp,
+    bottomGap: Dp,
+    onClick: () -> Unit
+) {
+    var failed by remember(url) { mutableStateOf(false) }
+    if (failed) return
+    AsyncImage(
+        model = url, contentDescription = null,
+        contentScale = ContentScale.Crop,
+        onState = { st -> if (st is AsyncImagePainter.State.Error) failed = true },
+        modifier = Modifier.fillMaxWidth().aspectRatio(16f / 10f)
+            .clip(RoundedCornerShape(corner))
+            .clickable(onClick = onClick)
+            .padding(bottom = bottomGap)
+    )
+}
+
+/**
  * 视频封面：VideoFrameDecoder 取一帧当背景 + 播放按钮，点击进全屏播放。
  * 列表里不做内联自动播放，避免多个播放器同时占用解码器与流量。
  */
@@ -270,14 +290,8 @@ private fun QuotedCard(q: QuotedTweet, onImageClick: (List<String>, Int) -> Unit
         if (q.images.isNotEmpty()) {
             Spacer(Modifier.height(6.dp))
             q.images.take(4).forEachIndexed { idx, url ->
-                AsyncImage(
-                    model = url, contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxWidth().aspectRatio(16f / 10f)
-                        .clip(RoundedCornerShape(10.dp))
-                        .clickable { onImageClick(q.images, idx) }
-                        .padding(bottom = if (idx < q.images.size - 1) 6.dp else 0.dp)
-                )
+                PostImage(url, 10.dp,
+                    if (idx < q.images.size - 1) 6.dp else 0.dp) { onImageClick(q.images, idx) }
             }
         }
     }
@@ -321,14 +335,8 @@ private fun ReplyCard(item: ThreadItem, onImageClick: (List<String>, Int) -> Uni
             if (item.images.isNotEmpty()) {
                 Spacer(Modifier.height(4.dp))
                 item.images.take(4).forEachIndexed { idx, url ->
-                    AsyncImage(
-                        model = url, contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxWidth().aspectRatio(16f / 10f)
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable { onImageClick(item.images, idx) }
-                            .padding(bottom = if (idx < item.images.size - 1) 4.dp else 0.dp)
-                    )
+                    PostImage(url, 8.dp,
+                        if (idx < item.images.size - 1) 4.dp else 0.dp) { onImageClick(item.images, idx) }
                 }
             }
         }
