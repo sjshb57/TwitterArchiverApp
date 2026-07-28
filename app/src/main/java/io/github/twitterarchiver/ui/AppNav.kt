@@ -271,7 +271,8 @@ fun AppNav(
                             input.readBytes().decodeToString()
                         } ?: ""
                         bmVm.importJson(content) { count ->
-                            android.widget.Toast.makeText(bmCtx, "已导入 $count 条书签", android.widget.Toast.LENGTH_SHORT).show()
+                            val msg = if (count < 0) "导入失败：文件格式不正确" else "已导入 $count 条书签"
+                            android.widget.Toast.makeText(bmCtx, msg, android.widget.Toast.LENGTH_SHORT).show()
                         }
                     } catch (e: Exception) {
                         android.widget.Toast.makeText(bmCtx, "导入失败", android.widget.Toast.LENGTH_SHORT).show()

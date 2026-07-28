@@ -20,7 +20,10 @@ class BookmarkViewModel(app: Application) : AndroidViewModel(app) {
     fun add(b: Bookmark) { viewModelScope.launch { store.add(b) } }
     fun remove(id: String) { viewModelScope.launch { store.remove(id) } }
     fun exportJson(list: List<Bookmark>): String = store.exportJson(list)
+    /** 导入书签。文件格式不对时回报 -1，不让异常冒泡崩溃 */
     fun importJson(content: String, onDone: (Int) -> Unit) {
-        viewModelScope.launch { onDone(store.importJson(content)) }
+        viewModelScope.launch {
+            onDone(try { store.importJson(content) } catch (e: Exception) { -1 })
+        }
     }
 }
