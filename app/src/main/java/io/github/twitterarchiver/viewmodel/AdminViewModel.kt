@@ -12,6 +12,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.launch
 import androidx.core.content.edit
 
@@ -87,10 +90,11 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ---------- 工作流运行状态 ----------
-    fun loadRuns(repoName: String) {
+    /** silent=true 用于后台轮询：不显示加载态，数据回来直接替换 */
+    fun loadRuns(repoName: String, silent: Boolean = false) {
         val pat = _state.value.pat ?: return
         viewModelScope.launch {
-            _state.value = _state.value.copy(loadingRepo = repoName)
+            if (!silent) _state.value = _state.value.copy(loadingRepo = repoName)
             repo.fetchWorkflowRuns(pat, repoName)
                 .onSuccess { runs ->
                     _state.value = _state.value.copy(
@@ -99,18 +103,52 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                     )
                 }
                 .onFailure {
-                    _state.value = _state.value.copy(loadingRepo = null,
-                        message = "加载失败：${it.message}")
+                    // 轮询失败不打扰：保留原有数据，不弹提示
+                    _state.value = if (silent) _state.value.copy(loadingRepo = null)
+                    else _state.value.copy(loadingRepo = null, message = "加载失败：${it.message}")
                 }
         }
     }
 
+    /** 加载所有存档账号（用 repos.json，含小号，共 141 个账号） */
     /** 仓库名是否已被占用。null=查不到（未登录/网络问题），此时不提示占用 */
     suspend fun checkRepoExists(name: String): Boolean? {
         val pat = _state.value.pat ?: return null
         return repo.repoExists(pat, name)
     }
-    /** 加载所有存档账号（用 repos.json，含小号，共 141 个账号） */
+
+    /**
+     * 刷新"新建记录"的真实状态。repoStatus 原先只在建档瞬间写入内存，
+     * 重启后即丢失，这里按各仓库最近一次运行结果重建。
+     */
+    fun refreshNewlyCreatedStatus() {
+        val pat = _state.value.pat ?: return
+        val names = _state.value.newlyCreated
+        if (names.isEmpty()) return
+        viewModelScope.launch {
+            val gate = kotlinx.coroutines.sync.Semaphore(6)
+            val result = java.util.concurrent.ConcurrentHashMap<String, String>()
+            kotlinx.coroutines.coroutineScope {
+                names.map { name ->
+                    async {
+                        gate.withPermit {
+                            repo.fetchWorkflowRuns(pat, name).onSuccess { runs ->
+                                val latest = runs.firstOrNull()
+                                result[name] = when {
+                                    latest == null -> "unknown"
+                                    latest.status != "completed" -> "running"
+                                    latest.conclusion == "success" -> "success"
+                                    else -> "failure"
+                                }
+                            }
+                        }
+                    }
+                }.awaitAll()
+            }
+            _state.value = _state.value.copy(repoStatus = _state.value.repoStatus + result)
+        }
+    }
+
     fun loadAllArchives() {
         viewModelScope.launch {
             _state.value = _state.value.copy(archivesLoading = true)
@@ -151,36 +189,45 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
             val noAvatar = java.util.concurrent.CopyOnWriteArrayList<MissingItem>()
             var done = 0
 
+            // 信号量限流而非分批：分批时一批里最慢的会拖住整批（队头阻塞）
+            val gate = kotlinx.coroutines.sync.Semaphore(16)
+            val lock = kotlinx.coroutines.sync.Mutex()
             kotlinx.coroutines.coroutineScope {
-                archives.chunked(8).forEach { batch ->
-                    batch.map { arc ->
-                        async {
+                archives.map { arc ->
+                    async {
+                        gate.withPermit {
                             try {
                                 val prof = repo.getProfile(arc.repoName, arc.account)
                                 val item = MissingItem(arc.repoName, arc.account, arc.displayName)
-                                // 用已读的 profile.banner 判断，避免重复读 profile.json
-                                val hasBanner = repo.bannerExists(arc.repoName, arc.account, prof.banner)
-                                if (!hasBanner) noBanner.add(item)
                                 if (prof.pinned.isBlank()) noPinned.add(item)
+
                                 val av = latestAvatar["${arc.repoName}/${arc.account}"].orEmpty()
                                 val listAv = arc.avatar.orEmpty().substringAfterLast('/')
                                     .ifBlank { "avatar.jpg" }
-                                if (av.isNotBlank() && av != listAv &&
-                                    !repo.snapshotFileExists(arc.repoName, arc.account, "avatar/$av")
-                                ) noAvatar.add(item.copy(avatarName = av))
+                                val needAvatarCheck = av.isNotBlank() && av != listAv
+
+                                // 两个存在性检查互不依赖，并行发出
+                                val bannerJob = async { repo.bannerExists(arc.repoName, arc.account, prof.banner) }
+                                val avatarJob = async {
+                                    needAvatarCheck &&
+                                        !repo.snapshotFileExists(arc.repoName, arc.account, "avatar/$av")
+                                }
+                                if (!bannerJob.await()) noBanner.add(item)
+                                if (avatarJob.await()) noAvatar.add(item.copy(avatarName = av))
                             } catch (e: Exception) {
                                 noBanner.add(MissingItem(arc.repoName, arc.account, "${arc.displayName} [读取失败]"))
                             }
                         }
-                    }.forEach { it.await(); done++
-                        // 动态更新：每检测完一个就刷新进度和已发现的缺失（有就显示，不等全部完成）
-                        _state.value = _state.value.copy(
-                            checkProgress = done,
-                            missingBanner = noBanner.sortedBy { m -> m.displayName },
-                            missingPinned = noPinned.sortedBy { m -> m.displayName },
-                            missingAvatar = noAvatar.sortedBy { m -> m.displayName })
+                        lock.withLock {
+                            done++
+                            _state.value = _state.value.copy(
+                                checkProgress = done,
+                                missingBanner = noBanner.sortedBy { m -> m.displayName },
+                                missingPinned = noPinned.sortedBy { m -> m.displayName },
+                                missingAvatar = noAvatar.sortedBy { m -> m.displayName })
+                        }
                     }
-                }
+                }.awaitAll()
             }
             val mb = noBanner.sortedBy { it.displayName }
             val mp = noPinned.sortedBy { it.displayName }

@@ -67,12 +67,12 @@ fun AppNav(
     val globalListState = androidx.compose.foundation.lazy.rememberLazyListState()
     val homeListState = androidx.compose.foundation.lazy.rememberLazyListState()
     val followListState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val adminListState = androidx.compose.foundation.lazy.rememberLazyListState()
     val tabScope = androidx.compose.runtime.rememberCoroutineScope()
 
     val backStack = remember { mutableListOf<Screen>() }
     fun navTo(s: Screen) { backStack.add(screen); screen = s }
     fun navBack() { screen = if (backStack.isNotEmpty()) backStack.removeAt(backStack.size - 1) else Screen.Tabs }
-    // 默认启动 Tab（从设置读取，仅首次生效）
     val settingsVm: SettingsViewModel = viewModel()
     val defaultTab by settingsVm.defaultTab.collectAsState()
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -324,6 +324,7 @@ fun AppNav(
         is Screen.AdminDash -> AdminDetailScreen(
             vm = adminVm,
             dash = (screen as Screen.AdminDash).dash,
+            listState = adminListState,
             onBack = { navBack() },
             onEditYml = { repo, path -> navTo(Screen.AdminEditYml(repo, path)) },
             onDeleteTweets = { navTo(Screen.AdminDeleteTweets) },

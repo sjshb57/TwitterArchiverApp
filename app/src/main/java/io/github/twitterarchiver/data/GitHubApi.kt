@@ -6,6 +6,7 @@ import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
+import io.ktor.client.request.head
 import io.ktor.client.request.header
 import io.ktor.client.request.patch
 import io.ktor.client.request.post
@@ -41,6 +42,15 @@ class GitHubApi {
     }
 
     private val client = HttpClient(OkHttp) {
+        engine {
+            // 默认 maxRequestsPerHost = 5，而本应用几乎所有请求都指向同一域名
+            config {
+                dispatcher(okhttp3.Dispatcher().apply {
+                    maxRequests = 64
+                    maxRequestsPerHost = 16
+                })
+            }
+        }
         install(ContentNegotiation) { json(this@GitHubApi.json) }
         install(HttpTimeout) {
             requestTimeoutMillis = 30_000
@@ -280,8 +290,7 @@ class GitHubApi {
             if (path.isBlank()) return false
             val base = Config.snapshotsBase(repo, account)
             val fileName = path.substringAfterLast('/')
-            val resp = client.get("$base/avatar/$fileName")
-            resp.status.isSuccess()
+            client.head("$base/avatar/$fileName").status.isSuccess()
         } catch (e: Exception) { false }
     }
 
@@ -289,7 +298,7 @@ class GitHubApi {
     suspend fun snapshotFileExists(repo: String, account: String, relPath: String): Boolean = try {
         val p = relPath.removePrefix("../").trim()
         if (p.isBlank()) false
-        else client.get("${Config.snapshotsBase(repo, account)}/$p").status.isSuccess()
+        else client.head("${Config.snapshotsBase(repo, account)}/$p").status.isSuccess()
     } catch (e: Exception) { false }
 
     /** 组织下是否已有该仓库。true=已存在，false=可用，null=查不到（网络/权限问题） */

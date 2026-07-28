@@ -34,12 +34,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import io.github.twitterarchiver.viewmodel.AdminViewModel
 
 /** 建立新存档 + 待完善列表（建档完成但缺 banner/置顶的仓库，可点击去处理） */
@@ -55,6 +57,11 @@ fun AdminNewArchiveScreen(vm: AdminViewModel, onBack: () -> Unit, onOpenArchive:
         vm.loadMissingCache(); vm.loadNewlyCreated()
         if (state.allArchives.isEmpty()) vm.loadAllArchives()
     }
+    // newlyCreated 读出来后再查真实状态（重启后内存里的 repoStatus 已丢失）
+    LaunchedEffect(state.newlyCreated) { vm.refreshNewlyCreatedStatus() }
+
+    var refreshing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     val typed = io.github.twitterarchiver.util.AccountUtil.normalize(repoName)
 
@@ -96,6 +103,17 @@ fun AdminNewArchiveScreen(vm: AdminViewModel, onBack: () -> Unit, onOpenArchive:
                 titleContentColor = MaterialTheme.colorScheme.onBackground,
                 navigationIconContentColor = MaterialTheme.colorScheme.onBackground)
         )
+        androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+            isRefreshing = refreshing,
+            onRefresh = {
+                refreshing = true
+                vm.loadNewlyCreated()
+                vm.refreshNewlyCreatedStatus()
+                vm.loadAllArchives()
+                scope.launch { kotlinx.coroutines.delay(800); refreshing = false }
+            },
+            modifier = Modifier.fillMaxSize()
+        ) {
         androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
             item {
                 Text("输入账号用户名作为仓库名，从模板创建新仓库并触发首次建档（setup）。建档完成后回来上传 banner、设置置顶，再手动触发增量更新。",
@@ -198,6 +216,7 @@ fun AdminNewArchiveScreen(vm: AdminViewModel, onBack: () -> Unit, onOpenArchive:
                 MissingRow(m.displayName, "设置置顶") { onOpenArchive(m.repo) }
             }
             item { Spacer(Modifier.height(30.dp)) }
+        }
         }
     }
 }

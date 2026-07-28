@@ -54,6 +54,8 @@ import androidx.core.net.toUri
 fun AdminDetailScreen(
     vm: AdminViewModel,
     dash: DashRepo,
+    listState: androidx.compose.foundation.lazy.LazyListState =
+        androidx.compose.foundation.lazy.rememberLazyListState(),
     onBack: () -> Unit,
     onEditYml: (String, String) -> Unit,   // (repo, path)
     onDeleteTweets: () -> Unit,
@@ -73,7 +75,7 @@ fun AdminDetailScreen(
                 kotlinx.coroutines.delay(8000)
                 val hasRunning = (state.runsByRepo[dash.repo] ?: emptyList())
                     .any { it.status == "in_progress" || it.status == "queued" }
-                if (hasRunning) vm.loadRuns(dash.repo)
+                if (hasRunning) vm.loadRuns(dash.repo, silent = true)
             }
         }
     }
@@ -99,6 +101,7 @@ fun AdminDetailScreen(
 
         if (dash == DashRepo.ALL_ARCHIVES) {
             AllArchivesView(state.allArchives, state.archivesLoading, state.pinnedRepos, state.repoStatus, onOpenArchive, onNewArchive, onDeleteTweets,
+                listState = listState,
                 onCheck = { vm.runIntegrityCheck() },
                 onFix = { repoName -> onOpenArchive(repoName) },
                 checking = state.checking, checkProgress = state.checkProgress, checkTotal = state.checkTotal,
@@ -249,6 +252,7 @@ private fun AllArchivesView(
     onOpen: (String) -> Unit,
     onNew: () -> Unit,
     onDeleteTweets: () -> Unit,
+    listState: androidx.compose.foundation.lazy.LazyListState,
     onCheck: () -> Unit,
     checking: Boolean = false,
     checkProgress: Int = 0,
@@ -348,7 +352,7 @@ private fun AllArchivesView(
             }
         )
     }
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 14.dp)) {
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 14.dp), state = listState) {
         item {
             Spacer(Modifier.height(8.dp))
             Box(

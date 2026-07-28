@@ -89,7 +89,7 @@ fun AdminArchiveScreen(
             kotlinx.coroutines.delay(8000)
             // 只有存在 running 状态的运行才刷新，否则不动
             val hasRunning = (state.runsByRepo[repo] ?: emptyList()).any { it.status == "in_progress" || it.status == "queued" }
-            if (hasRunning) vm.loadRuns(repo)
+            if (hasRunning) vm.loadRuns(repo, silent = true)
         }
     }
 
