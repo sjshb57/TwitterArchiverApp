@@ -65,6 +65,7 @@ fun GlobalScreen(
         isRefreshing = refreshing,
         onRefresh = {
             refreshing = true
+            io.github.twitterarchiver.data.NetworkState.clearFailed()
             vm.load()
             refreshScope.launch { kotlinx.coroutines.delay(800); refreshing = false }
         },

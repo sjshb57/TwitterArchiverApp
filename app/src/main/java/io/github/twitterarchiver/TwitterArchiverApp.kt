@@ -12,7 +12,6 @@ class TwitterArchiverApp : Application(), ImageLoaderFactory {
     override fun newImageLoader(): ImageLoader {
         return ImageLoader.Builder(this)
             .components {
-                // 视频帧解码：从视频提取一帧当缩略图（只拉够解帧的数据，不下整段）
                 add(VideoFrameDecoder.Factory())
             }
             .memoryCache {
@@ -25,6 +24,13 @@ class TwitterArchiverApp : Application(), ImageLoaderFactory {
                     // cacheDir 在 Android/data/<pkg>/cache 下
                     .directory(cacheDir.resolve("image_cache"))
                     .maxSizeBytes(200L * 1024 * 1024) // 200MB
+                    .build()
+            }
+            .okHttpClient {
+                okhttp3.OkHttpClient.Builder()
+                    .connectTimeout(4, java.util.concurrent.TimeUnit.SECONDS)
+                    .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                    .retryOnConnectionFailure(false)
                     .build()
             }
             .respectCacheHeaders(false) // 忽略服务器缓存头，强制本地缓存

@@ -22,8 +22,14 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         AppDirs.init(this)
+        io.github.twitterarchiver.data.NetworkState.register(this)
         enableEdgeToEdge()
         setContent { App() }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        io.github.twitterarchiver.data.NetworkState.recheck()
     }
 }
 

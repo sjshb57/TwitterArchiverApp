@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import io.github.twitterarchiver.data.NetworkState
 import io.github.twitterarchiver.data.Config
 import io.github.twitterarchiver.data.GlobalPost
 import io.github.twitterarchiver.data.IndexAccount
@@ -164,6 +165,7 @@ fun AccountFeedScreen(
         isRefreshing = refreshing,
         onRefresh = {
             refreshing = true
+            NetworkState.clearFailed()
             readerVm.load(repo, account, forceRefresh = true)
             scope.launch { kotlinx.coroutines.delay(800); refreshing = false }
         },

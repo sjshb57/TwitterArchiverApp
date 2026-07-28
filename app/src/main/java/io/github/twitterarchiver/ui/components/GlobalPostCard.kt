@@ -40,9 +40,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
+import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.request.videoFrameMillis
 import io.github.twitterarchiver.data.GlobalPost
+import io.github.twitterarchiver.data.NetworkState
 import io.github.twitterarchiver.data.QuotedTweet
 import io.github.twitterarchiver.data.ThreadItem
 
@@ -207,12 +209,19 @@ private fun PostImage(
     bottomGap: Dp,
     onClick: () -> Unit
 ) {
-    var failed by remember(url) { mutableStateOf(false) }
-    if (failed) return
+    val gen = NetworkState.generation
+    if (NetworkState.isFailed(url)) return
+    val ctx = LocalContext.current
     AsyncImage(
-        model = url, contentDescription = null,
+        model = remember(url, gen, NetworkState.online) {
+            val canNet = NetworkState.isOnlineNow()
+            ImageRequest.Builder(ctx).data(url)
+                .apply { if (!canNet) networkCachePolicy(CachePolicy.DISABLED) }
+                .build()
+        },
+        contentDescription = null,
         contentScale = ContentScale.Crop,
-        onState = { st -> if (st is AsyncImagePainter.State.Error) failed = true },
+        onState = { st -> if (st is AsyncImagePainter.State.Error) NetworkState.markFailed(url) },
         modifier = Modifier.fillMaxWidth().aspectRatio(16f / 10f)
             .clip(RoundedCornerShape(corner))
             .clickable(onClick = onClick)

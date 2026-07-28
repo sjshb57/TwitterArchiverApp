@@ -75,12 +75,13 @@ fun AppNav(
     // 默认启动 Tab（从设置读取，仅首次生效）
     val settingsVm: SettingsViewModel = viewModel()
     val defaultTab by settingsVm.defaultTab.collectAsState()
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedLabel by remember { mutableStateOf("列表") }
     var appliedDefault by remember { mutableStateOf(false) }
     LaunchedEffect(defaultTab) {
         // -1 表示还没从存储加载完；只有拿到真实值(0/1)才应用一次
         if (!appliedDefault && defaultTab >= 0) {
-            selectedTab = defaultTab.coerceIn(0, 1); appliedDefault = true
+            selectedLabel = if (defaultTab.coerceIn(0, 1) == 1) "全站" else "列表"
+            appliedDefault = true
         }
     }
     var dialogTarget by remember { mutableStateOf<DialogTarget?>(null) }
@@ -129,7 +130,9 @@ fun AppNav(
 
     when (val s = screen) {
         is Screen.Tabs -> {
-            AppScaffold(tabs, selectedTab.coerceIn(0, tabs.size - 1), { selectedTab = it },
+            val selectedIdx = tabs.indexOfFirst { it.label == selectedLabel }
+                .let { if (it >= 0) it else 0 }
+            AppScaffold(tabs, selectedIdx, { selectedLabel = tabs[it].label },
                 onTabReselected = { idx ->
                     // 双击(重复点击)当前 Tab → 回到顶部
                     when (tabs[idx].label) {
