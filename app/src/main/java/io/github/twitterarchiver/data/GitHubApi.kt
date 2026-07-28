@@ -20,6 +20,8 @@ import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.utils.io.jvm.javaio.toInputStream
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -53,9 +55,21 @@ class GitHubApi {
     suspend fun fetchRepos(): List<ArchiveRepo> =
         client.get(Config.reposJsonUrl()).body()
 
-    /** 拉取"最新一批"轻量时间线(timeline-recent.json，最新2000条，小而快) */
+    /** 近期时间线(timeline-recent.json)。成功则落盘，断网时回读本地副本 */
     suspend fun fetchRecentTimeline(): Pair<List<IndexAccount>, List<GlobalPost>> =
-        parseIndexStreaming(Config.timelineRecentUrl())
+        withContext(Dispatchers.IO) {
+            val cache = AppDirs.root?.let { java.io.File(it, "index_cache/_meta/timeline-recent.json") }
+            try {
+                val bytes = client.get(Config.timelineRecentUrl()).body<ByteArray>()
+                val parsed = parseIndexStream(bytes.inputStream())
+                cache?.let { runCatching { it.parentFile?.mkdirs(); it.writeBytes(bytes) } }
+                parsed
+            } catch (e: Exception) {
+                val local = cache?.takeIf { it.isFile }
+                    ?.let { f -> runCatching { parseIndexStream(f.inputStream()) }.getOrNull() }
+                local ?: throw e
+            }
+        }
 
     /** 拉取全站 search-index.json，解析成账号列表 + 全站推文列表 */
     suspend fun fetchSearchIndex(): Pair<List<IndexAccount>, List<GlobalPost>> =
@@ -66,9 +80,12 @@ class GitHubApi {
      * 用 android.util.JsonReader 从字节流边读边解析，避免把 25MB 文本 + JSON 树
      * 同时留在内存导致 OOM（旧实现 parseToJsonElement 会一次性建整棵树）。
      */
-    private suspend fun parseIndexStreaming(url: String): Pair<List<IndexAccount>, List<GlobalPost>> {
-        val channel = client.get(url).bodyAsChannel()
-        val input = channel.toInputStream()
+    private suspend fun parseIndexStreaming(url: String): Pair<List<IndexAccount>, List<GlobalPost>> =
+        withContext(Dispatchers.IO) {
+            parseIndexStream(client.get(url).bodyAsChannel().toInputStream())
+        }
+
+    private fun parseIndexStream(input: java.io.InputStream): Pair<List<IndexAccount>, List<GlobalPost>> {
         val accts = ArrayList<IndexAccount>()
         val posts = ArrayList<GlobalPost>()
         android.util.JsonReader(input.reader(Charsets.UTF_8)).use { reader ->

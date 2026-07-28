@@ -50,15 +50,15 @@ class Repository(private val api: GitHubApi = GitHubApi()) {
         val key = "$repo/$account"
         if (!forceRefresh) tweetsCache[key]?.let { return@withContext it }
         // 离线增量层（本地按月缓存 + 清单比对 + Range 补差）；不可用时退直连
-        val list = offline.load(repo, account) ?: api.fetchTweets(repo, account)
+        val list = offline.load(repo, account, forceRefresh) ?: api.fetchTweets(repo, account)
         tweetsCache[key] = list
         list
     }
 
-    suspend fun getProfile(repo: String, account: String): Profile =
+    suspend fun getProfile(repo: String, account: String, forceRefresh: Boolean = false): Profile =
         withContext(Dispatchers.IO) {
             val key = "$repo/$account"
-            profileCache[key]?.let { return@withContext it }
+            if (!forceRefresh) profileCache[key]?.let { return@withContext it }
             val p = try {
                 api.fetchProfile(repo, account).also { fresh ->
                     metaFile("profile_$repo.json")?.let { f ->

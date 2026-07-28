@@ -37,10 +37,11 @@ class OfflineIndexStore(private val api: GitHubApi) {
      * 返回 null 表示离线层完全无法提供（未初始化/彻底失败且无本地数据），
      * 由调用方退回旧的直连路径。
      */
-    suspend fun load(repo: String, account: String): List<Tweet>? {
+    suspend fun load(repo: String, account: String, force: Boolean = false): List<Tweet>? {
         val dir = dirFor(repo) ?: return null
         return try {
-            sync(dir, repo, account)
+            if (force) fullRefresh(dir, repo, account) ?: readLocal(dir)
+            else sync(dir, repo, account)
         } catch (e: Exception) {
             readLocal(dir)          // 意外异常：能读本地就读本地
         }

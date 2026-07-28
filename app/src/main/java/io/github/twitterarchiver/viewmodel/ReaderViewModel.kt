@@ -32,26 +32,30 @@ class ReaderViewModel(private val repo: Repository = Repository()) : ViewModel()
     private var repoName = ""
     private var account = ""
 
-    fun load(repoName: String, account: String) {
+    fun load(repoName: String, account: String, forceRefresh: Boolean = false) {
         this.repoName = repoName
         this.account = account
         viewModelScope.launch {
-            _state.value = ReaderState(loading = true)
+            // 下拉刷新时保留现有内容与用户的筛选状态，避免闪白
+            if (!forceRefresh) _state.value = ReaderState(loading = true)
             try {
-                val profile = repo.getProfile(repoName, account)
-                val tweets = repo.getTweets(repoName, account)
+                val profile = repo.getProfile(repoName, account, forceRefresh)
+                val tweets = repo.getTweets(repoName, account, forceRefresh)
                     .filter { it.hasFile || it.isVirtual }  // 显示实体+虚拟
                 val realDated = tweets.filter { it.date.isNotBlank() }
                 val tree = DateUtil.buildDateTree(realDated.map { it.date })
-                _state.value = ReaderState(
+                val prev = _state.value
+                _state.value = prev.copy(
                     loading = false,
+                    error = null,
                     profile = profile,
                     allTweets = tweets,
-                    visibleTweets = sortTweets(tweets, false),
-                    dateTree = tree
+                    dateTree = tree,
+                    visibleTweets = applyFilters(tweets, prev)
                 )
             } catch (e: Exception) {
-                _state.value = ReaderState(loading = false, error = "加载失败：${e.message}")
+                if (forceRefresh) _state.value = _state.value.copy(loading = false)
+                else _state.value = ReaderState(loading = false, error = "加载失败：${e.message}")
             }
         }
     }
@@ -76,24 +80,31 @@ class ReaderViewModel(private val repo: Repository = Repository()) : ViewModel()
             _state.value = _state.value.copy(searchQuery = "")
             return
         }
+        _state.value = s.copy(
+            searchQuery = q,
+            visibleTweets = sortTweets(matchQuery(s.allTweets, q), s.ascending)
+        )
+    }
+
+    private fun matchQuery(list: List<Tweet>, q: String): List<Tweet> {
         val raw = q.trim()
         // 定位短码 ?t=后8位（reader.html 的分享链接格式）→ 按 tweetId 后缀匹配
         val tCode = Regex("""^\?t=(\w+)$""").find(raw)?.groupValues?.get(1)
-        val res = if (tCode != null) {
-            s.allTweets.filter { it.tweetId.endsWith(tCode) }
-        } else {
-            val lower = raw.lowercase()
-            s.allTweets.filter {
-                it.text.lowercase().contains(lower) ||
-                    it.bodyText.lowercase().contains(lower) ||
-                    it.date.contains(raw) || it.time.contains(raw) ||
-                    it.tweetId.contains(raw)   // 支持按完整/部分推文 ID 搜索
-            }
+        if (tCode != null) return list.filter { it.tweetId.endsWith(tCode) }
+        val lower = raw.lowercase()
+        return list.filter {
+            it.text.lowercase().contains(lower) ||
+                it.bodyText.lowercase().contains(lower) ||
+                it.date.contains(raw) || it.time.contains(raw) ||
+                it.tweetId.contains(raw)   // 支持按完整/部分推文 ID 搜索
         }
-        _state.value = s.copy(
-            searchQuery = q,
-            visibleTweets = sortTweets(res, s.ascending)
-        )
+    }
+
+    /** 刷新后按用户当前的日期/搜索/排序重建可见列表 */
+    private fun applyFilters(all: List<Tweet>, prev: ReaderState): List<Tweet> {
+        val byDay = if (prev.activeDay == null) all else all.filter { it.date == prev.activeDay }
+        val res = if (prev.searchQuery.isBlank()) byDay else matchQuery(all, prev.searchQuery)
+        return sortTweets(res, prev.ascending)
     }
 
     private fun sortTweets(list: List<Tweet>, asc: Boolean): List<Tweet> =

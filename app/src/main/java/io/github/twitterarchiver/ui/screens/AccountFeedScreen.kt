@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -155,7 +156,29 @@ fun AccountFeedScreen(
         map
     }
 
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    var refreshing by remember(repo, account) { mutableStateOf(false) }
+
+    val ptrState = androidx.compose.material3.pulltorefresh.rememberPullToRefreshState()
+
+    androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+        isRefreshing = refreshing,
+        onRefresh = {
+            refreshing = true
+            readerVm.load(repo, account, forceRefresh = true)
+            scope.launch { kotlinx.coroutines.delay(800); refreshing = false }
+        },
+        state = ptrState,
+        // 本页内容延伸到状态栏下，指示器需单独下移，否则会和系统状态栏重叠
+        indicator = {
+            androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator(
+                state = ptrState,
+                isRefreshing = refreshing,
+                modifier = Modifier.align(Alignment.TopCenter)
+                    .statusBarsPadding()
+            )
+        },
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
+    ) {
         val statusBarH = androidx.compose.foundation.layout.WindowInsets.statusBars
             .asPaddingValues().calculateTopPadding()
         LazyColumn(Modifier.fillMaxSize(), state = listState) {
