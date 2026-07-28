@@ -29,7 +29,11 @@ object VideoSaver {
                     ?: return@withContext false
 
                 resolver.openOutputStream(uri)?.use { out ->
-                    URL(url).openStream().use { input ->
+                    val conn = URL(url).openConnection().apply {
+                        connectTimeout = 15_000
+                        readTimeout = 30_000
+                    }
+                    conn.getInputStream().use { input ->
                         input.copyTo(out, bufferSize = 64 * 1024)
                     }
                 }

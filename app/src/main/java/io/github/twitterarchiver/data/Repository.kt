@@ -87,6 +87,10 @@ class Repository(private val api: GitHubApi = GitHubApi()) {
     suspend fun snapshotFileExists(repo: String, account: String, relPath: String): Boolean =
         withContext(Dispatchers.IO) { api.snapshotFileExists(repo, account, relPath) }
 
+    /** 组织下仓库名是否已被占用（直查 GitHub，不受 repos.json 聚合滞后影响） */
+    suspend fun repoExists(pat: String, name: String): Boolean? =
+        withContext(Dispatchers.IO) { api.repoExists(pat, name) }
+
     suspend fun verifyToken(pat: String): AuthUser? =
         withContext(Dispatchers.IO) { api.verifyToken(pat) }
 

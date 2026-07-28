@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -50,7 +51,31 @@ fun AdminNewArchiveScreen(vm: AdminViewModel, onBack: () -> Unit, onOpenArchive:
     var showConfirm by remember { mutableStateOf(false) }
     val state by vm.state.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) { vm.loadMissingCache(); vm.loadNewlyCreated() }
+    LaunchedEffect(Unit) {
+        vm.loadMissingCache(); vm.loadNewlyCreated()
+        if (state.allArchives.isEmpty()) vm.loadAllArchives()
+    }
+
+    val typed = io.github.twitterarchiver.util.AccountUtil.normalize(repoName)
+
+    // 一级：本地已知列表，即时反馈
+    val localTaken = remember(typed, state.allArchives, state.newlyCreated) {
+        typed.isNotBlank() && (
+            state.allArchives.any { it.repoName.equals(typed, true) || it.account.equals(typed, true) } ||
+                state.newlyCreated.any { it.equals(typed, true) })
+    }
+    // 二级：停止输入后直查 GitHub，覆盖 repos.json 还没聚合到的仓库
+    var remoteTaken by remember { mutableStateOf(false) }
+    var checking by remember { mutableStateOf(false) }
+    LaunchedEffect(typed, localTaken) {
+        remoteTaken = false
+        if (typed.isBlank() || localTaken) { checking = false; return@LaunchedEffect }
+        kotlinx.coroutines.delay(500)          // 防抖：打字过程中不发请求
+        checking = true
+        remoteTaken = vm.checkRepoExists(typed) == true
+        checking = false
+    }
+    val taken = localTaken || remoteTaken
 
     if (showConfirm) {
         io.github.twitterarchiver.ui.components.ConfirmDialog(
@@ -76,12 +101,26 @@ fun AdminNewArchiveScreen(vm: AdminViewModel, onBack: () -> Unit, onOpenArchive:
                 Text("输入账号用户名作为仓库名，从模板创建新仓库并触发首次建档（setup）。建档完成后回来上传 banner、设置置顶，再手动触发增量更新。",
                     fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 8.dp, bottom = 14.dp))
-                Field2("新仓库名 / 账号", repoName) { repoName = it }
+                Field2("新仓库名 / 账号", repoName, isError = taken) { repoName = it }
+                if (typed.isNotBlank()) {
+                    Text(
+                        when {
+                            taken -> "「$typed」已存在，换一个名字"
+                            checking -> "检查中…"
+                            else -> "「$typed」可用"
+                        },
+                        fontSize = 11.sp,
+                        color = if (taken) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                }
                 Spacer(Modifier.height(10.dp))
                 Field2("起始日期 YYYYMMDD（留空全量）", since) { since = it }
                 Spacer(Modifier.height(20.dp))
                 Button(
-                    onClick = { if (repoName.isNotBlank()) showConfirm = true },
+                    onClick = { if (typed.isNotBlank() && !taken) showConfirm = true },
+                    enabled = typed.isNotBlank() && !taken,
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("开始建档") }
                 Spacer(Modifier.height(28.dp))
@@ -178,10 +217,22 @@ private fun MissingRow(name: String, action: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun Field2(hint: String, value: String, onChange: (String) -> Unit) {
+private fun Field2(
+    hint: String,
+    value: String,
+    isError: Boolean = false,
+    onChange: (String) -> Unit
+) {
+    val shape = RoundedCornerShape(10.dp)
     Box(
         Modifier.fillMaxWidth().height(44.dp)
-            .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f), RoundedCornerShape(10.dp))
+            .background(
+                if (isError) MaterialTheme.colorScheme.error.copy(alpha = 0.10f)
+                else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f), shape)
+            .then(
+                if (isError) Modifier.border(1.dp, MaterialTheme.colorScheme.error, shape)
+                else Modifier
+            )
             .padding(horizontal = 14.dp),
         contentAlignment = Alignment.CenterStart
     ) {

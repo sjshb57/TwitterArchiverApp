@@ -105,6 +105,11 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** 仓库名是否已被占用。null=查不到（未登录/网络问题），此时不提示占用 */
+    suspend fun checkRepoExists(name: String): Boolean? {
+        val pat = _state.value.pat ?: return null
+        return repo.repoExists(pat, name)
+    }
     /** 加载所有存档账号（用 repos.json，含小号，共 141 个账号） */
     fun loadAllArchives() {
         viewModelScope.launch {

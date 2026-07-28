@@ -292,6 +292,20 @@ class GitHubApi {
         else client.get("${Config.snapshotsBase(repo, account)}/$p").status.isSuccess()
     } catch (e: Exception) { false }
 
+    /** 组织下是否已有该仓库。true=已存在，false=可用，null=查不到（网络/权限问题） */
+    suspend fun repoExists(pat: String, name: String): Boolean? = try {
+        val resp = client.get("${Config.API_BASE}/repos/${Config.ORG}/$name") {
+            header("Authorization", "Bearer $pat")
+            header("Accept", "application/vnd.github+json")
+            header("X-GitHub-Api-Version", "2022-11-28")
+        }
+        when (resp.status.value) {
+            200 -> true
+            404 -> false
+            else -> null
+        }
+    } catch (e: Exception) { null }
+
     // ---------- 认证 ----------
 
     /** 用 PAT 验证身份，返回登录用户；失败返回 null */

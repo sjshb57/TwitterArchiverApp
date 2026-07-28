@@ -161,14 +161,18 @@ fun ImagePreviewOverlay(
                 onClick = {
                     scope.launch {
                         val url = urls[pagerState.currentPage]
-                        val loader = context.imageLoader
-                        val req = ImageRequest.Builder(context).data(url).allowHardware(false).build()
-                        val result = loader.execute(req)
-                        if (result is SuccessResult) {
-                            val bmp = (result.drawable as android.graphics.drawable.BitmapDrawable).bitmap
-                            val ok = ImageSaver.saveBitmap(context, bmp, "TA_${System.currentTimeMillis()}.jpg")
-                            Toast.makeText(context, if (ok) "已保存到相册" else "保存失败", Toast.LENGTH_SHORT).show()
-                        }
+                        val ok = try {
+                            val req = ImageRequest.Builder(context).data(url)
+                                .allowHardware(false).build()
+                            val result = context.imageLoader.execute(req)
+                            // GIF 解出来是 MovieDrawable，强转会崩，这里安全取位图
+                            val bmp = (result as? SuccessResult)?.drawable
+                                ?.let { it as? android.graphics.drawable.BitmapDrawable }?.bitmap
+                            bmp != null && ImageSaver.saveBitmap(
+                                context, bmp, "TA_${System.currentTimeMillis()}.jpg")
+                        } catch (e: Exception) { false }
+                        Toast.makeText(context, if (ok) "已保存到相册" else "保存失败",
+                            Toast.LENGTH_SHORT).show()
                     }
                 },
                 modifier = Modifier
