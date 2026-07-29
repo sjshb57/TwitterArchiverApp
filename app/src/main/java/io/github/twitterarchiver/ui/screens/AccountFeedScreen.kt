@@ -454,7 +454,6 @@ private fun ProfileHeader(
                     modifier = Modifier.padding(top = 10.dp))
             }
             // 📍🔗：对齐 reader p-meta。字号用 dp→sp 固定，不受系统字体缩放影响
-            // （reader 用 px，与系统缩放无关；这样换行行为和 reader 一致）
             if (profile.location.isNotBlank() || profile.link.isNotBlank()) {
                 val metaSize = with(androidx.compose.ui.platform.LocalDensity.current) { 13.dp.toSp() }
                 androidx.compose.foundation.layout.FlowRow(
@@ -466,7 +465,7 @@ private fun ProfileHeader(
                         Text("📍 ${profile.location}", fontSize = metaSize,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (profile.link.isNotBlank()) {
-                        val shown = profile.link.replace(Regex("^https?://"), "")
+                        val shown = io.github.twitterarchiver.util.LinkUtil.display(profile.link)
                         Text("🔗 $shown", fontSize = metaSize,
                             color = MaterialTheme.colorScheme.primary)
                     }
@@ -579,11 +578,9 @@ private fun Tweet.toGlobalPost(account: IndexAccount, replyCount: Int): GlobalPo
     return GlobalPost(
         acctIndex = 0,
         // 优先 body_text：它保留原推换行，text 会把换行压成空格；
-        // 全站时间线的 search-index 也取 body_text，两处一致
         text = bodyText.ifBlank { text },
         tweetId = tweetId,
         time = timestamp,
-        // 图片 + 视频都放进 media，由 GlobalPost 按扩展名分流到 image/ 与 video/
         media = (images + wantedVideos + embeddedVideos)
             .map { it.substringAfterLast('/') }
             .distinct(),

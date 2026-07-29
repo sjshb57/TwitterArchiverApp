@@ -272,12 +272,13 @@ private fun AllArchivesView(
             it.displayName.contains(query, true) || it.account.contains(query, true) ||
                 it.handle.contains(query, true) || it.repoName.contains(query, true)
         }
-        // 排序：错误的最前 → 置顶的 → 其余。稳定排序
+        // 排序：运行中 → 失败 → 置顶 → 其余。稳定排序
         filtered.sortedBy { r ->
             when {
-                status[r.repoName] == "failure" -> 0
-                pinned.contains(r.repoName) -> 1 + pinned.indexOf(r.repoName)
-                else -> 1000
+                status[r.repoName] == "running" -> 0
+                status[r.repoName] == "failure" -> 1
+                pinned.contains(r.repoName) -> 2 + pinned.indexOf(r.repoName)
+                else -> 100000
             }
         }
     }
@@ -395,7 +396,9 @@ private fun AllArchivesView(
             Text("所有存档仓库 (${shown.size}/${archives.size})", fontSize = 13.sp, fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(vertical = 6.dp))
         }
-        if (loading) {
+        // 仅首次（列表还空着）显示转圈；重新加载时保留现有项，
+        // 否则项数塌缩会把滚动位置夹到 0
+        if (loading && shown.isEmpty()) {
             item { Box(Modifier.fillMaxWidth().padding(20.dp), Alignment.Center) { CircularProgressIndicator(Modifier.size(24.dp)) } }
         } else {
             items(shown) { r ->

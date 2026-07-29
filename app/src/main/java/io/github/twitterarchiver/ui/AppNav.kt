@@ -72,7 +72,16 @@ fun AppNav(
     val tabScope = androidx.compose.runtime.rememberCoroutineScope()
 
     val backStack = remember { mutableListOf<Screen>() }
-    fun navTo(s: Screen) { backStack.add(screen); screen = s }
+    fun navTo(s: Screen) {
+        backStack.add(screen)
+        screen = s
+        val target = when {
+            s is Screen.AdminDash && s.dash == DashRepo.ALL_ARCHIVES -> adminListState
+            s is Screen.AdminNewArchive -> newArchiveListState
+            else -> null
+        }
+        target?.let { st -> tabScope.launch { st.scrollToItem(0) } }
+    }
     fun navBack() { screen = if (backStack.isNotEmpty()) backStack.removeAt(backStack.size - 1) else Screen.Tabs }
     val settingsVm: SettingsViewModel = viewModel()
     val defaultTab by settingsVm.defaultTab.collectAsState()

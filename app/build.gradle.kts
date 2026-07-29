@@ -28,7 +28,6 @@ android {
         }
     }
 
-    // 两个风味：访客版(visitor) 和 管理版(admin)
     flavorDimensions += "mode"
     productFlavors {
         create("visitor") {
