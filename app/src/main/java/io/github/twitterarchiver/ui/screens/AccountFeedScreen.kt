@@ -466,7 +466,7 @@ private fun ProfileHeader(
                 val metaStyle = androidx.compose.ui.text.TextStyle(fontSize = metaSize)
                 val hasLoc = profile.location.isNotBlank()
                 val hasLink = profile.link.isNotBlank()
-                val locText = "📍 ${profile.location}"
+                val locText = "📍 " + LinkUtil.stripInText(profile.location)
 
                 androidx.compose.foundation.layout.BoxWithConstraints(
                     Modifier.fillMaxWidth().padding(top = 6.dp)
@@ -643,7 +643,7 @@ private fun buildBioAnnotated(
 ): androidx.compose.ui.text.AnnotatedString {
     return androidx.compose.ui.text.buildAnnotatedString {
         // 匹配 @用户名 或 http(s) 链接
-        val regex = Regex("(@[A-Za-z0-9_]+)|(https?://\\S+)")
+        val regex = Regex("(@[A-Za-z0-9_]+)|(${LinkUtil.URL_IN_TEXT.pattern})")
         var last = 0
         for (m in regex.findAll(bio)) {
             val start = m.range.first
@@ -653,8 +653,9 @@ private fun buildBioAnnotated(
                     append(bio.substring(last, start))
                 }
             }
+            val seg = bio.substring(start, end)
             withStyle(androidx.compose.ui.text.SpanStyle(color = accent)) {
-                append(bio.substring(start, end))
+                append(if (seg.startsWith("http", true)) LinkUtil.stripPrefix(seg) else seg)
             }
             last = end
         }
