@@ -54,10 +54,13 @@ import androidx.compose.ui.text.withStyle
 import androidx.core.net.toUri
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.layout.widthIn
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import io.github.twitterarchiver.data.NetworkState
+import io.github.twitterarchiver.util.LinkUtil
 import io.github.twitterarchiver.data.Config
 import io.github.twitterarchiver.data.GlobalPost
 import io.github.twitterarchiver.data.IndexAccount
@@ -73,6 +76,7 @@ import kotlinx.coroutines.launch
  * 账号头 + 吸顶(搜索框+推文/回复Tab) + 日期树(年→月→日,带每天数量) + 无限滚动。
  * 引用/转推折叠、展开回复链、置顶推文均对齐 reader。
  */
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun AccountFeedScreen(
@@ -458,26 +462,57 @@ private fun ProfileHeader(
             if (profile.location.isNotBlank() || profile.link.isNotBlank()) {
                 val metaSize = with(androidx.compose.ui.platform.LocalDensity.current) { 13.dp.toSp() }
                 val metaCtx = androidx.compose.ui.platform.LocalContext.current
-                androidx.compose.foundation.layout.FlowRow(
-                    Modifier.padding(top = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+                val metaStyle = androidx.compose.ui.text.TextStyle(fontSize = metaSize)
+                val hasLoc = profile.location.isNotBlank()
+                val hasLink = profile.link.isNotBlank()
+                val locText = "📍 ${profile.location}"
+
+                androidx.compose.foundation.layout.BoxWithConstraints(
+                    Modifier.fillMaxWidth().padding(top = 6.dp)
                 ) {
-                    if (profile.location.isNotBlank())
-                        Text("📍 ${profile.location}", fontSize = metaSize,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    if (profile.link.isNotBlank()) {
-                        Text("🔗 " + io.github.twitterarchiver.util.LinkUtil.display(profile.link),
+                    val gap = 12.dp
+                    val density = androidx.compose.ui.platform.LocalDensity.current
+                    fun widthOf(t: String) = with(density) {
+                        measurer.measure(t, metaStyle).size.width.toDp()
+                    }
+                    val remain = if (hasLoc) maxWidth - widthOf(locText) - gap else maxWidth
+                    val wrappedText = "🔗 " + LinkUtil.display(profile.link)
+                    val sameLine = hasLoc && hasLink &&
+                        remain >= widthOf(wrappedText) + widthOf("a")
+
+                    val link = @Composable { mod: Modifier ->
+                        Text(
+                            if (sameLine) "🔗 " + LinkUtil.display(profile.link, Int.MAX_VALUE)
+                            else wrappedText,
                             fontSize = metaSize,
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.clickable {
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            modifier = mod.clickable {
                                 runCatching {
                                     metaCtx.startActivity(android.content.Intent(
                                         android.content.Intent.ACTION_VIEW,
-                                        io.github.twitterarchiver.util.LinkUtil
-                                            .openUrl(profile.link).toUri()))
+                                        LinkUtil.openUrl(profile.link).toUri()))
                                 }
-                            })
+                            }
+                        )
+                    }
+                    val loc = @Composable {
+                        Text(locText, fontSize = metaSize,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+
+                    if (sameLine) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                            loc()
+                            link(Modifier.widthIn(max = remain))
+                        }
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            if (hasLoc) loc()
+                            if (hasLink) link(Modifier)
+                        }
                     }
                 }
             }
