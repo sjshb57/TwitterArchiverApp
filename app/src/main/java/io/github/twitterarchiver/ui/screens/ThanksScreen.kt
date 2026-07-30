@@ -39,6 +39,7 @@ fun ThanksScreen(onBack: () -> Unit) {
         "X@Wilf_Lin" to "思路技术支持"
     )
     val others = listOf(
+        "X@0502railgun1949",
         "X@10Lystra",
         "X@11andpr89648964",
         "X@acnekot",
