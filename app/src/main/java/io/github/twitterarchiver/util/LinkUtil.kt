@@ -8,6 +8,7 @@ object LinkUtil {
     fun display(raw: String, max: Int = MAX): String {
         val bare = raw.trim()
             .removePrefix("https://").removePrefix("http://")
+            .removePrefix("www.")
             .removeSuffix("/")
         return if (bare.length <= max) bare else bare.take(max) + "…"
     }
