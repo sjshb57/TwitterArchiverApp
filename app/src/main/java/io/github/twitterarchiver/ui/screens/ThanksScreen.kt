@@ -43,7 +43,8 @@ fun ThanksScreen(onBack: () -> Unit) {
         "X@11andpr89648964",
         "X@acnekot",
         "X@CaffFrog",
-        "X@nyaepheia"
+        "X@nyaepheia",
+        "X@qianxunchan"
     )
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {

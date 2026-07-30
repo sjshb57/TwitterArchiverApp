@@ -269,7 +269,7 @@ https://twitterarchiver.github.io/<仓库>/accounts/<账号>/wayback_snapshots/
 
 **致谢**
 
-X@10Lystra · X@11andpr89648964 · X@acnekot · X@CaffFrog · X@nyaepheia
+X@10Lystra · X@11andpr89648964 · X@acnekot · X@CaffFrog · X@nyaepheia · X@qianxunchan
 
 以及每一位默默支持这个项目的人。
 
