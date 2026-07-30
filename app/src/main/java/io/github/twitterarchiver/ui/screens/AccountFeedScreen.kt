@@ -51,6 +51,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.withStyle
+import androidx.core.net.toUri
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -456,6 +457,7 @@ private fun ProfileHeader(
             // 📍🔗：对齐 reader p-meta。字号用 dp→sp 固定，不受系统字体缩放影响
             if (profile.location.isNotBlank() || profile.link.isNotBlank()) {
                 val metaSize = with(androidx.compose.ui.platform.LocalDensity.current) { 13.dp.toSp() }
+                val metaCtx = androidx.compose.ui.platform.LocalContext.current
                 androidx.compose.foundation.layout.FlowRow(
                     Modifier.padding(top = 6.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -465,9 +467,17 @@ private fun ProfileHeader(
                         Text("📍 ${profile.location}", fontSize = metaSize,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (profile.link.isNotBlank()) {
-                        val shown = io.github.twitterarchiver.util.LinkUtil.display(profile.link)
-                        Text("🔗 $shown", fontSize = metaSize,
-                            color = MaterialTheme.colorScheme.primary)
+                        Text("🔗 " + io.github.twitterarchiver.util.LinkUtil.display(profile.link),
+                            fontSize = metaSize,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clickable {
+                                runCatching {
+                                    metaCtx.startActivity(android.content.Intent(
+                                        android.content.Intent.ACTION_VIEW,
+                                        io.github.twitterarchiver.util.LinkUtil
+                                            .openUrl(profile.link).toUri()))
+                                }
+                            })
                     }
                 }
             }
