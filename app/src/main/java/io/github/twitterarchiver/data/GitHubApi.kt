@@ -82,10 +82,6 @@ class GitHubApi {
             }
         }
 
-    /** 拉取全站 search-index.json，解析成账号列表 + 全站推文列表 */
-    suspend fun fetchSearchIndex(): Pair<List<IndexAccount>, List<GlobalPost>> =
-        parseIndexStreaming(Config.searchIndexUrl())
-
     // ---------- 全站索引分片 ----------
 
     /**
@@ -136,11 +132,6 @@ class GitHubApi {
      * 用 android.util.JsonReader 从字节流边读边解析，避免把 25MB 文本 + JSON 树
      * 同时留在内存导致 OOM（旧实现 parseToJsonElement 会一次性建整棵树）。
      */
-    private suspend fun parseIndexStreaming(url: String): Pair<List<IndexAccount>, List<GlobalPost>> =
-        withContext(Dispatchers.IO) {
-            parseIndexStream(client.get(url).bodyAsChannel().toInputStream())
-        }
-
     private fun parseIndexStream(input: java.io.InputStream): Pair<List<IndexAccount>, List<GlobalPost>> {
         val accts = ArrayList<IndexAccount>()
         val posts = ArrayList<GlobalPost>()

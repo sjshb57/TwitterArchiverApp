@@ -18,7 +18,6 @@ object Config {
 
     // 门面数据
     fun reposJsonUrl() = "$HOME_BASE/repos.json"
-    fun searchIndexUrl() = "$HOME_BASE/search-index.json"
 
     // 全站索引分片：服务端按月存，客户端按年用。
     fun globalIndexBase() = "$HOME_BASE/search-index"
