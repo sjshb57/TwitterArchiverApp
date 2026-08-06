@@ -85,14 +85,20 @@ fun GlobalScreen(
                 fontSize = 28.sp, fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.combinedClickable(
-                    onClick = { }, onDoubleClick = { showDates = true }
+                    onClick = { },
+                    onDoubleClick = { refreshScope.launch { listState.animateScrollToItem(0) } }
                 ))
+            state.indexError?.let { err ->
+                Text(err, fontSize = 9.sp, color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
+                        .clickable { vm.clearIndexError() })
+            }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(top = 3.dp)
             ) {
                 val browsing = state.query.isBlank() && state.filterAccounts.isEmpty() &&
-                    state.activeDay == null
+                    state.activeDate == null
                 // 默认显示全站总量（来自 meta.json，与本地下载了多少无关），
                 // 有搜索/筛选时才切成当前结果数
                 val shown = if (browsing && state.globalTotal > 0) state.globalTotal else state.totalCount
@@ -101,8 +107,14 @@ fun GlobalScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(" · ", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Text("按日期", fontSize = 10.sp, color = MaterialTheme.colorScheme.primary,
+                Text(if (state.activeDate != null) "按日期·${state.activeDate}" else "按日期",
+                    fontSize = 10.sp, color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.clickable { showDates = true })
+                if (state.activeDate != null) {
+                    Text(" · ", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("清除", fontSize = 10.sp, color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable { vm.clearDate() })
+                }
                 Text(" · ", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("筛选账号", fontSize = 10.sp,
                     color = MaterialTheme.colorScheme.primary,
@@ -181,21 +193,15 @@ fun GlobalScreen(
             downloaded = state.downloadedMonths,
             progress = state.monthProgress,
             dayCounts = state.dayCounts,
-            activeDay = state.activeDay,
-            onPickDay = { vm.pickDay(it); showDates = false },
+            activeDate = state.activeDate,
+            onPickDate = { vm.pickDate(it); showDates = false },
             onDownloadYear = { vm.downloadYear(it) },
             onDownloadMonth = { vm.downloadMonth(it) },
             onDeleteYear = { vm.deleteYear(it) },
             onDeleteMonth = { vm.deleteMonth(it) },
-            onClear = { vm.clearDay(); showDates = false },
+            onClear = { vm.clearDate(); showDates = false },
             onDismiss = { showDates = false }
         )
-    }
-
-    state.indexError?.let { err ->
-        androidx.compose.material3.Text(
-            err, fontSize = 10.sp, color = MaterialTheme.colorScheme.error,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp))
     }
 
     if (showFilter) {

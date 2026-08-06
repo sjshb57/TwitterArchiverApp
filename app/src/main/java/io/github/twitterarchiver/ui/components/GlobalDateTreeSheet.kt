@@ -49,8 +49,8 @@ fun GlobalDateTreeSheet(
     progress: Map<String, Float>,
     /** 已加载进内存的每日条数：yyyy-MM-dd → 数量 */
     dayCounts: Map<String, Int>,
-    activeDay: String?,
-    onPickDay: (String) -> Unit,
+    activeDate: String?,
+    onPickDate: (String) -> Unit,
     onDownloadYear: (String) -> Unit,
     onDownloadMonth: (String) -> Unit,
     onDeleteYear: (String) -> Unit,
@@ -69,7 +69,7 @@ fun GlobalDateTreeSheet(
                     verticalAlignment = Alignment.CenterVertically) {
                     Text("按日期浏览", fontSize = 15.sp, fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-                    if (activeDay != null) {
+                    if (activeDate != null) {
                         Text("清除筛选", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.clickable { onClear() })
                     }
@@ -85,7 +85,7 @@ fun GlobalDateTreeSheet(
                     YearNode(
                         year = year, months = months.sortedByDescending { it.month },
                         downloaded = downloaded, progress = progress, dayCounts = dayCounts,
-                        activeDay = activeDay, onPickDay = onPickDay,
+                        activeDate = activeDate, onPickDate = onPickDate,
                         onDownloadYear = onDownloadYear, onDownloadMonth = onDownloadMonth,
                         onDeleteYear = onDeleteYear, onDeleteMonth = onDeleteMonth
                     )
@@ -105,8 +105,8 @@ private fun YearNode(
     downloaded: Set<String>,
     progress: Map<String, Float>,
     dayCounts: Map<String, Int>,
-    activeDay: String?,
-    onPickDay: (String) -> Unit,
+    activeDate: String?,
+    onPickDate: (String) -> Unit,
     onDownloadYear: (String) -> Unit,
     onDownloadMonth: (String) -> Unit,
     onDeleteYear: (String) -> Unit,
@@ -143,8 +143,8 @@ private fun YearNode(
         AnimatedVisibility(visible = open) {
             Column {
                 months.forEach { shard ->
-                    MonthNode(shard, downloaded, progress, dayCounts, activeDay,
-                        onPickDay, onDownloadMonth, onDeleteMonth)
+                    MonthNode(shard, downloaded, progress, dayCounts, activeDate,
+                        onPickDate, onDownloadMonth, onDeleteMonth)
                 }
             }
         }
@@ -158,8 +158,8 @@ private fun MonthNode(
     downloaded: Set<String>,
     progress: Map<String, Float>,
     dayCounts: Map<String, Int>,
-    activeDay: String?,
-    onPickDay: (String) -> Unit,
+    activeDate: String?,
+    onPickDate: (String) -> Unit,
     onDownloadMonth: (String) -> Unit,
     onDeleteMonth: (String) -> Unit
 ) {
@@ -190,10 +190,23 @@ private fun MonthNode(
         }
         AnimatedVisibility(visible = open) {
             Column {
+                val monthActive = activeDate == shard.month
+                Row(Modifier.fillMaxWidth().clickable { onPickDate(shard.month) }
+                    .background(if (monthActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                                else Color.Transparent)
+                    .padding(start = 42.dp, end = 16.dp, top = 7.dp, bottom = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Text("整月", fontSize = 13.sp, fontWeight = FontWeight.Medium,
+                        color = if (monthActive) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f))
+                    Text("${fmtCount(shard.count)}", fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 val days = dayCounts.keys.filter { it.startsWith(shard.month) }.sortedDescending()
                 days.forEach { full ->
-                    val active = activeDay == full
-                    Row(Modifier.fillMaxWidth().clickable { onPickDay(full) }
+                    val active = activeDate == full
+                    Row(Modifier.fillMaxWidth().clickable { onPickDate(full) }
                         .background(if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                                     else Color.Transparent)
                         .padding(start = 42.dp, end = 16.dp, top = 7.dp, bottom = 7.dp),

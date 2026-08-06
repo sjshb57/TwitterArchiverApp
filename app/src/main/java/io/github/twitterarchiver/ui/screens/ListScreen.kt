@@ -1,6 +1,8 @@
 package io.github.twitterarchiver.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -35,7 +37,7 @@ import io.github.twitterarchiver.viewmodel.HomeViewModel
 import kotlinx.coroutines.launch
 
 /** Tab 1：账号列表（顶部 logo+统计 + 搜索 + 带头像和简介的列表） */
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ListScreen(
     vm: HomeViewModel,
@@ -63,7 +65,11 @@ fun ListScreen(
             Modifier.fillMaxWidth().padding(vertical = 18.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row {
+            // 双击大标题回到顶部，与双击底栏 Tab 一致
+            Row(Modifier.combinedClickable(
+                onClick = { },
+                onDoubleClick = { scope.launch { listState.animateScrollToItem(0) } }
+            )) {
                 Text("Twitter", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onBackground)
                 Text("Archiver", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Accent)

@@ -32,7 +32,8 @@ data class GlobalState(
     val indexError: String? = null,
     /** 已加载进内存的每日条数：yyyy-MM-dd → 数量 */
     val dayCounts: Map<String, Int> = emptyMap(),
-    val activeDay: String? = null,
+    /** 当前日期筛选，yyyy-MM（整月）或 yyyy-MM-dd（某天） */
+    val activeDate: String? = null,
     val filterAccounts: Set<Pair<String, String>> = emptySet(),  // 当前筛选的账号集合（空=全部）
     val accounts: List<IndexAccount> = emptyList()  // 所有账号（供筛选选择）
 )
@@ -55,7 +56,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
     private var recentPosts: List<GlobalPost> = emptyList()
     private val monthPosts = LinkedHashMap<String, List<GlobalPost>>()
     private var loadedMonths: Set<String> = emptySet()
-    private var activeDay: String? = null
+    private var activeDate: String? = null
     /** 年下载会并发触发同一个月，串行化避免重复下载与并发改 loadedMonths */
     private val monthLock = kotlinx.coroutines.sync.Mutex()
 
@@ -213,7 +214,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
             m
         }
         _state.value = _state.value.copy(dayCounts = counts)
-        if (_state.value.query.isBlank() && currentFilters.isEmpty() && activeDay == null) {
+        if (_state.value.query.isBlank() && currentFilters.isEmpty() && activeDate == null) {
             filtered = merged
             emitPage()
         } else applyFilter(_state.value.query)
@@ -358,25 +359,32 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
         }
     }
 
-    /** 选某一天。该天所属月份还没下载就先下载，下完自动跳过去 */
-    fun pickDay(day: String) {
-        val month = day.take(7)
-        if (month !in loadedMonths && meta?.shards?.any { it.month == month } == true) {
-            val shard = meta?.shards?.find { it.month == month } ?: return
+    /**
+     * 选日期。传 yyyy-MM 是整月，yyyy-MM-dd 是某天。
+     * 所属月份还没下载就先下载，下完自动跳过去。
+     */
+    fun pickDate(date: String) {
+        val month = date.take(7)
+        val shard = meta?.shards?.find { it.month == month }
+        if (month !in loadedMonths && shard != null) {
             viewModelScope.launch {
                 loadShard(shard)
-                activeDay = day
+                activeDate = date
                 applyFilter(_state.value.query)
             }
             return
         }
-        activeDay = day
+        activeDate = date
         applyFilter(_state.value.query)
     }
 
-    fun clearDay() {
-        activeDay = null
+    fun clearDate() {
+        activeDate = null
         applyFilter(_state.value.query)
+    }
+
+    fun clearIndexError() {
+        _state.value = _state.value.copy(indexError = null)
     }
 
     fun search(q: String) = applyFilter(q)
@@ -392,7 +400,8 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
         viewModelScope.launch {
             filtered = withContext(Dispatchers.Default) {
                 var list = allPosts
-                activeDay?.let { d -> list = list.filter { it.displayDate == d } }
+                // 前缀匹配，yyyy-MM 就是整月，yyyy-MM-dd 就是某天
+                activeDate?.let { d -> list = list.filter { it.displayDate.startsWith(d) } }
                 if (currentFilters.isNotEmpty()) {
                     list = list.filter { (it.account.r to it.account.a) in currentFilters }
                 }
@@ -419,7 +428,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
                 query = q,
                 filterAccounts = currentFilters,
                 accounts = allAccounts,
-                activeDay = activeDay
+                activeDate = activeDate
             )
             emitPage()
         }
