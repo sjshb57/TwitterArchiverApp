@@ -138,6 +138,8 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
         viewModelScope.launch {
             withContext(Dispatchers.IO) { GlobalIndexStore.deleteMonth(month) }
             loadedMonths = loadedMonths - month
+            monthPosts.remove(month)   // 不清内存的话，文件删了推文还留在时间线上
+            if (activeDate?.startsWith(month) == true) activeDate = null
             rebuildFromLoaded()
             _state.value = _state.value.copy(downloadedMonths = GlobalIndexStore.downloadedMonths())
         }
@@ -147,6 +149,8 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
         viewModelScope.launch {
             withContext(Dispatchers.IO) { GlobalIndexStore.deleteYear(year) }
             loadedMonths = loadedMonths.filterNot { it.startsWith(year) }.toSet()
+            monthPosts.keys.filter { it.startsWith(year) }.forEach { monthPosts.remove(it) }
+            if (activeDate?.startsWith(year) == true) activeDate = null
             rebuildFromLoaded()
             _state.value = _state.value.copy(downloadedMonths = GlobalIndexStore.downloadedMonths())
         }

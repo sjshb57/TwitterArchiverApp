@@ -204,8 +204,8 @@ app/src/main/java/io/github/twitterarchiver/
 ├── ui/
 │   ├── AppNav.kt          栈式导航与路由
 │   ├── AppScaffold.kt     底部 Tab 骨架
-│   ├── screens/           23 个页面
-│   ├── components/        12 个复用组件
+│   ├── screens/           22 个页面
+│   ├── components/        13 个复用组件
 │   └── theme/             配色与主题
 └── util/            日期、账号名、媒体保存
 ```
