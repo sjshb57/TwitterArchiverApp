@@ -6,11 +6,14 @@ import io.github.twitterarchiver.data.GitHubApi
 import io.github.twitterarchiver.data.GlobalPost
 import io.github.twitterarchiver.data.IndexAccount
 import io.github.twitterarchiver.data.CrossReply
+import io.github.twitterarchiver.data.GlobalIndexStore
+import io.github.twitterarchiver.data.GlobalShard
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 data class GlobalState(
@@ -20,7 +23,16 @@ data class GlobalState(
     val error: String? = null,
     val totalCount: Int = 0,
     val canLoadMore: Boolean = false,
-    val loadingFull: Boolean = false,  // 后台在加载完整索引
+    val loadingFull: Boolean = false,  // 后台在加载分片
+    val globalTotal: Int = 0,          // 全站推文总数（含尚未下载的月份）
+    val shards: List<GlobalShard> = emptyList(),
+    val downloadedMonths: Set<String> = emptySet(),
+    /** 正在下载的月份 → 已完成比例 0..1 */
+    val monthProgress: Map<String, Float> = emptyMap(),
+    val indexError: String? = null,
+    /** 已加载进内存的每日条数：yyyy-MM-dd → 数量 */
+    val dayCounts: Map<String, Int> = emptyMap(),
+    val activeDay: String? = null,
     val filterAccounts: Set<Pair<String, String>> = emptySet(),  // 当前筛选的账号集合（空=全部）
     val accounts: List<IndexAccount> = emptyList()  // 所有账号（供筛选选择）
 )
@@ -39,6 +51,13 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
     private var page = 0
     private var recentLoaded = false
     private var fullLoaded = false
+    private var meta: io.github.twitterarchiver.data.GlobalIndexMeta? = null
+    private var recentPosts: List<GlobalPost> = emptyList()
+    private val monthPosts = LinkedHashMap<String, List<GlobalPost>>()
+    private var loadedMonths: Set<String> = emptySet()
+    private var activeDay: String? = null
+    /** 年下载会并发触发同一个月，串行化避免重复下载与并发改 loadedMonths */
+    private val monthLock = kotlinx.coroutines.sync.Mutex()
 
     init { load() }
 
@@ -49,6 +68,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
             try {
                 // 1. 先加载轻量的"最新一批"(小、秒开)。工作流已排好序，直接读。
                 val (accts, recent) = api.fetchRecentTimeline()
+                recentPosts = recent
                 allPosts = recent
                 filtered = recent
                 allAccounts = accts
@@ -65,25 +85,138 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
         }
     }
 
+    /** 只取分片清单。历史内容一律按需下载，冷启动不再自动拉整年。 */
     private fun loadFull() {
         if (fullLoaded) return
         viewModelScope.launch {
             _state.value = _state.value.copy(loadingFull = true)
             try {
-                val (accts, full) = api.fetchSearchIndex()
+                val m = api.fetchGlobalMeta()
+                meta = m
+                allAccounts = m.accounts
                 fullLoaded = true
-                allPosts = full
-                allAccounts = accts
-                // 若当前没在搜索，更新 filtered（保持已翻页数）
-                if (_state.value.query.isBlank()) {
-                    filtered = full
-                    emitPage()
-                }
-                _state.value = _state.value.copy(loadingFull = false)
+                _state.value = _state.value.copy(
+                    loadingFull = false,
+                    globalTotal = m.total,
+                    shards = m.shards,
+                    downloadedMonths = GlobalIndexStore.downloadedMonths(),
+                    indexError = null
+                )
+                // 上次已下载到本地的月份直接合入，无需联网
+                val local = GlobalIndexStore.downloadedMonths()
+                m.shards.filter { it.month in local }
+                    .forEach { loadShard(it, silent = true, rebuild = false) }
+                rebuildFromLoaded()
             } catch (e: Exception) {
-                _state.value = _state.value.copy(loadingFull = false)
+                _state.value = _state.value.copy(
+                    loadingFull = false,
+                    indexError = "索引清单加载失败：${e::class.simpleName} ${e.message ?: ""}"
+                )
             }
         }
+    }
+
+    /** 下载并合入某一年的全部月份 */
+    fun downloadYear(year: String) {
+        val m = meta ?: return
+        viewModelScope.launch {
+            // 每合入一个月就全量重排一次的话，一年要排 12 遍几十万条。只在最后重建一次。
+            for (shard in m.shardsOf(year).sortedByDescending { it.month })
+                loadShard(shard, rebuild = false)
+            rebuildFromLoaded()
+        }
+    }
+
+    /** 下载并合入单个月份 */
+    fun downloadMonth(month: String) {
+        val shard = meta?.shards?.find { it.month == month } ?: return
+        viewModelScope.launch { loadShard(shard) }
+    }
+
+    fun deleteMonth(month: String) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { GlobalIndexStore.deleteMonth(month) }
+            loadedMonths = loadedMonths - month
+            rebuildFromLoaded()
+            _state.value = _state.value.copy(downloadedMonths = GlobalIndexStore.downloadedMonths())
+        }
+    }
+
+    fun deleteYear(year: String) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { GlobalIndexStore.deleteYear(year) }
+            loadedMonths = loadedMonths.filterNot { it.startsWith(year) }.toSet()
+            rebuildFromLoaded()
+            _state.value = _state.value.copy(downloadedMonths = GlobalIndexStore.downloadedMonths())
+        }
+    }
+
+    private suspend fun loadShard(
+        shard: GlobalShard,
+        silent: Boolean = false,
+        rebuild: Boolean = true
+    ) = monthLock.withLock {
+        if (shard.month in loadedMonths) return@withLock
+        val m = meta ?: return@withLock
+        if (!silent) _state.value = _state.value.copy(
+            monthProgress = _state.value.monthProgress + (shard.month to 0f))
+        try {
+            // 每 64KB 回调一次，12MB 的分片会回调近 200 次。只在百分比整数变化时才发状态，
+            // 否则下载一个月就要触发两百次重组。
+            var lastPct = -1
+            val posts = api.fetchGlobalShard(shard, m.accounts) { done ->
+                if (!silent && shard.bytes > 0) {
+                    val p = (done.toFloat() / shard.bytes).coerceIn(0f, 1f)
+                    val pct = (p * 100).toInt()
+                    if (pct != lastPct) {
+                        lastPct = pct
+                        _state.value = _state.value.copy(
+                            monthProgress = _state.value.monthProgress + (shard.month to p))
+                    }
+                }
+            }
+            monthPosts[shard.month] = posts
+            loadedMonths = loadedMonths + shard.month
+            if (rebuild) rebuildFromLoaded()
+            _state.value = _state.value.copy(
+                monthProgress = _state.value.monthProgress - shard.month,
+                downloadedMonths = GlobalIndexStore.downloadedMonths(),
+                indexError = null
+            )
+        } catch (e: Exception) {
+            _state.value = _state.value.copy(
+                monthProgress = _state.value.monthProgress - shard.month,
+                indexError = "${shard.month} 下载失败：${e::class.simpleName} ${e.message ?: ""}"
+            )
+        }
+    }
+
+    /** 用「近期时间线 + 已加载的月份」重建总表 */
+    private suspend fun rebuildFromLoaded() {
+        val merged = withContext(Dispatchers.Default) {
+            val seen = HashSet<String>()
+            val out = ArrayList<GlobalPost>(recentPosts.size + monthPosts.values.sumOf { it.size })
+            for (p in recentPosts) if (seen.add(p.tweetId)) out.add(p)
+            for (month in monthPosts.keys.sortedDescending())
+                for (p in monthPosts[month].orEmpty()) if (seen.add(p.tweetId)) out.add(p)
+            // 两种时间格式并存，必须解析成时间戳再比，直接比字符串会把老格式全排到最前
+            out.sortByDescending { io.github.twitterarchiver.util.DateUtil.epochMillis(it.time) }
+            out
+        }
+        allPosts = merged
+        val counts = withContext(Dispatchers.Default) {
+            val m = HashMap<String, Int>()
+            for (p in merged) {
+                val d = p.displayDate
+                if (d.isNotBlank()) m[d] = (m[d] ?: 0) + 1
+            }
+            m
+        }
+        _state.value = _state.value.copy(dayCounts = counts)
+        if (_state.value.query.isBlank() && currentFilters.isEmpty() && activeDay == null) {
+            filtered = merged
+            emitPage()
+        } else applyFilter(_state.value.query)
     }
 
     private fun loadCrossReplies() {
@@ -216,18 +349,34 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
         return quoted to sorted
     }
 
+    /** timeline-recent 拿不到时的兜底：直接走分片清单 */
     private fun loadFullAsInitial() {
         viewModelScope.launch {
-            try {
-                val (_, full) = api.fetchSearchIndex()
-                fullLoaded = true; recentLoaded = true
-                allPosts = full; filtered = full
-                page = 0
-                emitPage()
-            } catch (e: Exception) {
-                _state.value = GlobalState(loading = false, error = "加载失败：${e.message}")
-            }
+            recentLoaded = true
+            _state.value = _state.value.copy(loading = false)
+            loadFull()
         }
+    }
+
+    /** 选某一天。该天所属月份还没下载就先下载，下完自动跳过去 */
+    fun pickDay(day: String) {
+        val month = day.take(7)
+        if (month !in loadedMonths && meta?.shards?.any { it.month == month } == true) {
+            val shard = meta?.shards?.find { it.month == month } ?: return
+            viewModelScope.launch {
+                loadShard(shard)
+                activeDay = day
+                applyFilter(_state.value.query)
+            }
+            return
+        }
+        activeDay = day
+        applyFilter(_state.value.query)
+    }
+
+    fun clearDay() {
+        activeDay = null
+        applyFilter(_state.value.query)
     }
 
     fun search(q: String) = applyFilter(q)
@@ -243,6 +392,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
         viewModelScope.launch {
             filtered = withContext(Dispatchers.Default) {
                 var list = allPosts
+                activeDay?.let { d -> list = list.filter { it.displayDate == d } }
                 if (currentFilters.isNotEmpty()) {
                     list = list.filter { (it.account.r to it.account.a) in currentFilters }
                 }
@@ -268,7 +418,8 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
             _state.value = _state.value.copy(
                 query = q,
                 filterAccounts = currentFilters,
-                accounts = allAccounts
+                accounts = allAccounts,
+                activeDay = activeDay
             )
             emitPage()
         }

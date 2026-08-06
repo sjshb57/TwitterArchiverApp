@@ -45,9 +45,17 @@ data class AdminState(
     val missingPinned: List<MissingItem> = emptyList(),
     val missingAvatar: List<MissingItem> = emptyList(),
     val newlyCreated: List<String> = emptyList(),
+    val pendingSetup: Map<String, PendingSetup> = emptyMap(),
     val checkDone: Boolean = false,
     val hasCheckedOnce: Boolean = false,
     val busy: Boolean = false
+)
+
+/** 仓库已创建、setup.yml 尚未确认触发成功的条目 */
+data class PendingSetup(
+    val repo: String,
+    val since: String,
+    val createdAt: Long
 )
 
 /** 待完善项：某仓库缺 banner / 置顶 / 最新推文头像 */
@@ -136,11 +144,48 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                                 val own = runs.filterNot {
                                     (it.name ?: "").contains("pages", ignoreCase = true)
                                 }
+                                val justCreated = _state.value.pendingSetup[name]?.let {
+                                    System.currentTimeMillis() - it.createdAt < 120_000
+                                } ?: false
                                 result[name] = when {
+                                    // 刚建完的仓库，run 要几秒才出现在列表里，这段时间不算失败
+                                    own.isEmpty() && justCreated -> "running"
                                     own.isEmpty() -> "unknown"
                                     own.any { it.status == "queued" || it.status == "in_progress" } -> "running"
                                     own.first().conclusion == "success" -> "success"
                                     else -> "failure"
+                                }
+                            }
+                        }
+                    }
+                }.awaitAll()
+            }
+            _state.value = _state.value.copy(repoStatus = _state.value.repoStatus + result)
+        }
+    }
+
+    /** 只刷新当前标记为运行中的仓库状态，供"所有存档"页轮询使用 */
+    fun refreshRunningStatus() {
+        val pat = _state.value.pat ?: return
+        val names = _state.value.repoStatus.filterValues { it == "running" }.keys.toList()
+        if (names.isEmpty()) return
+        viewModelScope.launch {
+            val gate = kotlinx.coroutines.sync.Semaphore(6)
+            val result = java.util.concurrent.ConcurrentHashMap<String, String>()
+            kotlinx.coroutines.coroutineScope {
+                names.map { name ->
+                    async {
+                        gate.withPermit {
+                            repo.fetchWorkflowRuns(pat, name).onSuccess { runs ->
+                                val own = runs.filterNot {
+                                    (it.name ?: "").contains("pages", ignoreCase = true)
+                                }
+                                if (own.isNotEmpty()) {
+                                    result[name] = when {
+                                        own.any { it.status == "queued" || it.status == "in_progress" } -> "running"
+                                        own.first().conclusion == "success" -> "success"
+                                        else -> "failure"
+                                    }
                                 }
                             }
                         }
@@ -266,7 +311,41 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         val prefs = getApplication<Application>()
             .getSharedPreferences("integrity_check", android.content.Context.MODE_PRIVATE)
         val cur = (prefs.getString("newly_created", "") ?: "").split("\n").filter { it.isNotBlank() }
-        _state.value = _state.value.copy(newlyCreated = cur)
+        _state.value = _state.value.copy(newlyCreated = cur, pendingSetup = readPendingSetup())
+    }
+
+    // ---------- 建档中途中断的恢复记录 ----------
+
+    private fun readPendingSetup(): Map<String, PendingSetup> {
+        val prefs = getApplication<Application>()
+            .getSharedPreferences("integrity_check", android.content.Context.MODE_PRIVATE)
+        return (prefs.getString("pending_setup", "") ?: "").split("\n")
+            .filter { it.isNotBlank() }
+            .mapNotNull { line ->
+                val p = line.split("\t")
+                if (p.size < 3) null
+                else PendingSetup(p[0], p[1], p[2].toLongOrNull() ?: 0L)
+            }
+            .associateBy { it.repo }
+    }
+
+    private fun writePendingSetup(map: Map<String, PendingSetup>) {
+        val prefs = getApplication<Application>()
+            .getSharedPreferences("integrity_check", android.content.Context.MODE_PRIVATE)
+        val text = map.values.joinToString("\n") { "${it.repo}\t${it.since}\t${it.createdAt}" }
+        prefs.edit { putString("pending_setup", text) }
+        _state.value = _state.value.copy(pendingSetup = map)
+    }
+
+    private fun markPendingSetup(name: String, since: String) {
+        val cur = readPendingSetup().toMutableMap()
+        cur[name] = PendingSetup(name, since, System.currentTimeMillis())
+        writePendingSetup(cur)
+    }
+
+    private fun clearPendingSetup(name: String) {
+        val cur = readPendingSetup().toMutableMap()
+        if (cur.remove(name) != null) writePendingSetup(cur)
     }
 
     /** 从缓存加载待完善列表（进管理页时调用，秒开不检测） */
@@ -412,19 +491,64 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
             _state.value = _state.value.copy(busy = true, message = "正在创建仓库…")
             repo.generateRepo(pat, name)
                 .onSuccess {
-                    _state.value = _state.value.copy(message = "仓库已创建，等待初始化…")
-                    // 模板仓库生成后，workflow 需要几秒才可用，稍等再触发 setup
-                    kotlinx.coroutines.delay(6000)
-                    repo.dispatchWorkflow(pat, name, "setup.yml", mapOf("since" to since))
-                        .onSuccess {
-                            addNewlyCreated(name)   // 加入新建记录
-                            _state.value = _state.value.copy(busy = false, message = "已触发建档：$name")
-                        }
-                        .onFailure { _state.value = _state.value.copy(busy = false,
-                            message = "仓库已建，但触发 setup 失败：${it.message}（可稍后手动触发）") }
+                    // 仓库一旦存在就先落盘。晚于此处记录的话，进程在下面任何一步被系统
+                    // 回收（切后台时很常见）都会导致仓库已建、App 里却查无此条。
+                    addNewlyCreated(name)
+                    markPendingSetup(name, since)
+                    _state.value = _state.value.copy(message = "仓库已创建，等待工作流就绪…")
+                    dispatchSetup(pat, name, since, fromUser = true)
                 }
                 .onFailure { _state.value = _state.value.copy(busy = false,
                     message = "创建仓库失败：${it.message}") }
+        }
+    }
+
+    /** 等 setup.yml 在 Actions 里注册出来再触发，最多等 40 秒 */
+    private suspend fun awaitSetupReady(pat: String, name: String): Boolean {
+        repeat(27) {
+            if (repo.workflowExists(pat, name, "setup.yml")) return true
+            kotlinx.coroutines.delay(1500)
+        }
+        return false
+    }
+
+    private suspend fun dispatchSetup(pat: String, name: String, since: String, fromUser: Boolean) {
+        if (!awaitSetupReady(pat, name)) {
+            _state.value = _state.value.copy(busy = false,
+                message = "「$name」仓库已建好，但模板工作流还没就绪。记录已保存，下次进入本页会自动重试。")
+            return
+        }
+        repo.dispatchWorkflow(pat, name, "setup.yml", mapOf("since" to since))
+            .onSuccess {
+                clearPendingSetup(name)
+                _state.value = _state.value.copy(busy = false, message = "已触发建档：$name")
+            }
+            .onFailure {
+                _state.value = _state.value.copy(busy = false,
+                    message = if (fromUser) "「$name」仓库已建好，但触发建档失败：${it.message}"
+                              else "「$name」自动重试建档失败：${it.message}")
+            }
+    }
+
+    /**
+     * 对所有「仓库已建但 setup 没触发成功」的条目补一次触发。
+     * 只在确认该仓库确实没有任何运行记录时才补，避免重复建档。
+     */
+    fun resumePendingSetups() {
+        val pat = _state.value.pat ?: return
+        val pending = _state.value.pendingSetup
+        if (pending.isEmpty()) return
+        viewModelScope.launch {
+            val now = System.currentTimeMillis()
+            for ((name, item) in pending) {
+                // 刚建的仓库多半是 createArchive 自己还在跑（它要轮询工作流就绪，
+                // 最长 40 秒）。这时插一脚会把 setup.yml 触发两次。
+                if (now - item.createdAt < 120_000) continue
+                val hasRun = repo.fetchWorkflowRuns(pat, name).getOrNull()
+                    ?.any { !(it.name ?: "").contains("pages", ignoreCase = true) } ?: false
+                if (hasRun) { clearPendingSetup(name); continue }
+                dispatchSetup(pat, name, item.since, fromUser = false)
+            }
         }
     }
 

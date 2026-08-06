@@ -48,7 +48,7 @@ fun AdminDeleteTweetsScreen(vm: AdminViewModel, onBack: () -> Unit) {
             message = "将从「${repo.trim()}」删除推文 ${ids.trim()}，不可恢复，确定？",
             confirmText = "删除", danger = true,
             onConfirm = {
-                vm.triggerWorkflow("home", "migrate.yml",
+                vm.triggerWorkflow("home", "delete_tweets.yml",
                     mapOf("target_repo" to repo.trim(), "tweet_ids" to ids.trim(), "account" to account.trim()))
                 onBack()
             },

@@ -19,6 +19,11 @@ object Config {
     // 门面数据
     fun reposJsonUrl() = "$HOME_BASE/repos.json"
     fun searchIndexUrl() = "$HOME_BASE/search-index.json"
+
+    // 全站索引分片：服务端按月存，客户端按年用。
+    fun globalIndexBase() = "$HOME_BASE/search-index"
+    fun globalIndexMetaUrl() = "${globalIndexBase()}/meta.json"
+    fun globalIndexShardUrl(month: String) = "${globalIndexBase()}/$month.json"
     fun timelineRecentUrl() = "$HOME_BASE/timeline-recent.json"
     fun crossRepliesUrl() = "$HOME_BASE/cross-replies.json"
     fun indexManifestUrl(repo: String) = "$HOME_BASE/manifest/$repo.json"

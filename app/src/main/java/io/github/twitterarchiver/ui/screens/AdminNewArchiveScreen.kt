@@ -57,6 +57,9 @@ fun AdminNewArchiveScreen(
     var repoName by remember { mutableStateOf("") }
     var since by remember { mutableStateOf("") }
     var showConfirm by remember { mutableStateOf(false) }
+    var lastRemoveAt by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
+    var pendingRemove by remember { mutableStateOf<String?>(null) }
+    val snackbarHost = remember { androidx.compose.material3.SnackbarHostState() }
     val state by vm.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
@@ -65,6 +68,8 @@ fun AdminNewArchiveScreen(
     }
     // newlyCreated 读出来后再查真实状态（重启后内存里的 repoStatus 已丢失）
     LaunchedEffect(state.newlyCreated) { vm.refreshNewlyCreatedStatus() }
+    // 仓库已建但 setup 没触发成功的（多半是建档中途切后台被系统回收），进页面自动补一次
+    LaunchedEffect(state.pendingSetup.keys) { vm.resumePendingSetups() }
 
     var refreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -90,6 +95,28 @@ fun AdminNewArchiveScreen(
     }
     val taken = localTaken || remoteTaken
 
+    val doRemove: (String) -> Unit = { name ->
+        vm.removeNewlyCreated(name)
+        lastRemoveAt = System.currentTimeMillis()
+        scope.launch {
+            val r = snackbarHost.showSnackbar(
+                message = "已移除 $name", actionLabel = "撤销",
+                duration = androidx.compose.material3.SnackbarDuration.Short
+            )
+            if (r == androidx.compose.material3.SnackbarResult.ActionPerformed) vm.addNewlyCreated(name)
+        }
+    }
+
+    pendingRemove?.let { name ->
+        io.github.twitterarchiver.ui.components.ConfirmDialog(
+            title = "移除记录",
+            message = "将「$name」从新建记录中移除？仓库本身不会被删除。",
+            confirmText = "移除",
+            onConfirm = { pendingRemove = null; doRemove(name) },
+            onDismiss = { pendingRemove = null }
+        )
+    }
+
     if (showConfirm) {
         io.github.twitterarchiver.ui.components.ConfirmDialog(
             title = "建立新存档",
@@ -100,6 +127,7 @@ fun AdminNewArchiveScreen(
         )
     }
 
+    Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         TopAppBar(
             title = { Text("建立新存档", fontSize = 16.sp) },
@@ -169,7 +197,10 @@ fun AdminNewArchiveScreen(
                         repoName = repoName,
                         status = status,
                         onOpen = { onOpenArchive(repoName) },
-                        onRemove = { vm.removeNewlyCreated(repoName) }
+                        onRemove = {
+                            if (System.currentTimeMillis() - lastRemoveAt < 3_000L) doRemove(repoName)
+                            else pendingRemove = repoName
+                        }
                     )
                 }
                 item { Spacer(Modifier.height(20.dp)) }
@@ -225,6 +256,11 @@ fun AdminNewArchiveScreen(
             item { Spacer(Modifier.height(30.dp)) }
         }
         }
+    }
+    androidx.compose.material3.SnackbarHost(
+        hostState = snackbarHost,
+        modifier = Modifier.align(Alignment.BottomCenter).padding(12.dp)
+    )
     }
 }
 

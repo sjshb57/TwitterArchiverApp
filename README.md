@@ -15,7 +15,7 @@
 
 [TwitterArchiver](https://github.com/TwitterArchiver) 是一个长期存档项目：当一个推特账号被封禁、注销，或者它的主人已经不在，那些文字和图片往往还留在互联网档案馆（Wayback Machine）的历史快照里。这个项目把它们从快照中一条条取出来，重新组织成可以正常翻阅的样子，托管在 GitHub Pages 上长期保存。
 
-> 目前收录 140 余个账号。项目最初是为了纪念 [@AnIncandescence](https://twitterarchiver.github.io/AnIncanescence/)（炽烈已极）。
+> 目前收录 530 余个账号。项目最初是为了纪念 [@AnIncandescence](https://twitterarchiver.github.io/AnIncanescence/)（炽烈已极）。
 
 ### 成品示例：
 
@@ -38,7 +38,7 @@
                           │
                           ▼
               TwitterArchiver 组织
-              140+ 账号仓库 · GitHub Pages 托管
+              530+ 账号仓库 · GitHub Pages 托管
                           │
           ┌───────────────┼───────────────┐
           ▼               ▼               ▼
@@ -170,7 +170,7 @@ Kotlin + Jetpack Compose + Material 3，单 Activity，自己实现的栈式导�
 | 序列化 | kotlinx.serialization 1.11.0 |
 | 图片 | Coil 2.7（200 MB 磁盘缓存） |
 | 视频 | Media3 1.10.1 |
-| 存储 | DataStore 1.2.1 · SharedPreferences |
+| 存储 | DataStore 1.2.1 · Android Keystore（PAT 加密） |
 
 ### 权限
 
@@ -178,7 +178,6 @@ Kotlin + Jetpack Compose + Material 3，单 Activity，自己实现的栈式导�
 | --- | --- |
 | `INTERNET` | 读取存档内容 |
 | `ACCESS_NETWORK_STATE` | 网络状态判断 |
-| `POST_NOTIFICATIONS` | 图片 / 视频保存完成提示 |
 
 不申请存储权限，保存媒体走 MediaStore。
 
@@ -194,15 +193,19 @@ app/src/main/java/io/github/twitterarchiver/
 │   ├── Repository.kt      仓储与内存缓存
 │   ├── Models.kt          推文 / 资料 / 仓库 / 工作流
 │   ├── SearchIndex.kt     全站索引与跨账号回复
+│   ├── OfflineIndexStore.kt  单账号索引的离线增量缓存
+│   ├── GlobalIndexStore.kt   全站索引分片的本地副本
 │   ├── Bookmarks.kt       书签存储与导入导出
 │   ├── Settings.kt        DataStore 偏好
-│   └── SecureStore.kt     PAT 加密存储
+│   ├── SecureStore.kt     PAT 加密存储
+│   ├── AppDirs.kt         应用目录注入
+│   └── NetworkState.kt    全局网络状态
 ├── viewmodel/       10 个 ViewModel，按页面划分
 ├── ui/
 │   ├── AppNav.kt          栈式导航与路由
 │   ├── AppScaffold.kt     底部 Tab 骨架
-│   ├── screens/           20 个页面
-│   ├── components/        11 个复用组件
+│   ├── screens/           23 个页面
+│   ├── components/        12 个复用组件
 │   └── theme/             配色与主题
 └── util/            日期、账号名、媒体保存
 ```
@@ -232,7 +235,7 @@ https://twitterarchiver.github.io/<仓库>/accounts/<账号>/wayback_snapshots/
 
 ## 路线图
 
-- [ ] **离线可读** —— 目前 `index.json` / `profile.json` 只做内存缓存，冷启动必须联网。计划落盘并加时间戳，先出内容再后台更新
+- [x] **离线可读** —— `index.json` 已按月落盘并做哈希比对增量更新，全站索引分片同样有本地副本，冷启动断网也能先出内容
 - [ ] **那年今日** —— 存档跨度数年，展示同一天各账号在往年发过什么
 - [ ] **关注多个账号** —— 现在只能设一个主页账号
 - [ ] **账号统计** —— 推文数、图片数、时间跨度、最活跃月份

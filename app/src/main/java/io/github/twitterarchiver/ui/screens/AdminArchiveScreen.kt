@@ -82,7 +82,7 @@ fun AdminArchiveScreen(
         }
     }
 
-    LaunchedEffect(repo) { vm.loadRuns(repo) }
+    LaunchedEffect(repo) { vm.loadRuns(repo, silent = true) }
     // 自动刷新：仅当有运行中的任务时才轮询（避免无谓刷新打断浏览）
     LaunchedEffect(repo) {
         while (true) {

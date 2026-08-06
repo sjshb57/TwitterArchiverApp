@@ -1,6 +1,8 @@
 package io.github.twitterarchiver.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,7 +37,7 @@ import io.github.twitterarchiver.viewmodel.GlobalTimelineViewModel
 import kotlinx.coroutines.launch
 
 /** Tab 2：全站时间线（用 search-index.json，分页 + 搜索） */
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun GlobalScreen(
     vm: GlobalTimelineViewModel,
@@ -47,6 +49,7 @@ fun GlobalScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     val bookmarks by bookmarkVm.bookmarks.collectAsStateWithLifecycle()
     var showFilter by remember { mutableStateOf(false) }
+    var showDates by remember { mutableStateOf(false) }
 
     // 滚动到底自动加载更多
     val shouldLoadMore by remember {
@@ -77,26 +80,30 @@ fun GlobalScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                when {
-                    state.filterAccounts.isEmpty() -> "全站时间线"
-                    state.filterAccounts.size == 1 -> {
-                        val f = state.filterAccounts.first()
-                        state.accounts.find { it.r == f.first && it.a == f.second }?.let { "${it.n} 的推文" }
-                            ?: "已筛选"
-                    }
-                    else -> "已筛选 ${state.filterAccounts.size} 人"
-                },
+                if (state.filterAccounts.isEmpty()) "全站时间线"
+                else "已筛选 ${state.filterAccounts.size} 人",
                 fontSize = 28.sp, fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.onBackground)
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.combinedClickable(
+                    onClick = { }, onDoubleClick = { showDates = true }
+                ))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(top = 3.dp)
             ) {
-                if (state.totalCount > 0) {
-                    Text("共 ${state.totalCount} 条", fontSize = 10.sp,
+                val browsing = state.query.isBlank() && state.filterAccounts.isEmpty() &&
+                    state.activeDay == null
+                // 默认显示全站总量（来自 meta.json，与本地下载了多少无关），
+                // 有搜索/筛选时才切成当前结果数
+                val shown = if (browsing && state.globalTotal > 0) state.globalTotal else state.totalCount
+                if (shown > 0) {
+                    Text("共 %,d 条".format(shown), fontSize = 10.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(" · ", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                Text("按日期", fontSize = 10.sp, color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.clickable { showDates = true })
+                Text(" · ", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("筛选账号", fontSize = 10.sp,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.clickable { showFilter = true })
@@ -168,6 +175,29 @@ fun GlobalScreen(
     }
 
     // 账号筛选面板
+    if (showDates) {
+        io.github.twitterarchiver.ui.components.GlobalDateTreeSheet(
+            shards = state.shards,
+            downloaded = state.downloadedMonths,
+            progress = state.monthProgress,
+            dayCounts = state.dayCounts,
+            activeDay = state.activeDay,
+            onPickDay = { vm.pickDay(it); showDates = false },
+            onDownloadYear = { vm.downloadYear(it) },
+            onDownloadMonth = { vm.downloadMonth(it) },
+            onDeleteYear = { vm.deleteYear(it) },
+            onDeleteMonth = { vm.deleteMonth(it) },
+            onClear = { vm.clearDay(); showDates = false },
+            onDismiss = { showDates = false }
+        )
+    }
+
+    state.indexError?.let { err ->
+        androidx.compose.material3.Text(
+            err, fontSize = 10.sp, color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp))
+    }
+
     if (showFilter) {
         io.github.twitterarchiver.ui.components.AccountFilterSheet(
             accounts = state.accounts,

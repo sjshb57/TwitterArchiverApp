@@ -69,7 +69,15 @@ fun AdminDetailScreen(
         else vm.loadRuns(dash.repo)
     }
     // 自动刷新：仅当有运行中的任务时才轮询（避免打断浏览）
-    if (dash != DashRepo.ALL_ARCHIVES) {
+    if (dash == DashRepo.ALL_ARCHIVES) {
+        LaunchedEffect(dash) {
+            while (true) {
+                kotlinx.coroutines.delay(8000)
+                // 只查当前标记为运行中的仓库，不会因为有 500 多个存档就把接口打爆
+                if (state.repoStatus.any { it.value == "running" }) vm.refreshRunningStatus()
+            }
+        }
+    } else {
         LaunchedEffect(dash) {
             while (true) {
                 kotlinx.coroutines.delay(8000)
@@ -87,10 +95,12 @@ fun AdminDetailScreen(
                 IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
             },
             actions = {
-                if (dash != DashRepo.ALL_ARCHIVES) {
-                    Text("刷新", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(end = 16.dp).clickable { vm.loadRuns(dash.repo) })
-                }
+                Text("刷新", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(end = 16.dp).clickable {
+                        if (dash == DashRepo.ALL_ARCHIVES) {
+                            vm.loadAllArchives(); vm.refreshRunningStatus()
+                        } else vm.loadRuns(dash.repo)
+                    })
             },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = MaterialTheme.colorScheme.background,
@@ -272,13 +282,15 @@ private fun AllArchivesView(
             it.displayName.contains(query, true) || it.account.contains(query, true) ||
                 it.handle.contains(query, true) || it.repoName.contains(query, true)
         }
-        // 排序：运行中 → 失败 → 置顶 → 其余。稳定排序
+        // 未知 → 出错 → 运行中 → 已完成 → 无状态。稳定排序。
+        // 不再单列"置顶"档：置顶没有任何视觉标识，与状态色重复表达，只会让顺序不可预测。
         filtered.sortedBy { r ->
-            when {
-                status[r.repoName] == "running" -> 0
-                status[r.repoName] == "failure" -> 1
-                pinned.contains(r.repoName) -> 2 + pinned.indexOf(r.repoName)
-                else -> 100000
+            when (status[r.repoName]) {
+                "unknown" -> 0
+                "failure" -> 1
+                "running" -> 2
+                "success" -> 3
+                else -> 4
             }
         }
     }
@@ -293,6 +305,32 @@ private fun AllArchivesView(
             text = {
                 LazyColumn(Modifier.heightIn(max = 400.dp)) {
                     item {
+                        Text("头像缺失（${missingAvatar.size}）", fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                        Text("点击即用主头像补上，不跳转、不改 json", fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(4.dp))
+                    }
+                    if (missingAvatar.isEmpty()) item {
+                        Text("全部正常 ✓", fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    items(missingAvatar) { m ->
+                        Row(
+                            Modifier.fillMaxWidth()
+                                .clickable { onFixAvatar(m) }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("· ${m.displayName}", fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                modifier = Modifier.weight(1f))
+                            Text("修复", fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    item {
+                        Spacer(Modifier.height(12.dp))
                         Text("缺少 Banner（${missingBanner.size}）", fontSize = 13.sp,
                             fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
                         Spacer(Modifier.height(4.dp))
@@ -322,32 +360,6 @@ private fun AllArchivesView(
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.fillMaxWidth()
                                 .clickable { onFix(m.repo) }.padding(vertical = 4.dp))
-                    }
-                    item {
-                        Spacer(Modifier.height(12.dp))
-                        Text("头像缺失（${missingAvatar.size}）", fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
-                        Text("点击即用主头像补上，不跳转、不改 json", fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(Modifier.height(4.dp))
-                    }
-                    if (missingAvatar.isEmpty()) item {
-                        Text("全部正常 ✓", fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    items(missingAvatar) { m ->
-                        Row(
-                            Modifier.fillMaxWidth()
-                                .clickable { onFixAvatar(m) }
-                                .padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("· ${m.displayName}", fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onBackground,
-                                modifier = Modifier.weight(1f))
-                            Text("修复", fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary)
-                        }
                     }
                 }
             }

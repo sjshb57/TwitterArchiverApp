@@ -53,7 +53,8 @@ class GitHubApi {
         }
         install(ContentNegotiation) { json(this@GitHubApi.json) }
         install(HttpTimeout) {
-            requestTimeoutMillis = 30_000
+            // 不设 requestTimeoutMillis：全站索引分片可能有几十 MB，慢速网络下
+            // 总时长限制会在传输正常进行时误杀请求。socketTimeout 已能覆盖真正的卡死。
             connectTimeoutMillis = 15_000
             socketTimeoutMillis = 30_000
         }
@@ -84,6 +85,51 @@ class GitHubApi {
     /** 拉取全站 search-index.json，解析成账号列表 + 全站推文列表 */
     suspend fun fetchSearchIndex(): Pair<List<IndexAccount>, List<GlobalPost>> =
         parseIndexStreaming(Config.searchIndexUrl())
+
+    // ---------- 全站索引分片 ----------
+
+    /**
+     * 取分片清单。网络失败时回退到本地副本，冷启动断网也能进全站页。
+     */
+    suspend fun fetchGlobalMeta(): GlobalIndexMeta = withContext(Dispatchers.IO) {
+        val text = try {
+            client.get(Config.globalIndexMetaUrl()).bodyAsText().also {
+                // 写盘只是缓存，失败不应该让整次拉取作废
+                try { GlobalIndexStore.writeMetaRaw(it) } catch (e: Exception) { }
+            }
+        } catch (e: Exception) {
+            GlobalIndexStore.readMetaRaw() ?: throw e
+        }
+        parseGlobalMeta(text)
+    }
+
+    /**
+     * 取一个月度分片。本地副本哈希对得上就直接读盘，不发请求。
+     */
+    suspend fun fetchGlobalShard(
+        shard: GlobalShard,
+        accounts: List<IndexAccount>,
+        onProgress: ((Long) -> Unit)? = null
+    ): List<GlobalPost> = withContext(Dispatchers.IO) {
+        val cached = if (GlobalIndexStore.isFresh(shard)) GlobalIndexStore.shardBytes(shard.month) else null
+        val bytes = cached ?: run {
+            val stream = client.get(Config.globalIndexShardUrl(shard.month))
+                .bodyAsChannel().toInputStream()
+            val out = java.io.ByteArrayOutputStream(shard.bytes.toInt().coerceAtLeast(8192))
+            val buf = ByteArray(64 * 1024)
+            var read = stream.read(buf)
+            while (read >= 0) {
+                out.write(buf, 0, read)
+                onProgress?.invoke(out.size().toLong())
+                read = stream.read(buf)
+            }
+            out.toByteArray().also {
+                try { GlobalIndexStore.writeShard(shard.month, it) } catch (e: Exception) { }
+            }
+        }
+        onProgress?.invoke(bytes.size.toLong())
+        parsePostsStream(bytes.inputStream(), accounts)
+    }
 
     /**
      * 流式解析 search-index / timeline-recent。
@@ -124,37 +170,7 @@ class GitHubApi {
                     }
                     "posts" -> {
                         reader.beginArray()
-                        while (reader.hasNext()) {
-                            // 每条 post 是一个数组：[idx, text, tweetId, time, [media], replyCount, hasQuote]
-                            reader.beginArray()
-                            var idx = -1; var text = ""; var tweetId = ""; var time = ""
-                            val media = ArrayList<String>(); var replyCount = 0; var hasQuote = false
-                            var pos = 0
-                            while (reader.hasNext()) {
-                                when (pos) {
-                                    0 -> idx = reader.nextInt()
-                                    1 -> text = reader.nextStringSafe()
-                                    2 -> tweetId = reader.nextStringSafe()
-                                    3 -> time = reader.nextStringSafe()
-                                    4 -> {
-                                        if (reader.peek() == android.util.JsonToken.BEGIN_ARRAY) {
-                                            reader.beginArray()
-                                            while (reader.hasNext()) media.add(reader.nextStringSafe())
-                                            reader.endArray()
-                                        } else reader.skipValue()
-                                    }
-                                    5 -> replyCount = reader.nextIntSafe()
-                                    6 -> hasQuote = reader.nextIntSafe() > 0
-                                    else -> reader.skipValue()
-                                }
-                                pos++
-                            }
-                            reader.endArray()
-                            val acct = accts.getOrNull(idx)
-                            if (acct != null) {
-                                posts.add(GlobalPost(idx, text, tweetId, time, media, replyCount, hasQuote, acct))
-                            }
-                        }
+                        while (reader.hasNext()) readPost(reader, accts)?.let { posts.add(it) }
                         reader.endArray()
                     }
                     else -> reader.skipValue()
@@ -163,6 +179,56 @@ class GitHubApi {
             reader.endObject()
         }
         return accts to posts
+    }
+
+    /** 一条 post：[idx, text, tweetId, time, [media], replyCount, hasQuote] */
+    private fun readPost(reader: android.util.JsonReader, accts: List<IndexAccount>): GlobalPost? {
+        reader.beginArray()
+        var idx = -1; var text = ""; var tweetId = ""; var time = ""
+        val media = ArrayList<String>(); var replyCount = 0; var hasQuote = false
+        var pos = 0
+        while (reader.hasNext()) {
+            when (pos) {
+                0 -> idx = reader.nextInt()
+                1 -> text = reader.nextStringSafe()
+                2 -> tweetId = reader.nextStringSafe()
+                3 -> time = reader.nextStringSafe()
+                4 -> {
+                    if (reader.peek() == android.util.JsonToken.BEGIN_ARRAY) {
+                        reader.beginArray()
+                        while (reader.hasNext()) media.add(reader.nextStringSafe())
+                        reader.endArray()
+                    } else reader.skipValue()
+                }
+                5 -> replyCount = reader.nextIntSafe()
+                6 -> hasQuote = reader.nextIntSafe() > 0
+                else -> reader.skipValue()
+            }
+            pos++
+        }
+        reader.endArray()
+        val acct = accts.getOrNull(idx) ?: return null
+        return GlobalPost(idx, text, tweetId, time, media, replyCount, hasQuote, acct)
+    }
+
+    /** 月度分片：{"posts": [...]}，账号下标指向 meta.json 的 accts */
+    private fun parsePostsStream(
+        input: java.io.InputStream,
+        accounts: List<IndexAccount>
+    ): List<GlobalPost> {
+        val posts = ArrayList<GlobalPost>()
+        android.util.JsonReader(input.reader(Charsets.UTF_8)).use { reader ->
+            reader.beginObject()
+            while (reader.hasNext()) {
+                if (reader.nextName() == "posts") {
+                    reader.beginArray()
+                    while (reader.hasNext()) readPost(reader, accounts)?.let { posts.add(it) }
+                    reader.endArray()
+                } else reader.skipValue()
+            }
+            reader.endObject()
+        }
+        return posts
     }
 
     /** 拉取某账号的推文索引 */
@@ -254,26 +320,38 @@ class GitHubApi {
     }
 
     /** 拉取跨账号回复索引 cross-replies.json。key=主推文id, value=回复列表 */
-    suspend fun fetchCrossReplies(): Map<String, List<CrossReply>> {
-        val text = client.get(Config.crossRepliesUrl()).bodyAsText()
-        val root = json.parseToJsonElement(text).jsonObject
+    suspend fun fetchCrossReplies(): Map<String, List<CrossReply>> = withContext(Dispatchers.IO) {
         val result = HashMap<String, List<CrossReply>>()
-        for ((convId, arr) in root) {
-            val list = arr.jsonArray.mapNotNull { el ->
-                try {
-                    val a = el.jsonArray
-                    CrossReply(
-                        acctIndex = a[0].jsonPrimitive.int,
-                        tweetId = a[1].jsonPrimitive.contentOrNull ?: "",
-                        text = a[2].jsonPrimitive.contentOrNull ?: "",
-                        time = a[3].jsonPrimitive.contentOrNull ?: "",
-                        replyToId = a.getOrNull(4)?.jsonPrimitive?.contentOrNull ?: ""
+        val stream = client.get(Config.crossRepliesUrl()).bodyAsChannel().toInputStream()
+        android.util.JsonReader(stream.reader(Charsets.UTF_8)).use { reader ->
+            reader.beginObject()
+            while (reader.hasNext()) {
+                val convId = reader.nextName()
+                val list = ArrayList<CrossReply>()
+                reader.beginArray()
+                while (reader.hasNext()) {
+                    val f = ArrayList<String?>(5)
+                    reader.beginArray()
+                    while (reader.hasNext()) {
+                        f += if (reader.peek() == android.util.JsonToken.NULL) {
+                            reader.nextNull(); null
+                        } else reader.nextString()
+                    }
+                    reader.endArray()
+                    list += CrossReply(
+                        acctIndex = f.getOrNull(0)?.toIntOrNull() ?: 0,
+                        tweetId = f.getOrNull(1) ?: "",
+                        text = f.getOrNull(2) ?: "",
+                        time = f.getOrNull(3) ?: "",
+                        replyToId = f.getOrNull(4) ?: ""
                     )
-                } catch (e: Exception) { null }
+                }
+                reader.endArray()
+                result[convId] = list
             }
-            result[convId] = list
+            reader.endObject()
         }
-        return result
+        result
     }
 
     /** 拉取某账号的 profile */
@@ -520,11 +598,54 @@ class GitHubApi {
             if (resp.status == HttpStatusCode.NoContent || resp.status.isSuccess()) {
                 Result.success(Unit)
             } else {
-                Result.failure(Exception("HTTP ${resp.status}: ${resp.bodyAsText()}"))
+                Result.failure(Exception(explainDispatchError(resp.status, resp.bodyAsText(), workflow, inputs)))
             }
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    /**
+     * GitHub 对 workflow_dispatch 的报错只有原始 JSON，定位困难。
+     * 这里把实际遇到过的几种翻译成能直接照做的说明。
+     */
+    private fun explainDispatchError(
+        status: HttpStatusCode,
+        body: String,
+        workflow: String,
+        inputs: Map<String, String>
+    ): String = when {
+        status.value == 422 && body.contains("Unexpected inputs", ignoreCase = true) -> {
+            val names = inputs.keys.joinToString("、")
+            "该仓库的 $workflow 是旧版本，不接受参数「$names」。" +
+                "请先把仓库里的 $workflow 更新到模板最新版再试。"
+        }
+        status.value == 422 && body.contains("Required input", ignoreCase = true) ->
+            "$workflow 需要必填参数但本次没有提供，请检查该仓库的工作流定义。"
+        status.value == 422 ->
+            "$workflow 拒绝了这次触发（422）。多半是工作流文件与 App 传的参数对不上：$body"
+        status.value == 404 ->
+            "找不到 $workflow，可能该仓库还没有这个工作流文件，或令牌无权访问该仓库。"
+        status.value == 403 ->
+            "没有权限触发 $workflow。请确认令牌具备该仓库的 Actions 写权限。"
+        status.value == 401 ->
+            "令牌无效或已过期，请在设置里重新填写。"
+        else -> "HTTP $status: $body"
+    }
+
+    /**
+     * 模板仓库刚生成时 Actions 尚未注册工作流，直接触发会 404。
+     * 轮询到出现为止，比固定 sleep 更快也更稳。
+     */
+    suspend fun workflowExists(pat: String, repo: String, workflow: String): Boolean = try {
+        val resp = client.get("${Config.API_BASE}/repos/${Config.ORG}/$repo/actions/workflows/$workflow") {
+            header("Authorization", "Bearer $pat")
+            header("Accept", "application/vnd.github+json")
+            header("X-GitHub-Api-Version", "2022-11-28")
+        }
+        resp.status.isSuccess()
+    } catch (e: Exception) {
+        false
     }
 
     /** 读取仓库某文件的 sha（用于更新文件时提供 sha） */
@@ -593,6 +714,39 @@ class GitHubApi {
             emptyList()
         }
     }
+
+    companion object {
+        private val metaJson = Json { ignoreUnknownKeys = true; isLenient = true }
+
+        /** 解析 search-index/meta.json。设置页只为读清单也 new 一个 GitHubApi 会顺带建 OkHttp 客户端，故放在伴生对象 */
+        fun parseGlobalMeta(text: String): GlobalIndexMeta {
+            val root = metaJson.parseToJsonElement(text).jsonObject
+            fun str(o: kotlinx.serialization.json.JsonObject, k: String) =
+                (o[k] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull ?: ""
+            fun num(o: kotlinx.serialization.json.JsonObject, k: String) =
+                (o[k] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull?.toLongOrNull() ?: 0L
+
+            // 逐条容错：单个坏条目跳过即可，不该让整份清单作废
+            val accts = (root["accts"] as? kotlinx.serialization.json.JsonArray)?.mapNotNull { el ->
+                val o = el as? kotlinx.serialization.json.JsonObject ?: return@mapNotNull null
+                IndexAccount(str(o, "r"), str(o, "a"), str(o, "u"), str(o, "n"), str(o, "av"))
+            } ?: emptyList()
+
+            val shards = (root["shards"] as? kotlinx.serialization.json.JsonArray)?.mapNotNull { el ->
+                val o = el as? kotlinx.serialization.json.JsonObject ?: return@mapNotNull null
+                val m = str(o, "month")
+                if (m.isBlank()) null
+                else GlobalShard(m, num(o, "count").toInt(), num(o, "bytes"), str(o, "hash"))
+            }?.sortedByDescending { it.month } ?: emptyList()
+
+            return GlobalIndexMeta(
+                total = num(root, "total").toInt(),
+                generated = str(root, "generated"),
+                accounts = accts,
+                shards = shards
+            )
+        }
+    }
 }
 
 /** JsonReader 遇到 null 时安全取字符串 */
@@ -603,3 +757,4 @@ private fun android.util.JsonReader.nextStringSafe(): String {
 private fun android.util.JsonReader.nextIntSafe(): Int {
     return if (peek() == android.util.JsonToken.NULL) { nextNull(); 0 } else nextInt()
 }
+

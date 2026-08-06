@@ -71,23 +71,40 @@ GitHub Pages（静态托管）
 
 ### 2.1 聚合层（`home` 仓库）
 
-由 GitHub Actions 定期从各存档仓库汇总生成。
+由 GitHub Actions 定期从各存档仓库汇总生成。量级为 2026 年 8 月的实测值，会随收录账号增长。
 
 | 文件 | 量级 | 内容 | 消费方 |
 | --- | --- | --- | --- |
-| `repos.json` | 数十 KB | 账号清单：`repo`、`acct`、`name`、`username`、`description`、`avatar` | 账号列表页 |
-| `search-index.json` | 约 20 MB | 全站推文的紧凑数组 | 全站时间线、全站搜索 |
-| `timeline-recent.json` | 数百 KB | 近期推文与完整账号表 | 全站时间线首屏、完整性检测 |
-| `cross-replies.json` | 1–2 MB | 跨账号回复索引 | 回复链展开 |
+| `repos.json` | 约 180 KB | 账号清单：`repo`、`acct`、`name`、`username`、`description`、`avatar` | 账号列表页 |
+| `search-index/meta.json` | 数十 KB | 全站总条数、账号表、月度分片清单 | 全站时间线启动 |
+| `search-index/<YYYY-MM>.json` | 每片 3–12 MB | 该月的推文紧凑数组 | 全站时间线、全站搜索 |
+| `search-index.json` | 约 60 MB | 最近 6 个月的合集，仅供未升级的旧版本 | 旧版本兼容 |
+| `timeline-recent.json` | 约 430 KB | 近期推文与完整账号表 | 全站时间线首屏、完整性检测 |
+| `cross-replies.json` | 约 12 MB | 跨账号回复索引 | 回复链展开 |
 | `manifest/<repo>.json` | 数 KB | 月度哈希与字节区间 | 离线增量更新 |
 
-`search-index.json` 的 `posts` 采用数组而非对象以压缩体积，字段顺序为：
+`posts` 采用数组而非对象以压缩体积，字段顺序为：
 
 ```
 [账号下标, 正文, 推文 ID, ISO 时间, [媒体文件名], 回复数, 是否含引用]
 ```
 
-`accts` 中每个账号的结构为 `{r: 仓库名, a: 账号名, u: @用户名, n: 昵称, av: 头像文件名}`。
+`accts` 中每个账号的结构为 `{r: 仓库名, a: 账号名, u: @用户名, n: 昵称, av: 头像文件名}`。分片文件只含 `posts`，其账号下标指向 `meta.json` 的 `accts`，账号表全站只存一份。
+
+`meta.json` 结构如下，`total` 是全站真实总条数，与本地已下载多少无关：
+
+```json
+{
+  "total": 486201,
+  "generated": "2026-08-06T04:00:12Z",
+  "accts": [ {"r": "...", "a": "...", "u": "...", "n": "...", "av": "..."} ],
+  "shards": [ {"month": "2026-08", "count": 30412, "bytes": 11534336, "hash": "a1b2c3d4e5f6a7b8"} ]
+}
+```
+
+`hash` 为分片内容 SHA-256 的前 16 位十六进制，客户端据此判断本地副本是否新鲜。
+
+单文件的 `search-index.json` 曾是唯一格式，2026 年 8 月顶到 GitHub 单文件 100 MiB 硬上限后无法再更新，遂改为按月分片。分片同时解决了两个问题：客户端不必一次下完全部内容才能使用；每日提交只涉及当月一个分片，仓库体积增速随之下降。
 
 ### 2.2 存档层（各账号仓库）
 
@@ -160,10 +177,11 @@ UI 层不直接访问 `GitHubApi`，ViewModel 层不引用 Compose API，`util` 
 | `Repository.kt` | 仓储层。含三级内存缓存（`reposCache` 单例与 `tweetsCache`、`profileCache` 两个 Map）、磁盘兜底读取，并转发管理操作 |
 | `Models.kt` | 全部 `@Serializable` 数据类：`ArchiveRepo`、`Tweet`、`Profile`、`GitHubIssue`、`WorkflowRun`、`IndexManifest` 等 |
 | `SearchIndex.kt` | 全站索引模型。`GlobalPost` 负责解析紧凑数组，并按扩展名将媒体列表分流为图片与视频两组 URL |
+| `GlobalIndexStore.kt` | 全站索引分片的本地副本。含 `GlobalIndexMeta`、`GlobalShard` 模型与按年增删的磁盘操作，详见 5.5 |
 | `OfflineIndexStore.kt` | 离线缓存实现。按月切分、哈希比对、HTTP Range 增量更新，详见 5.1 |
 | `Bookmarks.kt` | 书签存储（DataStore）及 JSON 导入导出 |
 | `Settings.kt` | 偏好设置（DataStore）：主题模式、默认 Tab、关注账号 |
-| `SecureStore.kt` | PAT 加密存储（EncryptedSharedPreferences） |
+| `SecureStore.kt` | PAT 加密存储。使用 Android Keystore 生成的 AES-GCM 密钥加密后写入 DataStore；密钥不出 Keystore，密文换机后无法解密，需重新登录 |
 | `AppDirs.kt` | 持有应用 `filesDir`。因 ViewModel 中 `Repository` 以默认参数构造无法获取 Context，故由 MainActivity 启动时注入 |
 | `NetworkState.kt` | 全局网络状态与图片加载失败记录。见 5.3 |
 
@@ -174,13 +192,14 @@ UI 层不直接访问 `GitHubApi`，ViewModel 层不引用 Compose API，`util` 
 | 文件 | 职责 |
 | --- | --- |
 | `AdminViewModel.kt` | 管理功能总入口。PAT 登录、四个仪表盘、工作流触发与取消、申请审批、建档流程、完整性检测（缺失 banner / 置顶 / 头像） |
-| `GlobalTimelineViewModel.kt` | 全站时间线。先加载 `timeline-recent.json` 呈现首屏，后台替换为完整 `search-index.json`；含分页、搜索、多账号筛选与跨账号回复 |
+| `GlobalTimelineViewModel.kt` | 全站时间线。先加载 `timeline-recent.json` 呈现首屏，再按年合入 `search-index/` 分片；含分页、搜索、多账号筛选与跨账号回复 |
 | `ReaderViewModel.kt` | 个人推文页。加载索引与资料，支持按正文、推文 ID、定位短码搜索及日期跳转 |
 | `HomeViewModel.kt` | 账号列表与顶部统计 |
 | `ImagesViewModel.kt` | 媒体页，按图片、视频、其他分类筛选 |
 | `SettingsViewModel.kt` | 设置项读写 |
 | `ProfileStatsViewModel.kt` | 单账号统计，供资料卡片展示 |
 | `RequestViewModel.kt` | 访客提交存档申请 |
+| `AuthViewModel.kt` | PAT 登录态与令牌校验 |
 | `BookmarkViewModel.kt` | 书签增删与列表 |
 
 ### 4.4 导航
@@ -244,6 +263,7 @@ UI 层不直接访问 `GitHubApi`，ViewModel 层不引用 Compose API，`util` 
 | `AccountUtil.kt` | 账号名规范化，容错 `@name`、`x.com/name`、全角空格等输入形式 |
 | `TweetIdUtil.kt` | 推文 ID 规范化，从完整推文链接中提取数字 ID |
 | `MediaUtil.kt` | 将相对路径拼接为完整 URL |
+| `LinkUtil.kt` | 正文内 URL 的识别与短链展示形式 |
 
 ---
 
@@ -317,6 +337,28 @@ if (BuildConfig.IS_ADMIN) { /* 渲染管理 Tab */ }
 
 ---
 
+### 5.5 全站索引的分片加载
+
+全站索引已按月切分，客户端仍以「年」为操作单位，分片只是网络与磁盘层的实现细节，界面上不出现月份。
+
+启动顺序：
+
+1. 取 `search-index/meta.json`，拿到全站总条数、账号表与分片清单。此文件仅数十 KB。
+2. 加载最新一年的全部月度分片，首屏即可用。
+3. 若设置中开启「自动补全历史年份」，后台按年份从新到旧顺序补齐；关闭则停在第一年，其余年份由用户在「历史存档」页手动下载。
+
+分片落盘于 `filesDir/global_index/`，命中时先比对 `meta.json` 中的 `hash`，一致则直接读盘不发请求。
+
+该目录**刻意不放在 `index_cache/` 下**：设置页的「清理缓存」会递归删除 `index_cache/`，而历史年份是用户主动下载的内容，不应被顺手清掉。它的清理入口在「设置 → 历史存档」页，可按年删除或整体清空。
+
+`GlobalIndexMeta.total` 始终是全站真实总条数，与本地已下载的年份无关，因此界面上「已加载 12,340 / 全站 486,201 条」中的后一个数字任何时候都是准确的。
+
+由于分片可能有几十 MB，`GitHubApi` 的 `HttpTimeout` 未设置 `requestTimeoutMillis`——该项限制的是整个请求的总时长，慢速网络下会在传输正常进行时误杀请求。真正的卡死由 `socketTimeoutMillis` 覆盖。
+
+合并新分片时需对全站数十万条按时间重排，该操作在 `Dispatchers.Default` 上执行；手动下载与后台补齐可能同时命中同一年，故 `loadYearInternal` 由 `Mutex` 串行化。
+
+---
+
 ## 6. 已知约束
 
 | 约束 | 影响 | 处理方式 |
@@ -374,7 +416,9 @@ REQ_TOKEN=ghp_xxxxxxxxxxxx
 | 文件 | 缺失时的影响 |
 | --- | --- |
 | `repos.json` | 账号列表页无内容（必需） |
-| `search-index.json` | 全站时间线与全站搜索不可用 |
+| `search-index/meta.json` | 全站时间线与全站搜索不可用（必需） |
+| `search-index/<YYYY-MM>.json` | 对应月份的推文缺失 |
+| `search-index.json` | 仅影响未升级的旧版本，当前版本不读取 |
 | `timeline-recent.json` | 全站首屏加载变慢；完整性检测不可用 |
 | `cross-replies.json` | 跨账号回复无法展开 |
 | `manifest/<repo>.json` | 离线增量更新失效，退化为每次全量下载 |
@@ -411,7 +455,7 @@ accounts/<账号>/wayback_snapshots/
 | `build-manifest.yml` | 生成离线索引清单 | 无 |
 | `aggregate_avatars.yml` | 汇总共享头像池 | 无 |
 | `push_best_avatars.yml` | 将清晰头像推送回各仓库 | `dry_run`（true 为试运行） |
-| `migrate.yml` | 删除指定推文 | 仓库名与推文 ID |
+| `delete_tweets.yml` | 删除指定推文 | `target_repo`（目标存档仓库名）、`tweet_ids`（逗号或空格分隔）、`account`（可选，留空则扫描该仓库全部账号） |
 
 **`Dispatcher` 仓库**
 
@@ -419,12 +463,18 @@ accounts/<账号>/wayback_snapshots/
 | --- | --- | --- |
 | `dispatch.yml` | 轮转触发一批仓库更新 | 无；或 `force_all=true` 触发全部 |
 
+轮转指针存于 `Dispatcher` 仓库的 Actions 变量 `DISPATCH_PTR_NAME`，值为「下一个该轮到的仓库名」。此处刻意存名字而非下标：候选列表按字母序排列，新增一个排序靠前的仓库会让其后所有仓库的下标整体偏移，存下标会导致指针原本指向的仓库被跳过，需再等一整轮才轮得到。
+
 其余前提：
 
-- 需存在模板仓库（由 `TEMPLATE_REPO` 指定）。建档流程为从模板生成新仓库，随后触发该仓库的 `setup.yml`。
+- 需存在模板仓库（由 `TEMPLATE_REPO` 指定）。建档流程为从模板生成新仓库，随后触发该仓库的 `setup.yml`。新仓库生成后 Actions 需数秒才会注册工作流，应用会轮询至其出现再触发，最长等待 40 秒。
 - PAT 需具备仓库内容读写、Actions 触发与 Issue 关闭权限。
 
-工作流文件名硬编码于 `AdminArchiveScreen.kt`、`AdminDetailScreen.kt` 与 `AdminViewModel.kt`，如命名不同需修改上述文件中的字符串常量。
+工作流文件名硬编码于 `AdminArchiveScreen.kt`、`AdminDetailScreen.kt`、`AdminDeleteTweetsScreen.kt` 与 `AdminViewModel.kt`，如命名不同需修改上述文件中的字符串常量。
+
+注意各存档仓库中另有一个 `migrate.yml`，作用是重建状态与索引，与 `home` 的「删除推文」完全无关。`home` 侧的文件因此命名为 `delete_tweets.yml` 而非 `migrate.yml`，以免两者混淆。
+
+若某个存档仓库的 `update.yml` 停留在旧版本、未声明 `only_index` 等参数，GitHub 会以 422 拒绝触发。此类错误已由 `GitHubApi.explainDispatchError` 翻译为可直接照做的提示，处理方式是将模板最新版的 `update.yml` 重新分发到该仓库。
 
 ### 7.6 适配其他数据源
 

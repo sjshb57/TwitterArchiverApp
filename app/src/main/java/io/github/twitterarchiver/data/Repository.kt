@@ -103,6 +103,8 @@ class Repository(private val api: GitHubApi = GitHubApi()) {
     suspend fun putFileContentRaw(pat: String, repo: String, path: String, base64: String, sha: String, message: String) =
         api.putFileContentRaw(pat, repo, path, base64, sha, message)
     suspend fun generateRepo(pat: String, name: String) = api.generateRepo(pat, name)
+    suspend fun workflowExists(pat: String, repo: String, workflow: String) =
+        api.workflowExists(pat, repo, workflow)
     suspend fun dispatchWorkflow(pat: String, repo: String, workflow: String, inputs: Map<String,String> = emptyMap()) =
         api.dispatchWorkflow(pat, repo, workflow, inputs)
 
