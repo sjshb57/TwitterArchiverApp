@@ -310,7 +310,7 @@ private fun MissingRow(name: String, action: String, onClick: () -> Unit) {
     ) {
         Text(name, fontSize = 13.sp, color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.weight(1f),
-            maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text("$action ›", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Medium)
     }
@@ -371,7 +371,7 @@ private fun NewlyCreatedRow(
         Spacer(Modifier.width(10.dp))
         Text(repoName, fontSize = 13.sp, color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.weight(1f),
-            maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            maxLines = 1, overflow = TextOverflow.Ellipsis)
         if (label.isNotBlank()) {
             Text(label, fontSize = 11.sp, color = dotColor,
                 modifier = Modifier.padding(end = 10.dp))
