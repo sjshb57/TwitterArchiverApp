@@ -181,7 +181,7 @@ UI 层不直接访问 `GitHubApi`，ViewModel 层不引用 Compose API，`util` 
 | `OfflineIndexStore.kt` | 离线缓存实现。按月切分、哈希比对、HTTP Range 增量更新，详见 5.1 |
 | `Bookmarks.kt` | 书签存储（DataStore）及 JSON 导入导出 |
 | `Settings.kt` | 偏好设置（DataStore）：主题模式、默认 Tab、关注账号 |
-| `SecureStore.kt` | PAT 加密存储。使用 Android Keystore 生成的 AES-GCM 密钥加密后写入 DataStore；密钥不出 Keystore，密文换机后无法解密，故该文件已在 `res/xml/backup_rules.xml` 与 `data_extraction_rules.xml` 中排除出备份与设备转移，换机后重新登录即可 |
+| `SecureStore.kt` | PAT 加密存储。使用 Android Keystore 生成的 AES-GCM 密钥加密后写入 DataStore；密钥不出 Keystore，密文换机后无法解密，需重新登录 |
 | `AppDirs.kt` | 持有应用 `filesDir`。因 ViewModel 中 `Repository` 以默认参数构造无法获取 Context，故由 MainActivity 启动时注入 |
 | `NetworkState.kt` | 全局网络状态与图片加载失败记录。见 5.3 |
 
