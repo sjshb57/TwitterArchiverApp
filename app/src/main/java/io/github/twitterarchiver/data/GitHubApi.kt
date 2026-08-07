@@ -53,8 +53,6 @@ class GitHubApi {
         }
         install(ContentNegotiation) { json(this@GitHubApi.json) }
         install(HttpTimeout) {
-            // 不设 requestTimeoutMillis：全站索引分片可能有几十 MB，慢速网络下
-            // 总时长限制会在传输正常进行时误杀请求。socketTimeout 已能覆盖真正的卡死。
             connectTimeoutMillis = 15_000
             socketTimeoutMillis = 30_000
         }

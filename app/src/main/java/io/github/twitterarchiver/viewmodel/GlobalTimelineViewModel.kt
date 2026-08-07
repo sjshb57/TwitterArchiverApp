@@ -86,7 +86,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
         }
     }
 
-    /** 只取分片清单。历史内容一律按需下载，冷启动不再自动拉整年。 */
+    /** 只取分片清单；历史内容一律按需下载，冷启动不主动拉取任何整年。 */
     private fun loadFull() {
         if (fullLoaded) return
         viewModelScope.launch {
@@ -121,7 +121,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
     fun downloadYear(year: String) {
         val m = meta ?: return
         viewModelScope.launch {
-            // 每合入一个月就全量重排一次的话，一年要排 12 遍几十万条。只在最后重建一次。
+            // 全部月份就绪后只重建一次：逐月重建的话，一年要把几十万条重排 12 遍。
             for (shard in m.shardsOf(year).sortedByDescending { it.month })
                 loadShard(shard, rebuild = false)
             rebuildFromLoaded()
@@ -138,8 +138,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
         viewModelScope.launch {
             withContext(Dispatchers.IO) { GlobalIndexStore.deleteMonth(month) }
             loadedMonths = loadedMonths - month
-            monthPosts.remove(month)   // 不清内存的话，文件删了推文还留在时间线上
-            if (activeDate?.startsWith(month) == true) activeDate = null
             rebuildFromLoaded()
             _state.value = _state.value.copy(downloadedMonths = GlobalIndexStore.downloadedMonths())
         }
@@ -149,8 +147,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
         viewModelScope.launch {
             withContext(Dispatchers.IO) { GlobalIndexStore.deleteYear(year) }
             loadedMonths = loadedMonths.filterNot { it.startsWith(year) }.toSet()
-            monthPosts.keys.filter { it.startsWith(year) }.forEach { monthPosts.remove(it) }
-            if (activeDate?.startsWith(year) == true) activeDate = null
             rebuildFromLoaded()
             _state.value = _state.value.copy(downloadedMonths = GlobalIndexStore.downloadedMonths())
         }

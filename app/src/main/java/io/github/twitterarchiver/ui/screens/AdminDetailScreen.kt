@@ -283,7 +283,6 @@ private fun AllArchivesView(
                 it.handle.contains(query, true) || it.repoName.contains(query, true)
         }
         // 未知 → 出错 → 运行中 → 已完成 → 无状态。稳定排序。
-        // 不再单列"置顶"档：置顶没有任何视觉标识，与状态色重复表达，只会让顺序不可预测。
         filtered.sortedBy { r ->
             when (status[r.repoName]) {
                 "unknown" -> 0
