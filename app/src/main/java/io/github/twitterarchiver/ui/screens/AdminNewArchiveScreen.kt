@@ -261,16 +261,15 @@ fun AdminNewArchiveScreen(
     }
     androidx.compose.material3.SnackbarHost(
         hostState = snackbarHost,
-        modifier = Modifier.align(Alignment.BottomCenter).padding(14.dp)
+        modifier = Modifier.align(Alignment.BottomCenter)
+            .padding(start = 14.dp, end = 14.dp, bottom = 32.dp)
     ) { data ->
         androidx.compose.material3.Surface(
             shape = RoundedCornerShape(14.dp),
             color = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.onSurface,
-            border = androidx.compose.foundation.BorderStroke(
-                1.dp, MaterialTheme.colorScheme.outline),
             tonalElevation = 0.dp,
-            shadowElevation = 6.dp,
+            shadowElevation = 10.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
