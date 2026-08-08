@@ -98,7 +98,7 @@ fun AdminDetailScreen(
                 Text("刷新", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(end = 16.dp).clickable {
                         if (dash == DashRepo.ALL_ARCHIVES) {
-                            vm.loadAllArchives(); vm.refreshRunningStatus()
+                            vm.loadAllArchives(); vm.refreshAllStatus()
                         } else vm.loadRuns(dash.repo)
                     })
             },

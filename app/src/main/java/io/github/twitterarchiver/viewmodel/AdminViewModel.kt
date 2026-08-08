@@ -1,5 +1,8 @@
 package io.github.twitterarchiver.viewmodel
 
+import io.github.twitterarchiver.data.RepoHealth
+import io.github.twitterarchiver.data.RotationConfig
+import io.github.twitterarchiver.util.DateUtil
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -22,6 +25,7 @@ import androidx.core.content.edit
 enum class DashRepo(val repo: String, val title: String) {
     HOME("home", "Home 聚合"),
     DISPATCHER("Dispatcher", "调度中心"),
+    HEALTH("", "仓库健康"),
     STARTER("project-starter", "存档模板"),
     ALL_ARCHIVES("", "所有存档")
 }
@@ -48,7 +52,11 @@ data class AdminState(
     val pendingSetup: Map<String, PendingSetup> = emptyMap(),
     val checkDone: Boolean = false,
     val hasCheckedOnce: Boolean = false,
-    val busy: Boolean = false
+    val busy: Boolean = false,
+    val health: List<RepoHealth> = emptyList(),
+    val healthLoading: Boolean = false,
+    val healthError: String? = null,
+    val rotation: RotationConfig? = null
 )
 
 /** 仓库已创建、setup.yml 尚未确认触发成功的条目 */
@@ -165,9 +173,58 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** 只刷新当前标记为运行中的仓库状态，供"所有存档"页轮询使用 */
-    fun refreshRunningStatus() {
+    private val nonArchiveRepos = setOf("home", "Dispatcher", ".github", "project-starter")
+
+    fun loadHealth() {
         val pat = _state.value.pat ?: return
-        val names = _state.value.repoStatus.filterValues { it == "running" }.keys.toList()
+        if (_state.value.healthLoading) return
+        viewModelScope.launch {
+            _state.value = _state.value.copy(healthLoading = true, healthError = null)
+            val repos = repo.fetchOrgRepos(pat).getOrElse {
+                _state.value = _state.value.copy(
+                    healthLoading = false,
+                    healthError = "读取仓库列表失败：${it.message}")
+                return@launch
+            }.filter { it.name !in nonArchiveRepos && !it.archived }
+
+            val rotation = repo.fetchRotationConfig(pat, repos.size)
+            val now = System.currentTimeMillis()
+            val list = repos.map { r ->
+                val days = r.pushedAt?.let {
+                    val t = DateUtil.epochMillis(it)
+                    if (t > 0) ((now - t) / 86_400_000L).toInt() else null
+                }
+                RepoHealth(
+                    name = r.name,
+                    sizeKb = r.size,
+                    daysSincePush = days,
+                    overdue = rotation != null && days != null && days > rotation.overdueDays
+                )
+            }.sortedWith(compareByDescending<RepoHealth> { it.daysSincePush ?: -1 })
+
+            _state.value = _state.value.copy(
+                healthLoading = false,
+                health = list,
+                rotation = rotation,
+                healthError = if (rotation == null) "未能读取轮转配置，已跳过超期判定" else null
+            )
+        }
+    }
+
+    /** 自动轮询用：只查运行中的，避免 500 多个仓库把接口打爆 */
+    fun refreshRunningStatus() = refreshStatus(onlyRunning = true)
+
+    /** 手动刷新用：查所有已有状态标记的仓库 + 新建后尚未被 repos.json 收录的 */
+    fun refreshAllStatus() = refreshStatus(onlyRunning = false)
+
+    private fun refreshStatus(onlyRunning: Boolean) {
+        val pat = _state.value.pat ?: return
+        val st = _state.value
+        val names = if (onlyRunning) {
+            st.repoStatus.filterValues { it == "running" }.keys.toList()
+        } else {
+            (st.repoStatus.keys + st.newlyCreated).distinct()
+        }
         if (names.isEmpty()) return
         viewModelScope.launch {
             val gate = kotlinx.coroutines.sync.Semaphore(6)

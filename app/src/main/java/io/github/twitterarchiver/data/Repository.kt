@@ -107,7 +107,9 @@ class Repository(private val api: GitHubApi = GitHubApi()) {
         api.workflowExists(pat, repo, workflow)
     suspend fun dispatchWorkflow(pat: String, repo: String, workflow: String, inputs: Map<String,String> = emptyMap()) =
         api.dispatchWorkflow(pat, repo, workflow, inputs)
-
+    suspend fun fetchOrgRepos(pat: String) = api.fetchOrgRepos(pat)
+    suspend fun fetchRotationConfig(pat: String, repoCount: Int) =
+        api.fetchRotationConfig(pat, repoCount)
     suspend fun fetchWorkflowRuns(pat: String, repo: String) =
         api.fetchWorkflowRuns(pat, repo)
 

@@ -68,9 +68,16 @@ fun AdminNewArchiveScreen(
         vm.loadMissingCache(); vm.loadNewlyCreated()
         if (state.allArchives.isEmpty()) vm.loadAllArchives()
     }
-    // newlyCreated 读出来后再查真实状态（重启后内存里的 repoStatus 已丢失）
     LaunchedEffect(state.newlyCreated) { vm.refreshNewlyCreatedStatus() }
-    // 仓库已建但 setup 没触发成功的（多半是建档中途切后台被系统回收），进页面自动补一次
+
+    val hasRunning = state.newlyCreated.any { state.repoStatus[it] == "running" }
+    LaunchedEffect(hasRunning) {
+        if (!hasRunning) return@LaunchedEffect
+        while (true) {
+            kotlinx.coroutines.delay(8000)
+            vm.refreshNewlyCreatedStatus()
+        }
+    }
     LaunchedEffect(state.pendingSetup.keys) { vm.resumePendingSetups() }
 
     var refreshing by remember { mutableStateOf(false) }
@@ -84,13 +91,12 @@ fun AdminNewArchiveScreen(
             state.allArchives.any { it.repoName.equals(typed, true) || it.account.equals(typed, true) } ||
                 state.newlyCreated.any { it.equals(typed, true) })
     }
-    // 二级：停止输入后直查 GitHub，覆盖 repos.json 还没聚合到的仓库
     var remoteTaken by remember { mutableStateOf(false) }
     var checking by remember { mutableStateOf(false) }
     LaunchedEffect(typed, localTaken) {
         remoteTaken = false
         if (typed.isBlank() || localTaken) { checking = false; return@LaunchedEffect }
-        kotlinx.coroutines.delay(500)          // 防抖：打字过程中不发请求
+        kotlinx.coroutines.delay(500)
         checking = true
         remoteTaken = vm.checkRepoExists(typed) == true
         checking = false

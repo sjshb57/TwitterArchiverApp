@@ -543,6 +543,47 @@ class GitHubApi {
     } catch (e: Exception) { Result.failure(e) }
 
     /** 查询某仓库最近的工作流运行（管理版监控用） */
+    suspend fun fetchOrgRepos(pat: String): Result<List<OrgRepo>> = withContext(Dispatchers.IO) {
+        try {
+            val all = mutableListOf<OrgRepo>()
+            var page = 1
+            while (page <= 20) {
+                val resp = client.get(Config.apiOrgRepos(page)) {
+                    header("Authorization", "Bearer $pat")
+                    header("Accept", "application/vnd.github+json")
+                    header("X-GitHub-Api-Version", "2022-11-28")
+                }
+                if (!resp.status.isSuccess()) {
+                    return@withContext if (all.isEmpty()) Result.failure(Exception("HTTP ${resp.status}"))
+                    else Result.success(all)
+                }
+                val batch = json.decodeFromString<List<OrgRepo>>(resp.bodyAsText())
+                all += batch
+                if (batch.size < 100) break
+                page++
+            }
+            Result.success(all)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * 读 Dispatcher 的 dispatch.yml，解析每次触发几个仓库、每天触发几次。
+     * 轮转周期是算超期阈值的依据，这两个值以后可能被改，所以动态读而不是写死。
+     */
+    suspend fun fetchRotationConfig(pat: String, repoCount: Int): RotationConfig? {
+        val (content, _) = fetchFileContent(pat, "Dispatcher", ".github/workflows/dispatch.yml")
+            .getOrNull() ?: return null
+        val batch = Regex("""BATCH:\s*(\d+)""").find(content)?.groupValues?.get(1)?.toIntOrNull()
+            ?: Regex("""batch:\s*(\d+)""", RegexOption.IGNORE_CASE)
+                .find(content)?.groupValues?.get(1)?.toIntOrNull()
+            ?: return null
+        val cronCount = Regex("""^\s*-\s*cron:""", RegexOption.MULTILINE)
+            .findAll(content).count().coerceAtLeast(1)
+        return RotationConfig(batch = batch, runsPerDay = cronCount, repoCount = repoCount)
+    }
+
     suspend fun fetchWorkflowRuns(pat: String, repo: String): Result<List<WorkflowRun>> {
         return try {
             val resp = client.get(Config.apiRepoRuns(repo)) {

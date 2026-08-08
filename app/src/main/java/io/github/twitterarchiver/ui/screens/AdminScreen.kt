@@ -88,7 +88,7 @@ fun AdminScreen(
                 columns = GridCells.Fixed(2),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp)
             ) {
-                items4(DashRepo.entries) { dash ->
+                items4(DashRepo.entries.filter { it != DashRepo.STARTER }) { dash ->
                     DashCard(dash) { onOpenDash(dash) }
                 }
             }

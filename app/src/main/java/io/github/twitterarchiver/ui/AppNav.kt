@@ -331,7 +331,14 @@ fun AppNav(
             settingsVm = settingsVm,
             onBack = { navBack() }
         )
-        is Screen.AdminDash -> AdminDetailScreen(
+        is Screen.AdminDash -> if ((screen as Screen.AdminDash).dash == DashRepo.HEALTH) {
+            RepoHealthScreen(
+                vm = adminVm,
+                onBack = { navBack() },
+                onOpenDash = { navTo(Screen.AdminDash(it)) },
+                onOpenRepo = { navTo(Screen.AdminArchive(it)) }
+            )
+        } else AdminDetailScreen(
             vm = adminVm,
             dash = (screen as Screen.AdminDash).dash,
             listState = adminListState,
