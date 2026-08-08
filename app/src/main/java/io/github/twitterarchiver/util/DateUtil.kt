@@ -30,10 +30,22 @@ object DateUtil {
     /** 排序用的毫秒时间戳。解析不出来返回 0，排到最后 */
     fun epochMillis(timestamp: String): Long = parse(timestamp)?.time ?: 0L
 
+    /** 毫秒时间戳 → yyyy-MM（UTC）。分片是按 UTC 月份切的，这里必须用 UTC。 */
+    fun utcMonthOf(ms: Long): String =
+        java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.US).apply {
+            timeZone = java.util.TimeZone.getTimeZone("UTC")
+        }.format(java.util.Date(ms))
+
     /** timestamp → 设备本地时区的 yyyy-MM-dd */
     fun localDate(timestamp: String): String {
         val d = parse(timestamp) ?: return ""
         return java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(d)
+    }
+
+    /** timestamp → 设备本地时区的 HH:mm:ss */
+    fun localTime(timestamp: String): String {
+        val d = parse(timestamp) ?: return ""
+        return java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(d)
     }
 
     /** timestamp → 设备本地时区的 yyyy-MM-dd HH:mm:ss（推文精确时间） */

@@ -67,6 +67,7 @@ import io.github.twitterarchiver.data.IndexAccount
 import io.github.twitterarchiver.data.Tweet
 import io.github.twitterarchiver.ui.components.Avatar
 import io.github.twitterarchiver.ui.components.GlobalPostCard
+import io.github.twitterarchiver.ui.components.SearchResultRow
 import io.github.twitterarchiver.viewmodel.GlobalTimelineViewModel
 import io.github.twitterarchiver.viewmodel.ReaderViewModel
 import kotlinx.coroutines.launch
@@ -95,6 +96,7 @@ fun AccountFeedScreen(
     val listState = externalListState ?: rememberLazyListState()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var showDateTree by remember { mutableStateOf(false) }
+    var jumpTweetId by remember { mutableStateOf<String?>(null) }
     var query by remember { mutableStateOf("") }
 
     LaunchedEffect(repo, account) { readerVm.load(repo, account) }
@@ -121,12 +123,15 @@ fun AccountFeedScreen(
 
     val pinnedId = state.profile.pinned
     // 当前 Tab 的推文流（搜索/日期已在 visibleTweets 里过滤）
-    val feed = remember(state.allTweets, state.visibleTweets, tab, pinnedId, state.searchQuery, state.activeDay) {
+    val feed = remember(state.allTweets, state.visibleTweets, tab, pinnedId,
+        state.searchQuery, state.activeDay, state.ascending) {
         val base = if (state.searchQuery.isNotBlank() || state.activeDay != null)
             state.visibleTweets else state.allTweets
         val filtered = base.filter { t ->
             t.hasFile && !t.isVirtual && if (tab == 0) !t.isReply else t.isReply
-        }.sortedByDescending { it.timestamp }
+        }.let { list ->
+            if (state.ascending) list.sortedBy { it.timestamp } else list.sortedByDescending { it.timestamp }
+        }
         if (tab == 0) {
             // 置顶判断：profile.pinned 匹配 或 推文自身 is_pinned=true（兼容两种数据）
             val pin = filtered.filter { it.tweetId == pinnedId || it.isPinned }
@@ -188,6 +193,15 @@ fun AccountFeedScreen(
     ) {
         val statusBarH = androidx.compose.foundation.layout.WindowInsets.statusBars
             .asPaddingValues().calculateTopPadding()
+    LaunchedEffect(jumpTweetId, feed) {
+        val id = jumpTweetId ?: return@LaunchedEffect
+        val idx = feed.indexOfFirst { it.tweetId == id }
+        if (idx >= 0) {
+            listState.scrollToItem(idx + 2)
+            jumpTweetId = null
+        }
+    }
+
         LazyColumn(Modifier.fillMaxSize(), state = listState) {
             item {
                 ProfileHeader(state.profile, repo, account, displayName,
@@ -221,6 +235,36 @@ fun AccountFeedScreen(
                         TabBtn("回复", tab == 1, Modifier.weight(1f)) { tab = 1 }
                     }
                     HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
+                    // 当前浏览状态 + 时间排序（对齐 reader.html 的「选择日期浏览 / ↑ 旧→新」那一行）
+                    Row(
+                        Modifier.fillMaxWidth().padding(start = 16.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            when {
+                                state.searchQuery.isNotBlank() -> "搜索「${state.searchQuery.trim()}」"
+                                state.activeDay != null -> state.activeDay!!
+                                else -> "选择日期浏览"
+                            },
+                            fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f).clickable { showDateTree = true }
+                        )
+                        Row(
+                            Modifier
+                                .clip(RoundedCornerShape(999.dp))
+                                .clickable { readerVm.toggleSort() }
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(if (state.ascending) "↑" else "↓", fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.width(5.dp))
+                            Text(if (state.ascending) "旧→新" else "新→旧", fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
                 }
             }
             when {
@@ -232,6 +276,33 @@ fun AccountFeedScreen(
                 feed.isEmpty() -> item {
                     Box(Modifier.fillMaxWidth().padding(40.dp), Alignment.Center) {
                         Text("暂无内容", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                // 搜索时改用紧凑结果条，理由同全站页：命中几百条完整推文卡没法翻
+                state.searchQuery.isNotBlank() -> {
+                    item {
+                        Text(
+                            "找到 ${feed.size} 条结果",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 10.dp)
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
+                    }
+                    items(feed, key = { it.tweetId }) { t ->
+                        SearchResultRow(
+                            date = t.date,
+                            time = t.time,
+                            text = t.text.ifBlank { t.bodyText },
+                            keyword = state.searchQuery.trim(),
+                            onClick = {
+                                query = ""
+                                readerVm.search("")
+                                readerVm.selectDay(t.date)
+                                jumpTweetId = t.tweetId
+                            }
+                        )
                     }
                 }
                 else -> items(feed, key = { it.tweetId }) { t ->
@@ -373,17 +444,17 @@ private fun SearchInner(
 @Composable
 private fun TabBtn(text: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     Column(
-        modifier.clickable { onClick() }.padding(vertical = 12.dp),
+        modifier.clickable { onClick() }.padding(top = 11.dp, bottom = 0.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(text, fontSize = 15.sp,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
             color = if (selected) MaterialTheme.colorScheme.onBackground
             else MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(9.dp))
         if (selected) {
             Box(Modifier.width(56.dp).height(3.dp)
-                .clip(RoundedCornerShape(2.dp))
+                .clip(RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
                 .background(MaterialTheme.colorScheme.primary))
         } else {
             Spacer(Modifier.height(3.dp))
@@ -409,7 +480,6 @@ private fun ProfileHeader(
         // 顶部留出状态栏高度（状态栏区域为纯背景色，不做 banner 沉浸）
         Spacer(Modifier.height(statusBarH))
         Box(Modifier.fillMaxWidth()) {
-            // banner：固定 170dp（reader 尺寸，正常位置，不被状态栏切）
             if (bannerUrl != null) {
                 AsyncImage(
                     model = bannerUrl,

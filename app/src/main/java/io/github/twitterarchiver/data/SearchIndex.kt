@@ -52,6 +52,10 @@ data class GlobalPost(
     val displayDate: String
         get() = io.github.twitterarchiver.util.DateUtil.localDate(time)
 
+    /** 本地时区时间（HH:mm:ss），搜索结果条用来定位 */
+    val displayTime: String
+        get() = io.github.twitterarchiver.util.DateUtil.localTime(time)
+
     /** 是否转推（RT @xxx: ...）。RT 的引用原推在 html 里，需按需解析 */
     val isRetweet: Boolean get() = text.startsWith("RT @")
 
@@ -77,8 +81,8 @@ data class ThreadItem(
     val text: String,
     val images: List<String>,
     val time: String,
-    val isOwner: Boolean,       // 是否本账号主人
-    val isQuoted: Boolean       // 是否被引用/回复的对象（标"引用"）
+    val isOwner: Boolean,
+    val isQuoted: Boolean
 )
 
 /** 主推文的引用原推（转推/引用显示用） */

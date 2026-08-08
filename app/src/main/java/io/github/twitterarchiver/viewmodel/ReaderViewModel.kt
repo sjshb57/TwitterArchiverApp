@@ -5,11 +5,17 @@ import androidx.lifecycle.viewModelScope
 import io.github.twitterarchiver.data.Profile
 import io.github.twitterarchiver.data.Repository
 import io.github.twitterarchiver.data.Tweet
-import io.github.twitterarchiver.util.DateUtil
+import io.github.twitterarchiver.util.SearchUtil
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+private const val SEARCH_DEBOUNCE_MS = 200L
 
 data class ReaderState(
     val loading: Boolean = true,
@@ -69,30 +75,48 @@ class ReaderViewModel(private val repo: Repository = Repository()) : ViewModel()
     }
 
     /** 搜索 */
+    private var searchJob: Job? = null
+
     fun search(q: String) {
+        searchJob?.cancel()
         val s = _state.value
         if (q.isBlank()) {
             selectDay(s.activeDay)
             _state.value = _state.value.copy(searchQuery = "")
             return
         }
+        searchJob = viewModelScope.launch {
+            delay(SEARCH_DEBOUNCE_MS)
+            val hit = withContext(Dispatchers.Default) { matchQuery(s.allTweets, q) }
+            _state.value = _state.value.copy(
+                searchQuery = q,
+                visibleTweets = sortTweets(hit, s.ascending)
+            )
+        }
+    }
+
+    /** 切换时间排序：旧→新 / 新→旧 */
+    fun toggleSort() {
+        val s = _state.value
         _state.value = s.copy(
-            searchQuery = q,
-            visibleTweets = sortTweets(matchQuery(s.allTweets, q), s.ascending)
+            ascending = !s.ascending,
+            visibleTweets = sortTweets(s.visibleTweets, !s.ascending)
         )
     }
 
     private fun matchQuery(list: List<Tweet>, q: String): List<Tweet> {
-        val raw = q.trim()
         // 定位短码 ?t=后8位（reader.html 的分享链接格式）→ 按 tweetId 后缀匹配
-        val tCode = Regex("""^\?t=(\w+)$""").find(raw)?.groupValues?.get(1)
-        if (tCode != null) return list.filter { it.tweetId.endsWith(tCode) }
-        val lower = raw.lowercase()
+        SearchUtil.extractTCode(q.trim())?.let { code ->
+            return list.filter { it.tweetId.endsWith(code) }
+        }
+        if (SearchUtil.isFullTweetId(q.trim())) return list.filter { it.tweetId == q.trim() }
+        val hasAscii = SearchUtil.hasAsciiLetter(q)
+        val lower = q.lowercase(java.util.Locale.ROOT)
         return list.filter {
-            it.text.lowercase().contains(lower) ||
-                it.bodyText.lowercase().contains(lower) ||
-                it.date.contains(raw) || it.time.contains(raw) ||
-                it.tweetId.contains(raw)   // 支持按完整/部分推文 ID 搜索
+            SearchUtil.matches(it.text, q, lower, hasAscii) ||
+                SearchUtil.matches(it.bodyText, q, lower, hasAscii) ||
+                it.date.contains(q) || it.time.contains(q) ||
+                it.tweetId.contains(q)   // 支持按完整/部分推文 ID 搜索
         }
     }
 

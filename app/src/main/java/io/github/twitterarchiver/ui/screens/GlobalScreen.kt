@@ -17,6 +17,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.text.style.TextOverflow
+import io.github.twitterarchiver.ui.components.Avatar
+import io.github.twitterarchiver.ui.components.SearchResultRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,6 +52,20 @@ fun GlobalScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val bookmarks by bookmarkVm.bookmarks.collectAsStateWithLifecycle()
+    var queryInput by remember { mutableStateOf("") }
+
+    LaunchedEffect(state.jumpTarget, state.visible) {
+        val id = state.jumpTarget ?: return@LaunchedEffect
+        val idx = state.visible.indexOfFirst { it.tweetId == id }
+        if (idx >= 0) {
+            listState.scrollToItem(idx)
+            vm.clearJumpTarget()
+        } else if (state.canLoadMore) {
+            vm.loadMore()
+        } else {
+            vm.clearJumpTarget()
+        }
+    }
     var showFilter by remember { mutableStateOf(false) }
     var showDates by remember { mutableStateOf(false) }
 
@@ -129,8 +147,8 @@ fun GlobalScreen(
 
         // 搜索框（自适应背景）
         io.github.twitterarchiver.ui.components.SearchField(
-            value = state.query,
-            onValueChange = vm::search,
+            value = queryInput,
+            onValueChange = { queryInput = it; vm.search(it) },
             placeholder = "搜索全站推文…"
         )
 
@@ -150,6 +168,77 @@ fun GlobalScreen(
                 Text(state.error!!, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             else -> LazyColumn(Modifier.fillMaxSize(), state = listState) {
+                if (state.query.isNotBlank()) {
+                    item {
+                        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    "找到 ${state.searchTotal} 条结果",
+                                    fontSize = 13.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                if (state.downloadedMonths.size < state.shards.size) {
+                                    Text(
+                                        "已下载 ${state.downloadedMonths.size}/${state.shards.size} 月",
+                                        fontSize = 11.sp,
+                                        maxLines = 1,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                    )
+                                }
+                            }
+                            val missing = state.searchMissingMonth
+                            when {
+                                state.fullSearchRunning -> Text(
+                                    "正在逐月查找…点此停止",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                        .clickable { vm.cancelFullSearch() }
+                                )
+                                missing != null -> Text(
+                                    "这条推文在 $missing，尚未下载 · 点此下载该月",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                        .clickable { vm.downloadMonth(missing) }
+                                )
+                                state.searchTotal == 0 && tCodeOf(state.query) != null -> Text(
+                                    "已加载的内容里没有找到 · 在全部月份中查找",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                        .clickable { vm.searchAllMonths(tCodeOf(state.query)!!) }
+                                )
+                            }
+                        }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
+                    }
+                    items(state.visible) { post ->
+                        SearchResultRow(
+                            date = post.displayDate,
+                            time = post.displayTime,
+                            text = post.text,
+                            keyword = state.query,
+                            author = {
+                                Row(verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Avatar(url = post.avatarUrl, size = 28.dp)
+                                    Text(post.account.n, fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold, maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f, fill = false))
+                                    Text(post.account.u, fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
+                            },
+                            onClick = { queryInput = ""; vm.jumpToPost(post) }
+                        )
+                    }
+                } else {
                 items(state.visible) { post ->
                     GlobalPostCard(
                         post = post,
@@ -173,6 +262,7 @@ fun GlobalScreen(
                         }
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
+                }
                 }
                 if (state.canLoadMore) {
                     item {
@@ -216,3 +306,7 @@ fun GlobalScreen(
         )
     }
 }
+
+/** 从查询里取定位短码（?t=xxxxxxxx），不是短码返回 null */
+private fun tCodeOf(q: String): String? =
+    io.github.twitterarchiver.util.SearchUtil.extractTCode(q)

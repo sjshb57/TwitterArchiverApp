@@ -8,6 +8,10 @@ import io.github.twitterarchiver.data.IndexAccount
 import io.github.twitterarchiver.data.CrossReply
 import io.github.twitterarchiver.data.GlobalIndexStore
 import io.github.twitterarchiver.data.GlobalShard
+import io.github.twitterarchiver.util.SearchUtil
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,9 +38,19 @@ data class GlobalState(
     val dayCounts: Map<String, Int> = emptyMap(),
     /** 当前日期筛选，yyyy-MM（整月）或 yyyy-MM-dd（某天） */
     val activeDate: String? = null,
-    val filterAccounts: Set<Pair<String, String>> = emptySet(),  // 当前筛选的账号集合（空=全部）
-    val accounts: List<IndexAccount> = emptyList()  // 所有账号（供筛选选择）
+    val filterAccounts: Set<Pair<String, String>> = emptySet(),
+    val accounts: List<IndexAccount> = emptyList(),
+    /** 当前搜索命中的总条数（0 表示没有在搜索） */
+    val searchTotal: Int = 0,
+    /** 搜索命中的推文所在月份尚未下载时，提示可以去下载它 */
+    val searchMissingMonth: String? = null,
+    /** 从搜索结果跳转的目标推文，列表滚动到位后清空 */
+    val jumpTarget: String? = null,
+    /** 正在逐月下载查找短码 */
+    val fullSearchRunning: Boolean = false
 )
+
+private const val SEARCH_DEBOUNCE_MS = 200L
 
 class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewModel() {
 
@@ -56,8 +70,8 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
     private var recentPosts: List<GlobalPost> = emptyList()
     private val monthPosts = LinkedHashMap<String, List<GlobalPost>>()
     private var loadedMonths: Set<String> = emptySet()
+    private val shardMonths: Set<String> get() = _state.value.shards.map { it.month }.toSet()
     private var activeDate: String? = null
-    /** 年下载会并发触发同一个月，串行化避免重复下载与并发改 loadedMonths */
     private val monthLock = kotlinx.coroutines.sync.Mutex()
 
     init { load() }
@@ -67,7 +81,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
         viewModelScope.launch {
             _state.value = GlobalState(loading = true)
             try {
-                // 1. 先加载轻量的"最新一批"(小、秒开)。工作流已排好序，直接读。
                 val (accts, recent) = api.fetchRecentTimeline()
                 recentPosts = recent
                 allPosts = recent
@@ -76,11 +89,9 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
                 recentLoaded = true
                 page = 0
                 emitPage()
-                // 2. 后台静默加载完整索引 + 跨账号回复
                 loadFull()
                 loadCrossReplies()
             } catch (e: Exception) {
-                // recent 失败则直接尝试完整索引
                 loadFullAsInitial()
             }
         }
@@ -302,7 +313,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
         }
 
         // 3. 主人自己的回复链（对齐网页版：replyMap 按 conversation_id 归组）
-        //    主推文的 conversation_id == 自己的 tweet_id，所以取 replyMap[主推文id]
         val replyMap = HashMap<String, MutableList<io.github.twitterarchiver.data.Tweet>>()
         for (t in tweets) {
             if (t.isVirtual) continue
@@ -396,41 +406,130 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
     }
 
     /** 应用账号筛选 + 搜索词 */
+    private var searchJob: Job? = null
+    /** 上一次的查询词与结果，用于增量收窄 */
+    private var lastQuery: String = ""
+    private var lastResult: List<GlobalPost> = emptyList()
+
     private fun applyFilter(q: String) {
-        viewModelScope.launch {
-            filtered = withContext(Dispatchers.Default) {
-                var list = allPosts
-                // 前缀匹配，yyyy-MM 就是整月，yyyy-MM-dd 就是某天
-                activeDate?.let { d -> list = list.filter { it.displayDate.startsWith(d) } }
-                if (currentFilters.isNotEmpty()) {
-                    list = list.filter { (it.account.r to it.account.a) in currentFilters }
-                }
-                if (q.isNotBlank()) {
-                    val raw = q.trim()
-                    // 定位短码 ?t=后8位：提取后8位做后缀匹配
-                    val tCode = Regex("^\\?t=(\\w+)$").find(raw)?.groupValues?.get(1)
-                    if (tCode != null) {
-                        list = list.filter { it.tweetId.endsWith(tCode) }
-                    } else {
-                        val lower = raw.lowercase()
-                        list = list.filter {
-                            it.text.lowercase().contains(lower) ||
-                                it.account.n.lowercase().contains(lower) ||
-                                it.account.u.lowercase().contains(lower) ||
-                                it.tweetId.contains(raw)   // 支持按推文 ID 搜索
-                        }
-                    }
-                }
-                list
-            }
+        searchJob?.cancel()
+        val debounce = q.isNotBlank() && q != lastQuery
+        searchJob = viewModelScope.launch {
+            if (debounce) delay(SEARCH_DEBOUNCE_MS)
+            val raw = q
+            val result = withContext(Dispatchers.Default) { computeFiltered(raw) }
+            lastQuery = raw
+            lastResult = result
+            filtered = result
             page = 0
+            val missing = if (result.isEmpty() && raw.isNotBlank()) {
+                SearchUtil.monthFromTweetId(raw.trim())
+                    ?.takeIf { it !in loadedMonths && shardMonths.contains(it) }
+            } else null
             _state.value = _state.value.copy(
                 query = q,
                 filterAccounts = currentFilters,
                 accounts = allAccounts,
-                activeDate = activeDate
+                activeDate = activeDate,
+                searchTotal = if (raw.isBlank()) 0 else result.size,
+                searchMissingMonth = missing
             )
             emitPage()
+        }
+    }
+
+    private fun computeFiltered(raw: String): List<GlobalPost> {
+        val prevDate = lastFilterDate
+        val prevAccounts = lastFilterAccounts
+        lastFilterDate = activeDate
+        lastFilterAccounts = currentFilters
+
+        var base = allPosts
+        activeDate?.let { d -> base = base.filter { it.displayDate.startsWith(d) } }
+        if (currentFilters.isNotEmpty()) {
+            base = base.filter { (it.account.r to it.account.a) in currentFilters }
+        }
+        if (raw.isBlank()) return base
+
+        SearchUtil.extractTCode(raw.trim())?.let { code ->
+            return base.filter { it.tweetId.endsWith(code) }
+        }
+        if (SearchUtil.isFullTweetId(raw.trim())) {
+            return base.filter { it.tweetId == raw.trim() }
+        }
+
+        val canNarrow = lastQuery.isNotBlank() &&
+            raw.startsWith(lastQuery) &&
+            lastResult.isNotEmpty() &&
+            activeDate == prevDate &&
+            currentFilters == prevAccounts
+        val source = if (canNarrow) lastResult else base
+
+        val hasAscii = SearchUtil.hasAsciiLetter(raw)
+        val lower = raw.lowercase(java.util.Locale.ROOT)
+        return source.filter {
+            SearchUtil.matches(it.text, raw, lower, hasAscii) ||
+                SearchUtil.matches(it.account.n, raw, lower, hasAscii) ||
+                SearchUtil.matches(it.account.u, raw, lower, hasAscii) ||
+                it.tweetId.contains(raw)
+        }
+    }
+
+    private var lastFilterDate: String? = null
+    private var lastFilterAccounts: Set<Pair<String, String>> = emptySet()
+
+    /**
+     * 从搜索结果跳到某条推文：清空搜索词、把日期筛选定位到它那一天，
+     * 并记下要高亮的 tweetId 供列表滚动定位。
+     */
+    fun jumpToPost(post: GlobalPost) {
+        val day = post.displayDate
+        lastQuery = ""
+        lastResult = emptyList()
+        activeDate = day.takeIf { it.isNotBlank() }
+        _state.value = _state.value.copy(
+            query = "",
+            searchTotal = 0,
+            searchMissingMonth = null,
+            jumpTarget = post.tweetId
+        )
+        applyFilter("")
+    }
+
+    /**
+     * 短码搜不到时的降级：从最新月份倒着逐个下载并检查，命中即停。
+     * 短码是推文 ID 的后 8 位，而雪花 ID 的时间戳在高位，
+     * 所以短码本身推不出日期，只能这样逐月找。
+     */
+    fun searchAllMonths(code: String) {
+        if (fullSearchJob?.isActive == true) return
+        fullSearchJob = viewModelScope.launch {
+            val months = _state.value.shards.map { it.month }
+                .filter { it !in loadedMonths }
+                .sortedDescending()
+            _state.value = _state.value.copy(fullSearchRunning = true)
+            for (m in months) {
+                if (!isActive) break
+                val shard = meta?.shards?.find { it.month == m } ?: continue
+                loadShard(shard)
+                if (allPosts.any { it.tweetId.endsWith(code) }) break
+            }
+            _state.value = _state.value.copy(fullSearchRunning = false)
+            applyFilter(_state.value.query)
+        }
+    }
+
+    fun cancelFullSearch() {
+        fullSearchJob?.cancel()
+        _state.value = _state.value.copy(fullSearchRunning = false)
+    }
+
+    private var fullSearchJob: Job? = null
+
+    /** 列表滚动到目标后调用，避免返回时又跳一次 */
+    fun clearJumpTarget() {
+        if (_state.value.jumpTarget != null) {
+            _state.value = _state.value.copy(jumpTarget = null)
         }
     }
 
