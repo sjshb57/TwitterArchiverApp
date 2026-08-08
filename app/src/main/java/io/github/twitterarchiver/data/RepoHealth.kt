@@ -19,7 +19,8 @@ data class RepoHealth(
     val name: String,
     val sizeKb: Long,
     val daysSincePush: Int?,
-    val overdue: Boolean
+    val overdue: Boolean,
+    val private: Boolean = false
 ) {
     val sizeMb: Double get() = sizeKb / 1024.0
     /** GitHub Pages 站点上限 1 GB，单仓库建议上限 5 GB */
@@ -28,6 +29,11 @@ data class RepoHealth(
         sizeMb >= 1024 -> 1
         else -> 0
     }
+}
+
+enum class HealthSort(val label: String) {
+    STALE("更新"),
+    SIZE("体积")
 }
 
 /** 从 Dispatcher 的 dispatch.yml 解析出的轮转配置 */

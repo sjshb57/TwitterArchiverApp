@@ -132,6 +132,16 @@ fun AdminArchiveScreen(
                 // 三、资料维护
                 Act("⚡ 仅重建索引（快）") { pending = Triple("重建索引", "确定重建「$repo」的索引？仅跑 build-index，不抓取，几十秒完成。改完置顶/资料后用它快速生效。") { vm.triggerWorkflow(repo, "update.yml", mapOf("only_index" to "true")) }
                 }
+                Act("📦 压缩仓库历史") {
+                    pending = Triple("压缩历史",
+                        "把「$repo」的全部提交历史压成一次提交，回收 .git 里的旧版本对象。\n\n" +
+                        "存档内容一字不改，但历史不可恢复。\n" +
+                        "该仓库若有工作流正在运行会自动中止本次操作。\n" +
+                        "体积回收由 GitHub 后台完成，可能几小时后才反映在接口上。") {
+                        vm.triggerWorkflow("Dispatcher", "squash_history.yml",
+                            mapOf("target_repo" to repo, "confirm" to repo))
+                    }
+                }
                 Act("编辑 资料 (profile.json)") { onEditProfile(repo, account) }
                 Act("上传 Banner 图") { bannerPicker.launch("image/*") }
                 Act("🖼 修复账号头像") {

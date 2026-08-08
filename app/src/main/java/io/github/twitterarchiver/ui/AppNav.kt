@@ -34,6 +34,7 @@ sealed class Screen {
     data class AdminEditYml(val repo: String, val path: String) : Screen()
     data object AdminDeleteTweets : Screen()
     data object AdminNewArchive : Screen()
+    data object PrivateRepos : Screen()
     data class AdminArchive(val repo: String) : Screen()
     data class AdminEditProfile(val repo: String, val account: String) : Screen()
     data object AdminRequests : Screen()
@@ -336,7 +337,8 @@ fun AppNav(
                 vm = adminVm,
                 onBack = { navBack() },
                 onOpenDash = { navTo(Screen.AdminDash(it)) },
-                onOpenRepo = { navTo(Screen.AdminArchive(it)) }
+                onOpenRepo = { navTo(Screen.AdminArchive(it)) },
+                onOpenPrivate = { navTo(Screen.PrivateRepos) }
             )
         } else AdminDetailScreen(
             vm = adminVm,
@@ -347,6 +349,14 @@ fun AppNav(
             onDeleteTweets = { navTo(Screen.AdminDeleteTweets) },
             onNewArchive = { navTo(Screen.AdminNewArchive) },
             onOpenArchive = { navTo(Screen.AdminArchive(it)) }
+        )
+        is Screen.PrivateRepos -> RepoHealthScreen(
+            vm = adminVm,
+            privateOnly = true,
+            onBack = { navBack() },
+            onOpenDash = { },
+            onOpenRepo = { navTo(Screen.AdminArchive(it)) },
+            onOpenPrivate = { }
         )
         is Screen.AdminEditYml -> AdminEditYmlScreen(
             vm = adminVm,

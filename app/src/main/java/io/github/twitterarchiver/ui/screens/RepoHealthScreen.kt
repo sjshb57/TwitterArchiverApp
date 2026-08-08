@@ -16,6 +16,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.twitterarchiver.data.HealthSort
 import io.github.twitterarchiver.data.RepoHealth
 import io.github.twitterarchiver.viewmodel.AdminViewModel
 import io.github.twitterarchiver.viewmodel.DashRepo
@@ -26,20 +27,26 @@ fun RepoHealthScreen(
     vm: AdminViewModel,
     onBack: () -> Unit,
     onOpenDash: (DashRepo) -> Unit,
-    onOpenRepo: (String) -> Unit
+    onOpenRepo: (String) -> Unit,
+    onOpenPrivate: () -> Unit,
+    privateOnly: Boolean = false
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    var showAll by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { if (state.health.isEmpty()) vm.loadHealth() }
 
-    val needAttention = state.health.filter { it.overdue || it.sizeLevel > 0 }
-    val shown = if (showAll) state.health else needAttention
+    val privateRepos = state.health.filter { it.private }
+    val base = if (privateOnly) privateRepos else state.health.filter { !it.private }
+    val shown = when (state.healthSort) {
+        HealthSort.STALE -> base.sortedByDescending { it.daysSincePush ?: -1 }
+        HealthSort.SIZE -> base.sortedByDescending { it.sizeKb }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("仓库健康", fontSize = 18.sp, fontWeight = FontWeight.Bold) },
+                title = { Text(if (privateOnly) "私有仓库" else "仓库健康",
+                    fontSize = 18.sp, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     Text("‹", fontSize = 30.sp,
                         modifier = Modifier.padding(start = 16.dp, end = 8.dp).clickable { onBack() })
@@ -53,39 +60,41 @@ fun RepoHealthScreen(
         }
     ) { pad ->
         LazyColumn(Modifier.fillMaxSize().padding(pad)) {
-            item {
-                val r = state.rotation
-                Text(
-                    when {
-                        state.healthLoading -> "正在读取组织仓库…"
-                        r != null -> "共 ${state.health.size} 个存档 · 每天 ${r.batch * r.runsPerDay} 个 · " +
-                            "转一圈约 ${r.cycleDays} 天 · 超过 ${r.overdueDays} 天算异常"
-                        else -> "共 ${state.health.size} 个存档"
-                    },
-                    fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-                )
-                state.healthError?.let {
-                    Text(it, fontSize = 12.sp, color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 10.dp))
+            if (!privateOnly) {
+                item {
+                    val r = state.rotation
+                    Text(
+                        when {
+                            state.healthLoading -> "正在读取组织仓库…"
+                            r != null -> "共 ${state.health.size} 个存档 · 每天 ${r.batch * r.runsPerDay} 个 · " +
+                                "转一圈约 ${r.cycleDays} 天 · 超过 ${r.overdueDays} 天算异常"
+                            else -> "共 ${state.health.size} 个存档"
+                        },
+                        fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                    )
+                    state.healthError?.let {
+                        Text(it, fontSize = 12.sp, color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 10.dp))
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
                 }
-                HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
             }
 
-            item {
-                Row(
-                    Modifier.fillMaxWidth().clickable { onOpenDash(DashRepo.STARTER) }
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("存档模板", fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                        Text("project-starter · 新建存档使用的模板仓库",
-                            fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Text("›", fontSize = 20.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (!privateOnly) {
+                item {
+                    EntryRow(
+                        "私有仓库",
+                        if (state.healthLoading && state.health.isEmpty()) "统计中…"
+                        else "共 ${privateRepos.size} 个非公开存档",
+                        onOpenPrivate
+                    )
                 }
-                HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
+                item {
+                    EntryRow("存档模板", "project-starter · 新建存档使用的模板仓库") {
+                        onOpenDash(DashRepo.STARTER)
+                    }
+                }
             }
 
             if (!state.healthLoading && state.health.isNotEmpty()) {
@@ -94,24 +103,22 @@ fun RepoHealthScreen(
                         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            if (showAll) "全部 ${state.health.size} 个"
-                            else "需要注意 ${needAttention.size} 个",
-                            fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f)
-                        )
-                        Text(if (showAll) "只看异常" else "显示全部",
-                            fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.clickable { showAll = !showAll })
+                        Text("全部", fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        HealthSort.entries.forEach { sortMode ->
+                            val on = state.healthSort == sortMode
+                            Text(
+                                sortMode.label, fontSize = 12.sp,
+                                fontWeight = if (on) FontWeight.Bold else FontWeight.Normal,
+                                color = if (on) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.clip(RoundedCornerShape(999.dp))
+                                    .clickable { vm.setHealthSort(sortMode) }
+                                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
                     }
                     HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
-                }
-            }
-
-            if (!state.healthLoading && shown.isEmpty() && state.health.isNotEmpty()) {
-                item {
-                    Text("没有异常仓库", fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.fillMaxWidth().padding(40.dp))
                 }
             }
 
@@ -130,6 +137,22 @@ fun RepoHealthScreen(
 }
 
 @Composable
+private fun EntryRow(title: String, subtitle: String, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Text(subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Text("›", fontSize = 20.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
+}
+
+@Composable
 private fun HealthRow(h: RepoHealth, onClick: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().clickable { onClick() }
@@ -137,8 +160,16 @@ private fun HealthRow(h: RepoHealth, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
-            Text(h.name, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(h.name, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false))
+                if (h.private) {
+                    Text("私有", fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 6.dp))
+                }
+            }
             Text(
                 h.daysSincePush?.let { "$it 天前更新" } ?: "无更新记录",
                 fontSize = 12.sp,

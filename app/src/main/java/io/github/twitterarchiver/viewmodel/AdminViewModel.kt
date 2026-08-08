@@ -1,5 +1,6 @@
 package io.github.twitterarchiver.viewmodel
 
+import io.github.twitterarchiver.data.HealthSort
 import io.github.twitterarchiver.data.RepoHealth
 import io.github.twitterarchiver.data.RotationConfig
 import io.github.twitterarchiver.util.DateUtil
@@ -56,7 +57,8 @@ data class AdminState(
     val health: List<RepoHealth> = emptyList(),
     val healthLoading: Boolean = false,
     val healthError: String? = null,
-    val rotation: RotationConfig? = null
+    val rotation: RotationConfig? = null,
+    val healthSort: HealthSort = HealthSort.STALE
 )
 
 /** 仓库已创建、setup.yml 尚未确认触发成功的条目 */
@@ -175,6 +177,10 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
     /** 只刷新当前标记为运行中的仓库状态，供"所有存档"页轮询使用 */
     private val nonArchiveRepos = setOf("home", "Dispatcher", ".github", "project-starter")
 
+    fun setHealthSort(sort: HealthSort) {
+        _state.value = _state.value.copy(healthSort = sort)
+    }
+
     fun loadHealth() {
         val pat = _state.value.pat ?: return
         if (_state.value.healthLoading) return
@@ -198,9 +204,10 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                     name = r.name,
                     sizeKb = r.size,
                     daysSincePush = days,
-                    overdue = rotation != null && days != null && days > rotation.overdueDays
+                    overdue = rotation != null && days != null && days > rotation.overdueDays,
+                    private = r.private
                 )
-            }.sortedWith(compareByDescending<RepoHealth> { it.daysSincePush ?: -1 })
+            }
 
             _state.value = _state.value.copy(
                 healthLoading = false,
