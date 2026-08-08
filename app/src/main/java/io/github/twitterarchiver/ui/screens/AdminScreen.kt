@@ -82,7 +82,7 @@ fun AdminScreen(
         }
 
         if (!state.hasPat) {
-            PatSetup(onSave = { vm.savePat(it) })
+            PatSetup(verifying = state.patVerifying, onSave = { vm.savePat(it) })
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
@@ -175,7 +175,7 @@ private fun DashCard(dash: DashRepo, onClick: () -> Unit) {
 }
 
 @Composable
-private fun PatSetup(onSave: (String) -> Unit) {
+private fun PatSetup(verifying: Boolean, onSave: (String) -> Unit) {
     var pat by remember { mutableStateOf("") }
     Column(Modifier.fillMaxWidth().padding(20.dp)) {
         Text("配置 GitHub 令牌 (PAT)", fontSize = 14.sp, fontWeight = FontWeight.Bold,
@@ -204,7 +204,10 @@ private fun PatSetup(onSave: (String) -> Unit) {
             }
         }
         Spacer(Modifier.height(12.dp))
-        Button(onClick = { if (pat.isNotBlank()) onSave(pat.trim()) },
-            modifier = Modifier.fillMaxWidth()) { Text("保存令牌") }
+        Button(
+            onClick = { if (pat.isNotBlank()) onSave(pat.trim()) },
+            enabled = !verifying,
+            modifier = Modifier.fillMaxWidth()
+        ) { Text(if (verifying) "验证中…" else "保存令牌") }
     }
 }

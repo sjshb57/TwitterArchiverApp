@@ -45,7 +45,7 @@ data class RotationConfig(
     /** 转一圈需要的天数 */
     val cycleDays: Int
         get() = if (batch <= 0 || runsPerDay <= 0) 0
-        else Math.ceil(repoCount.toDouble() / (batch * runsPerDay)).toInt()
+        else kotlin.math.ceil(repoCount.toDouble() / (batch * runsPerDay)).toInt()
 
     /** 超过一圈还没轮到就算异常，留 20% 余量 */
     val overdueDays: Int get() = (cycleDays * 1.2).toInt().coerceAtLeast(1)

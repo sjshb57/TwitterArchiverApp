@@ -200,7 +200,7 @@ private fun MonthNode(
                         color = if (monthActive) MaterialTheme.colorScheme.primary
                                 else MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f))
-                    Text("${fmtCount(shard.count)}", fontSize = 11.sp,
+                    Text(fmtCount(shard.count), fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 val days = dayCounts.keys.filter { it.startsWith(shard.month) }.sortedDescending()

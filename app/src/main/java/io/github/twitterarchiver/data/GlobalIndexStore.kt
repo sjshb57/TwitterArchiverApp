@@ -17,10 +17,7 @@ data class GlobalIndexMeta(
     val accounts: List<IndexAccount>,
     val shards: List<GlobalShard>
 ) {
-    val years: List<String> get() = shards.map { it.month.take(4) }.distinct().sortedDescending()
     fun shardsOf(year: String) = shards.filter { it.month.startsWith(year) }
-    fun countOf(year: String) = shardsOf(year).sumOf { it.count }
-    fun bytesOf(year: String) = shardsOf(year).sumOf { it.bytes }
 }
 
 /**
@@ -59,21 +56,9 @@ object GlobalIndexStore {
         return hashOf(f.readBytes()) == shard.hash
     }
 
-    fun hasShard(month: String): Boolean = shardFile(month)?.isFile == true
-
     fun downloadedMonths(): Set<String> =
         dir()?.listFiles { f -> f.isFile && f.name.endsWith(".json") && f.name != "meta.json" }
             ?.map { it.name.removeSuffix(".json") }?.toSet() ?: emptySet()
-
-    fun downloadedYears(): Set<String> = downloadedMonths().map { it.take(4) }.toSet()
-
-    /** 某年已占用的磁盘字节 */
-    fun bytesOnDisk(year: String): Long =
-        dir()?.listFiles { f -> f.isFile && f.name.startsWith(year) && f.name.endsWith(".json") }
-            ?.sumOf { it.length() } ?: 0L
-
-    fun totalBytesOnDisk(): Long =
-        dir()?.listFiles { f -> f.isFile }?.sumOf { it.length() } ?: 0L
 
     fun deleteMonth(month: String) {
         shardFile(month)?.delete()
@@ -82,10 +67,6 @@ object GlobalIndexStore {
     fun deleteYear(year: String) {
         dir()?.listFiles { f -> f.isFile && f.name.startsWith(year) && f.name != "meta.json" }
             ?.forEach { it.delete() }
-    }
-
-    fun deleteAll() {
-        dir()?.listFiles()?.forEach { it.delete() }
     }
 
     fun hashOf(bytes: ByteArray): String =

@@ -420,14 +420,13 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
         val debounce = q.isNotBlank() && q != lastQuery
         searchJob = viewModelScope.launch {
             if (debounce) delay(SEARCH_DEBOUNCE_MS)
-            val raw = q
-            val result = withContext(Dispatchers.Default) { computeFiltered(raw) }
-            lastQuery = raw
+            val result = withContext(Dispatchers.Default) { computeFiltered(q) }
+            lastQuery = q
             lastResult = result
             filtered = result
             page = 0
-            val missing = if (result.isEmpty() && raw.isNotBlank()) {
-                SearchUtil.monthFromTweetId(raw.trim())
+            val missing = if (result.isEmpty() && q.isNotBlank()) {
+                SearchUtil.monthFromTweetId(q.trim())
                     ?.takeIf { it !in loadedMonths && shardMonths.contains(it) }
             } else null
             _state.value = _state.value.copy(
@@ -435,7 +434,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
                 filterAccounts = currentFilters,
                 accounts = allAccounts,
                 activeDate = activeDate,
-                searchTotal = if (raw.isBlank()) 0 else result.size,
+                searchTotal = if (q.isBlank()) 0 else result.size,
                 searchMissingMonth = missing
             )
             emitPage()

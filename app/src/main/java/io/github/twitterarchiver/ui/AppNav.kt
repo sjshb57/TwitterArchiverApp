@@ -76,9 +76,9 @@ fun AppNav(
     fun navTo(s: Screen) {
         backStack.add(screen)
         screen = s
-        val target = when {
-            s is Screen.AdminDash && s.dash == DashRepo.ALL_ARCHIVES -> adminListState
-            s is Screen.AdminNewArchive -> newArchiveListState
+        val target = when (s) {
+            is Screen.AdminDash -> if (s.dash == DashRepo.ALL_ARCHIVES) adminListState else null
+            is Screen.AdminNewArchive -> newArchiveListState
             else -> null
         }
         target?.let { st -> tabScope.launch { st.scrollToItem(0) } }

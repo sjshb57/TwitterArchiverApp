@@ -1,6 +1,7 @@
 package io.github.twitterarchiver.viewmodel
 
 import io.github.twitterarchiver.data.HealthSort
+import io.github.twitterarchiver.data.NetworkState
 import io.github.twitterarchiver.data.RepoHealth
 import io.github.twitterarchiver.data.RotationConfig
 import io.github.twitterarchiver.util.DateUtil
@@ -54,6 +55,7 @@ data class AdminState(
     val checkDone: Boolean = false,
     val hasCheckedOnce: Boolean = false,
     val busy: Boolean = false,
+    val patVerifying: Boolean = false,
     val health: List<RepoHealth> = emptyList(),
     val healthLoading: Boolean = false,
     val healthError: String? = null,
@@ -94,10 +96,29 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
             _state.value = _state.value.copy(pat = pat, hasPat = !pat.isNullOrBlank())
         }
     }
+    /**
+     * 先验证再保存。不验证的话错误的 PAT 会被原样存下来，
+     * 直到第一次触发工作流才报错，排查起来绕。
+     */
     fun savePat(pat: String) {
         viewModelScope.launch {
+            _state.value = _state.value.copy(patVerifying = true, message = null)
+            val user = repo.verifyToken(pat)
+            if (user == null) {
+                _state.value = _state.value.copy(
+                    patVerifying = false,
+                    message = if (!NetworkState.online) "当前离线，无法验证令牌，请联网后重试"
+                    else "令牌无效或权限不足，请确认已勾选 repo 与 workflow"
+                )
+                return@launch
+            }
             store.savePat(pat)
-            _state.value = _state.value.copy(pat = pat, hasPat = pat.isNotBlank(), message = "已保存令牌")
+            _state.value = _state.value.copy(
+                patVerifying = false,
+                pat = pat,
+                hasPat = pat.isNotBlank(),
+                message = "已保存令牌（${user.login}）"
+            )
         }
     }
     fun clearPat() {
