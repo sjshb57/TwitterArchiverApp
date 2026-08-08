@@ -166,7 +166,7 @@ UI 层不直接访问 `GitHubApi`，ViewModel 层不引用 Compose API，`util` 
 | 文件 | 职责 |
 | --- | --- |
 | `MainActivity.kt` | 单 Activity。启动时调用 `AppDirs.init()` 注入文件目录、启用边到边显示，随后挂载 Compose 树 |
-| `TwitterArchiverApp.kt` | Application。配置 Coil 全局 ImageLoader：内存缓存占比 25%、磁盘缓存 200 MB、`respectCacheHeaders(false)` 强制本地缓存、注册 `VideoFrameDecoder` 以支持视频封面取帧 |
+| `TwitterArchiverApp.kt` | Application，实现 `SingletonImageLoader.Factory` 配置 Coil 全局 ImageLoader：内存缓存占比 25%、磁盘缓存 200 MB、注册 `VideoFrameDecoder` 支持视频封面取帧。Coil 3 不自带网络层，需显式注册 `OkHttpNetworkFetcherFactory`，否则网络图片会静默失败 |
 
 ### 4.2 data 包
 

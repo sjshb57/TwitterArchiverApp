@@ -41,10 +41,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import coil.compose.AsyncImage
-import coil.imageLoader
-import coil.request.ImageRequest
-import coil.request.SuccessResult
+import coil3.compose.AsyncImage
+import coil3.imageLoader
+import coil3.request.ImageRequest
+import coil3.request.SuccessResult
+import coil3.request.allowHardware
 import io.github.twitterarchiver.util.ImageSaver
 import kotlinx.coroutines.launch
 
@@ -165,9 +166,8 @@ fun ImagePreviewOverlay(
                             val req = ImageRequest.Builder(context).data(url)
                                 .allowHardware(false).build()
                             val result = context.imageLoader.execute(req)
-                            // GIF 解出来是 MovieDrawable，强转会崩，这里安全取位图
-                            val bmp = (result as? SuccessResult)?.drawable
-                                ?.let { it as? android.graphics.drawable.BitmapDrawable }?.bitmap
+                            val bmp = (result as? SuccessResult)?.image
+                                ?.let { it as? coil3.BitmapImage }?.bitmap
                             bmp != null && ImageSaver.saveBitmap(
                                 context, bmp, "TA_${System.currentTimeMillis()}.jpg")
                         } catch (e: Exception) { false }

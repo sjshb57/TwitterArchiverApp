@@ -28,7 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.imageLoader
+import coil3.imageLoader
 import io.github.twitterarchiver.data.AppDirs
 import io.github.twitterarchiver.ui.components.ConfirmDialog
 import kotlinx.coroutines.Dispatchers
@@ -79,7 +79,7 @@ fun SettingsScreen(
 }
 
 /** 缓存管理行：离线索引 + 图片缓存，显示占用并支持一键清理 */
-@OptIn(coil.annotation.ExperimentalCoilApi::class)
+@OptIn(coil3.annotation.ExperimentalCoilApi::class)
 @Composable
 private fun CacheRow() {
     val ctx = LocalContext.current

@@ -168,7 +168,7 @@ Kotlin + Jetpack Compose + Material 3，单 Activity，自己实现的栈式导�
 | UI | Compose BOM 2026.06.01 · Material 3 |
 | 网络 | Ktor 3.5.1 |
 | 序列化 | kotlinx.serialization 1.11.0 |
-| 图片 | Coil 2.7（200 MB 磁盘缓存） |
+| 图片 | Coil 3.5（200 MB 磁盘缓存） |
 | 视频 | Media3 1.10.1 |
 | 存储 | DataStore 1.2.1 · Android Keystore（PAT 加密） |
 
