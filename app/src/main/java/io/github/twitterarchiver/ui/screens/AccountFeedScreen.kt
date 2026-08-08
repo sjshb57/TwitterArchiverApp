@@ -97,8 +97,8 @@ fun AccountFeedScreen(
     val listState = externalListState ?: rememberLazyListState()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var showDateTree by remember { mutableStateOf(false) }
-    var jumpTweetId by remember { mutableStateOf<String?>(null) }
-    var query by remember { mutableStateOf("") }
+    var jumpTweetId by remember(repo, account) { mutableStateOf<String?>(null) }
+    var query by remember(repo, account) { mutableStateOf("") }
 
     LaunchedEffect(repo, account) { readerVm.load(repo, account) }
 

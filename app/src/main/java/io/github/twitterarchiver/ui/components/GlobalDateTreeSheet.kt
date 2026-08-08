@@ -165,7 +165,7 @@ private fun MonthNode(
 ) {
     var open by remember(shard.month) { mutableStateOf(false) }
     val isDone = shard.month in downloaded
-    val month = shard.month.substring(5)
+    val month = shard.month.takeLast(2)
 
     Column {
         Row(Modifier.fillMaxWidth().clickable {
@@ -211,7 +211,7 @@ private fun MonthNode(
                                     else Color.Transparent)
                         .padding(start = 42.dp, end = 16.dp, top = 7.dp, bottom = 7.dp),
                         verticalAlignment = Alignment.CenterVertically) {
-                        Text(full.substring(8) + " 日", fontSize = 13.sp,
+                        Text(full.takeLast(2) + " 日", fontSize = 13.sp,
                             color = if (active) MaterialTheme.colorScheme.primary
                                     else MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.weight(1f))

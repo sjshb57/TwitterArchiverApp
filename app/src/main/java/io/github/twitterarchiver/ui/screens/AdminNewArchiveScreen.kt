@@ -46,7 +46,6 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import io.github.twitterarchiver.viewmodel.AdminViewModel
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 
 /** 建立新存档 + 待完善列表（建档完成但缺 banner/置顶的仓库，可点击去处理） */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -76,7 +75,7 @@ fun AdminNewArchiveScreen(
     LaunchedEffect(hasRunning) {
         if (!hasRunning) return@LaunchedEffect
         while (true) {
-            kotlinx.coroutines.delay(8.seconds)
+            kotlinx.coroutines.delay(8000.milliseconds)
             vm.refreshNewlyCreatedStatus()
         }
     }

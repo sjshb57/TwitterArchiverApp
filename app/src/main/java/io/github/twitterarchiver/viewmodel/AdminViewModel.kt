@@ -23,7 +23,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.launch
 import androidx.core.content.edit
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 
 /** 4 个仪表盘之一 */
 enum class DashRepo(val repo: String, val title: String) {
@@ -542,7 +541,7 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
             _state.value = _state.value.copy(busy = true)
             repo.generateRepo(pat, account)
                 .onSuccess {
-                    kotlinx.coroutines.delay(6.seconds)
+                    kotlinx.coroutines.delay(6000.milliseconds)
                     repo.dispatchWorkflow(pat, account, "setup.yml", mapOf("since" to ""))
                     repo.closeIssue(pat, number)
                     addNewlyCreated(account)   // 加入新建记录

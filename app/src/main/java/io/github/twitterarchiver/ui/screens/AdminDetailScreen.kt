@@ -47,7 +47,7 @@ import io.github.twitterarchiver.data.WorkflowRun
 import io.github.twitterarchiver.viewmodel.AdminViewModel
 import io.github.twitterarchiver.viewmodel.DashRepo
 import androidx.core.net.toUri
-import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Duration.Companion.milliseconds
 
 /** 仪表盘详情：工作流运行状态 + 操作（触发/暂停/重试）+ 各仪表盘专属操作入口 */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -73,15 +73,14 @@ fun AdminDetailScreen(
     if (dash == DashRepo.ALL_ARCHIVES) {
         LaunchedEffect(dash) {
             while (true) {
-                kotlinx.coroutines.delay(8.seconds)
-                // 只查当前标记为运行中的仓库，不会因为有 500 多个存档就把接口打爆
+                kotlinx.coroutines.delay(8000.milliseconds)
                 if (state.repoStatus.any { it.value == "running" }) vm.refreshRunningStatus()
             }
         }
     } else {
         LaunchedEffect(dash) {
             while (true) {
-                kotlinx.coroutines.delay(8.seconds)
+                kotlinx.coroutines.delay(8000.milliseconds)
                 val hasRunning = (state.runsByRepo[dash.repo] ?: emptyList())
                     .any { it.status == "in_progress" || it.status == "queued" }
                 if (hasRunning) vm.loadRuns(dash.repo, silent = true)
@@ -477,7 +476,7 @@ private fun runDuration(run: WorkflowRun): String {
     var now by remember(run.id) { mutableLongStateOf(System.currentTimeMillis()) }
     if (running) {
         androidx.compose.runtime.LaunchedEffect(run.id) {
-            while (true) { now = System.currentTimeMillis(); kotlinx.coroutines.delay(1.seconds) }
+            while (true) { now = System.currentTimeMillis(); kotlinx.coroutines.delay(1000.milliseconds) }
         }
     }
     if (start <= 0) return run.runStartedAt?.substringBefore("T") ?: ""
