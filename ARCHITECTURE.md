@@ -2,13 +2,13 @@
 
 本文档说明本项目的代码组织方式、各模块职责，以及基于本项目二次开发所需的改动点。使用说明请参见 README。
 
-| 项目 | 内容 |
-| --- | --- |
-| 代码规模 | 约 60 余个 Kotlin 文件 |
-| 技术栈 | Kotlin、Jetpack Compose、Material 3 |
-| 架构 | 单 Activity，自实现栈式导航，MVVM 分层 |
-| 构建 | AGP 9.2.1 / Gradle 9.5.1 / Kotlin 2.4.10 |
-| SDK | compileSdk 37 / minSdk 26 / targetSdk 37 |
+| 项目   | 内容                                       |
+|------|------------------------------------------|
+| 代码规模 | 约 60 余个 Kotlin 文件                        |
+| 技术栈  | Kotlin、Jetpack Compose、Material 3        |
+| 架构   | 单 Activity，自实现栈式导航，MVVM 分层               |
+| 构建   | AGP 9.2.1 / Gradle 9.5.1 / Kotlin 2.4.10 |
+| SDK  | compileSdk 37 / minSdk 26 / targetSdk 37 |
 
 ---
 
@@ -45,12 +45,12 @@ GitHub Pages（静态托管）
 
 ### 1.1 两类访问路径
 
-| 维度 | 存档读取 | 管理操作 |
-| --- | --- | --- |
-| 端点 | `*.github.io` | `api.github.com` |
-| 鉴权 | 无 | Personal Access Token |
-| 适用版本 | 全部 | 仅管理版 |
-| API 配额 | 不消耗 | 消耗（5000 次/小时） |
+| 维度     | 存档读取          | 管理操作                  |
+|--------|---------------|-----------------------|
+| 端点     | `*.github.io` | `api.github.com`      |
+| 鉴权     | 无             | Personal Access Token |
+| 适用版本   | 全部            | 仅管理版                  |
+| API 配额 | 不消耗           | 消耗（5000 次/小时）         |
 
 存档内容一律经由 Pages 读取，不经过 GitHub API。此约定贯穿全部数据访问代码，目的是避免消耗 API 配额并免除鉴权依赖。
 
@@ -58,10 +58,10 @@ GitHub Pages（静态托管）
 
 通过 Product Flavor 产出两个应用：
 
-| Flavor | 应用名 | applicationId 后缀 | `BuildConfig.IS_ADMIN` |
-| --- | --- | --- | --- |
-| `visitor` | 推文存档 | `.visitor` | `false` |
-| `admin` | 存档管理 | `.admin` | `true` |
+| Flavor    | 应用名  | applicationId 后缀 | `BuildConfig.IS_ADMIN` |
+|-----------|------|------------------|------------------------|
+| `visitor` | 推文存档 | `.visitor`       | `false`                |
+| `admin`   | 存档管理 | `.admin`         | `true`                 |
 
 `IS_ADMIN` 仅控制管理 Tab 的可见性，其余功能两个变体完全一致。二者 applicationId 不同，可并存安装。
 
@@ -73,15 +73,15 @@ GitHub Pages（静态托管）
 
 由 GitHub Actions 定期从各存档仓库汇总生成。量级为 2026 年 8 月的实测值，会随收录账号增长。
 
-| 文件 | 量级 | 内容 | 消费方 |
-| --- | --- | --- | --- |
-| `repos.json` | 约 180 KB | 账号清单：`repo`、`acct`、`name`、`username`、`description`、`avatar` | 账号列表页 |
-| `search-index/meta.json` | 数十 KB | 全站总条数、账号表、月度分片清单 | 全站时间线启动 |
-| `search-index/<YYYY-MM>.json` | 每片 3–12 MB | 该月的推文紧凑数组 | 全站时间线、全站搜索 |
-| `search-index.json` | 约 60 MB | 最近 6 个月的合集，仅供未升级的旧版本 | 旧版本兼容 |
-| `timeline-recent.json` | 约 430 KB | 近期推文与完整账号表 | 全站时间线首屏、完整性检测 |
-| `cross-replies.json` | 约 12 MB | 跨账号回复索引 | 回复链展开 |
-| `manifest/<repo>.json` | 数 KB | 月度哈希与字节区间 | 离线增量更新 |
+| 文件                            | 量级         | 内容                                                          | 消费方           |
+|-------------------------------|------------|-------------------------------------------------------------|---------------|
+| `repos.json`                  | 约 180 KB   | 账号清单：`repo`、`acct`、`name`、`username`、`description`、`avatar` | 账号列表页         |
+| `search-index/meta.json`      | 数十 KB      | 全站总条数、账号表、月度分片清单                                            | 全站时间线启动       |
+| `search-index/<YYYY-MM>.json` | 每片 3–12 MB | 该月的推文紧凑数组                                                   | 全站时间线、全站搜索    |
+| `search-index.json`           | 约 60 MB    | 最近 6 个月的合集，仅供未升级的旧版本                                        | 旧版本兼容         |
+| `timeline-recent.json`        | 约 430 KB   | 近期推文与完整账号表                                                  | 全站时间线首屏、完整性检测 |
+| `cross-replies.json`          | 约 12 MB    | 跨账号回复索引                                                     | 回复链展开         |
+| `manifest/<repo>.json`        | 数 KB       | 月度哈希与字节区间                                                   | 离线增量更新        |
 
 `posts` 采用数组而非对象以压缩体积，字段顺序为：
 
@@ -120,15 +120,15 @@ accounts/<账号>/wayback_snapshots/
 
 `index.json` 单条记录的关键字段：
 
-| 字段 | 说明 |
-| --- | --- |
-| `text` | 正文，换行已被替换为空格 |
-| `body_text` | 正文，保留原始换行；应用优先采用此字段 |
-| `timestamp` | ISO 8601 UTC 时间戳 |
-| `images` / `wanted_videos` / `embedded_videos` | 媒体相对路径，形如 `../image/x.jpg` |
-| `author_avatar` | 该条推文作者头像的相对路径 |
-| `is_virtual` | 为真表示被引用的外部推文，本地无独立 HTML |
-| `is_pinned` | 构建索引时依据 `profile.pinned` 计算所得 |
+| 字段                                             | 说明                            |
+|------------------------------------------------|-------------------------------|
+| `text`                                         | 正文，换行已被替换为空格                  |
+| `body_text`                                    | 正文，保留原始换行；应用优先采用此字段           |
+| `timestamp`                                    | ISO 8601 UTC 时间戳              |
+| `images` / `wanted_videos` / `embedded_videos` | 媒体相对路径，形如 `../image/x.jpg`    |
+| `author_avatar`                                | 该条推文作者头像的相对路径                 |
+| `is_virtual`                                   | 为真表示被引用的外部推文，本地无独立 HTML       |
+| `is_pinned`                                    | 构建索引时依据 `profile.pinned` 计算所得 |
 
 ---
 
@@ -163,107 +163,107 @@ UI 层不直接访问 `GitHubApi`，ViewModel 层不引用 Compose API，`util` 
 
 ### 4.1 入口
 
-| 文件 | 职责 |
-| --- | --- |
-| `MainActivity.kt` | 单 Activity。启动时调用 `AppDirs.init()` 注入文件目录、启用边到边显示，随后挂载 Compose 树 |
+| 文件                      | 职责                                                                                                                                                                                        |
+|-------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `MainActivity.kt`       | 单 Activity。启动时调用 `AppDirs.init()` 注入文件目录、启用边到边显示，随后挂载 Compose 树                                                                                                                           |
 | `TwitterArchiverApp.kt` | Application，实现 `SingletonImageLoader.Factory` 配置 Coil 全局 ImageLoader：内存缓存占比 25%、磁盘缓存 200 MB、注册 `VideoFrameDecoder` 支持视频封面取帧。Coil 3 不自带网络层，需显式注册 `OkHttpNetworkFetcherFactory`，否则网络图片会静默失败 |
 
 ### 4.2 data 包
 
-| 文件 | 职责 |
-| --- | --- |
-| `Config.kt` | 全部 URL 与身份常量的唯一定义处。包含组织名、申请仓库、模板仓库及各类 URL 构造函数 |
-| `GitHubApi.kt` | 网络层，基于 Ktor + OkHttp。前半部分为 Pages 读取接口，后半部分为需 PAT 的 GitHub API 写操作。`index.json` 采用 `android.util.JsonReader` 流式解析，避免大文件导致内存溢出 |
-| `Repository.kt` | 仓储层。含三级内存缓存（`reposCache` 单例与 `tweetsCache`、`profileCache` 两个 Map）、磁盘兜底读取，并转发管理操作 |
-| `Models.kt` | 全部 `@Serializable` 数据类：`ArchiveRepo`、`Tweet`、`Profile`、`GitHubIssue`、`WorkflowRun`、`IndexManifest` 等 |
-| `SearchIndex.kt` | 全站索引模型。`GlobalPost` 负责解析紧凑数组，并按扩展名将媒体列表分流为图片与视频两组 URL |
-| `GlobalIndexStore.kt` | 全站索引分片的本地副本。含 `GlobalIndexMeta`、`GlobalShard` 模型与按年增删的磁盘操作，详见 5.5 |
-| `OfflineIndexStore.kt` | 离线缓存实现。按月切分、哈希比对、HTTP Range 增量更新，详见 5.1 |
-| `Bookmarks.kt` | 书签存储（DataStore）及 JSON 导入导出 |
-| `Settings.kt` | 偏好设置（DataStore）：主题模式、默认 Tab、关注账号 |
-| `SecureStore.kt` | PAT 加密存储。使用 Android Keystore 生成的 AES-GCM 密钥加密后写入 DataStore；密钥不出 Keystore，密文换机后无法解密，需重新登录 |
-| `AppDirs.kt` | 持有应用 `filesDir`。因 ViewModel 中 `Repository` 以默认参数构造无法获取 Context，故由 MainActivity 启动时注入 |
-| `NetworkState.kt` | 全局网络状态与图片加载失败记录。见 5.3 |
+| 文件                     | 职责                                                                                                                           |
+|------------------------|------------------------------------------------------------------------------------------------------------------------------|
+| `Config.kt`            | 全部 URL 与身份常量的唯一定义处。包含组织名、申请仓库、模板仓库及各类 URL 构造函数                                                                               |
+| `GitHubApi.kt`         | 网络层，基于 Ktor + OkHttp。前半部分为 Pages 读取接口，后半部分为需 PAT 的 GitHub API 写操作。`index.json` 采用 `android.util.JsonReader` 流式解析，避免大文件导致内存溢出 |
+| `Repository.kt`        | 仓储层。含三级内存缓存（`reposCache` 单例与 `tweetsCache`、`profileCache` 两个 Map）、磁盘兜底读取，并转发管理操作                                             |
+| `Models.kt`            | 全部 `@Serializable` 数据类：`ArchiveRepo`、`Tweet`、`Profile`、`GitHubIssue`、`WorkflowRun`、`IndexManifest` 等                         |
+| `SearchIndex.kt`       | 全站索引模型。`GlobalPost` 负责解析紧凑数组，并按扩展名将媒体列表分流为图片与视频两组 URL                                                                        |
+| `GlobalIndexStore.kt`  | 全站索引分片的本地副本。含 `GlobalIndexMeta`、`GlobalShard` 模型与按年增删的磁盘操作，详见 5.5                                                            |
+| `OfflineIndexStore.kt` | 离线缓存实现。按月切分、哈希比对、HTTP Range 增量更新，详见 5.1                                                                                      |
+| `Bookmarks.kt`         | 书签存储（DataStore）及 JSON 导入导出                                                                                                   |
+| `Settings.kt`          | 偏好设置（DataStore）：主题模式、默认 Tab、关注账号                                                                                             |
+| `SecureStore.kt`       | PAT 加密存储。使用 Android Keystore 生成的 AES-GCM 密钥加密后写入 DataStore；密钥不出 Keystore，密文换机后无法解密，需重新登录                                     |
+| `AppDirs.kt`           | 持有应用 `filesDir`。因 ViewModel 中 `Repository` 以默认参数构造无法获取 Context，故由 MainActivity 启动时注入                                         |
+| `NetworkState.kt`      | 全局网络状态与图片加载失败记录。见 5.3                                                                                                        |
 
 ### 4.3 viewmodel 包
 
 各 ViewModel 均继承 `AndroidViewModel`，以 `StateFlow<XxxState>` 暴露状态，UI 层只读状态并调用其方法。
 
-| 文件 | 职责 |
-| --- | --- |
-| `AdminViewModel.kt` | 管理功能总入口。PAT 登录、四个仪表盘、工作流触发与取消、申请审批、建档流程、完整性检测（缺失 banner / 置顶 / 头像） |
+| 文件                           | 职责                                                                                |
+|------------------------------|-----------------------------------------------------------------------------------|
+| `AdminViewModel.kt`          | 管理功能总入口。PAT 登录、四个仪表盘、工作流触发与取消、申请审批、建档流程、完整性检测（缺失 banner / 置顶 / 头像）                |
 | `GlobalTimelineViewModel.kt` | 全站时间线。先加载 `timeline-recent.json` 呈现首屏，再按年合入 `search-index/` 分片；含分页、搜索、多账号筛选与跨账号回复 |
-| `ReaderViewModel.kt` | 个人推文页。加载索引与资料，支持按正文、推文 ID、定位短码搜索及日期跳转 |
-| `HomeViewModel.kt` | 账号列表与顶部统计 |
-| `ImagesViewModel.kt` | 媒体页，按图片、视频、其他分类筛选 |
-| `SettingsViewModel.kt` | 设置项读写 |
-| `ProfileStatsViewModel.kt` | 单账号统计，供资料卡片展示 |
-| `RequestViewModel.kt` | 访客提交存档申请 |
-| `AuthViewModel.kt` | PAT 登录态与令牌校验 |
-| `BookmarkViewModel.kt` | 书签增删与列表 |
+| `ReaderViewModel.kt`         | 个人推文页。加载索引与资料，支持按正文、推文 ID、定位短码搜索及日期跳转                                             |
+| `HomeViewModel.kt`           | 账号列表与顶部统计                                                                         |
+| `ImagesViewModel.kt`         | 媒体页，按图片、视频、其他分类筛选                                                                 |
+| `SettingsViewModel.kt`       | 设置项读写                                                                             |
+| `ProfileStatsViewModel.kt`   | 单账号统计，供资料卡片展示                                                                     |
+| `RequestViewModel.kt`        | 访客提交存档申请                                                                          |
+| `AuthViewModel.kt`           | PAT 登录态与令牌校验                                                                      |
+| `BookmarkViewModel.kt`       | 书签增删与列表                                                                           |
 
 ### 4.4 导航
 
-| 文件 | 职责 |
-| --- | --- |
-| `AppNav.kt` | 自实现栈式导航。`Screen` 密封类定义全部页面，以 `mutableListOf<Screen>` 作为返回栈。同时管理全局浮层（图片预览、单条推文卡片、资料卡片）与返回键行为（二级页出栈、主 Tab 双击退出）。底部 Tab 列表亦在此构造 |
-| `AppScaffold.kt` | 底部 Tab 骨架，仅负责渲染。Tab 内容为动态：设置关注账号后出现「关注」Tab，管理 Tab 由 `BuildConfig.IS_ADMIN` 决定 |
+| 文件               | 职责                                                                                                                           |
+|------------------|------------------------------------------------------------------------------------------------------------------------------|
+| `AppNav.kt`      | 自实现栈式导航。`Screen` 密封类定义全部页面，以 `mutableListOf<Screen>` 作为返回栈。同时管理全局浮层（图片预览、单条推文卡片、资料卡片）与返回键行为（二级页出栈、主 Tab 双击退出）。底部 Tab 列表亦在此构造 |
+| `AppScaffold.kt` | 底部 Tab 骨架，仅负责渲染。Tab 内容为动态：设置关注账号后出现「关注」Tab，管理 Tab 由 `BuildConfig.IS_ADMIN` 决定                                                |
 
 ### 4.5 页面
 
-| 文件 | 职责 |
-| --- | --- |
-| `AccountFeedScreen.kt` | 个人推文页。账号头部、吸顶搜索栏、推文/回复分页、无限滚动、日期树（年月日三级，含每日条数），结构与交互对齐网页版阅读器 |
-| `AdminDetailScreen.kt` | 仪表盘详情。工作流运行列表、触发与重试操作、完整性检测结果弹窗 |
-| `AdminArchiveScreen.kt` | 单仓库管理。工作流触发、资料编辑入口、Banner 上传、头像修复 |
-| `AdminNewArchiveScreen.kt` | 新建存档与待完善列表 |
-| `AdminScreen.kt` | 管理台首页，四个仪表盘入口与 PAT 登录 |
-| `ImagesScreen.kt` | 媒体浏览页，支持保存至系统相册 |
-| `AdminEditProfileScreen.kt` | 在线编辑 `profile.json`，输出保持 2 空格缩进且中文不转义，与原文件格式一致 |
-| `GlobalScreen.kt` | 全站时间线 |
-| `SettingsScreen.kt` | 设置页，含缓存占用统计与清理 |
-| `ListScreen.kt` | 账号列表 |
-| `ThemeScreen.kt` | 主题设置 |
-| `AdminRequestsScreen.kt` | 申请审批 |
-| `ThanksScreen.kt` | 致谢页 |
-| `FollowSelectScreen.kt` | 关注账号选择 |
-| `AdminEditYmlScreen.kt` | 编辑仓库内的工作流文件 |
-| `AdminDeleteTweetsScreen.kt` | 触发删除推文工作流 |
-| `SplashScreen.kt` | 启动页 |
-| `RequestScreen.kt` | 访客申请存档 |
-| `BookmarkScreen.kt` | 书签管理 |
-| `AccountReaderScreen.kt` | 网页版阅读器的 WebView 容器，顶栏含刷新入口 |
-| `AboutScreen.kt` | 关于页 |
-| `DefaultTabScreen.kt` | 默认启动页设置 |
+| 文件                           | 职责                                                           |
+|------------------------------|--------------------------------------------------------------|
+| `AccountFeedScreen.kt`       | 个人推文页。账号头部、吸顶搜索栏、推文/回复分页、无限滚动、日期树（年月日三级，含每日条数），结构与交互对齐网页版阅读器 |
+| `AdminDetailScreen.kt`       | 仪表盘详情。工作流运行列表、触发与重试操作、完整性检测结果弹窗                              |
+| `AdminArchiveScreen.kt`      | 单仓库管理。工作流触发、资料编辑入口、Banner 上传、头像修复                            |
+| `AdminNewArchiveScreen.kt`   | 新建存档与待完善列表                                                   |
+| `AdminScreen.kt`             | 管理台首页，四个仪表盘入口与 PAT 登录                                        |
+| `ImagesScreen.kt`            | 媒体浏览页，支持保存至系统相册                                              |
+| `AdminEditProfileScreen.kt`  | 在线编辑 `profile.json`，输出保持 2 空格缩进且中文不转义，与原文件格式一致               |
+| `GlobalScreen.kt`            | 全站时间线                                                        |
+| `SettingsScreen.kt`          | 设置页，含缓存占用统计与清理                                               |
+| `ListScreen.kt`              | 账号列表                                                         |
+| `ThemeScreen.kt`             | 主题设置                                                         |
+| `AdminRequestsScreen.kt`     | 申请审批                                                         |
+| `ThanksScreen.kt`            | 致谢页                                                          |
+| `FollowSelectScreen.kt`      | 关注账号选择                                                       |
+| `AdminEditYmlScreen.kt`      | 编辑仓库内的工作流文件                                                  |
+| `AdminDeleteTweetsScreen.kt` | 触发删除推文工作流                                                    |
+| `SplashScreen.kt`            | 启动页                                                          |
+| `RequestScreen.kt`           | 访客申请存档                                                       |
+| `BookmarkScreen.kt`          | 书签管理                                                         |
+| `AccountReaderScreen.kt`     | 网页版阅读器的 WebView 容器，顶栏含刷新入口                                   |
+| `AboutScreen.kt`             | 关于页                                                          |
+| `DefaultTabScreen.kt`        | 默认启动页设置                                                      |
 
 ### 4.6 复用组件
 
-| 文件 | 职责 |
-| --- | --- |
-| `GlobalPostCard.kt` | 推文卡片，全应用复用。含头像、正文、图片九宫格、视频封面、引用推文、回复链展开与分享菜单。全站时间线与个人页共用此组件 |
-| `ImagePreviewOverlay.kt` | 图片全屏预览。采用卡片式布局，卡片高度包裹图片，避免上下出现大面积空白 |
-| `SingleTweetDialog.kt` | 单条推文浮层，用于书签页就地查看，不触发页面跳转 |
-| `VideoPlayerOverlay.kt` | 视频全屏播放，按视频实际宽高比显示 |
-| `AccountFilterSheet.kt` | 全站账号多选筛选面板 |
-| `ProfileDialog.kt` | 账号资料卡片 |
-| `ReaderWebView.kt` | WebView 封装。以 URL 作为 key 保证切换账号时实例隔离；`reloadTrigger` 变化时绕过缓存重新加载 |
-| `LinkedText.kt` | 将正文中的 URL 渲染为可点击链接（`LinkAnnotation.Url`），显示为简短形式，点击跳转完整地址 |
-| `VideoPlayer.kt` | 基于 Media3 的内联播放器 |
-| `SearchField.kt` | 搜索框，使用 `BasicTextField` 自绘以规避 Material TextField 的固定高度限制 |
-| `Avatar.kt` | 圆形头像 |
-| `ConfirmDialog.kt` | 通用二次确认对话框 |
+| 文件                       | 职责                                                              |
+|--------------------------|-----------------------------------------------------------------|
+| `GlobalPostCard.kt`      | 推文卡片，全应用复用。含头像、正文、图片九宫格、视频封面、引用推文、回复链展开与分享菜单。全站时间线与个人页共用此组件     |
+| `ImagePreviewOverlay.kt` | 图片全屏预览。采用卡片式布局，卡片高度包裹图片，避免上下出现大面积空白                             |
+| `SingleTweetDialog.kt`   | 单条推文浮层，用于书签页就地查看，不触发页面跳转                                        |
+| `VideoPlayerOverlay.kt`  | 视频全屏播放，按视频实际宽高比显示                                               |
+| `AccountFilterSheet.kt`  | 全站账号多选筛选面板                                                      |
+| `ProfileDialog.kt`       | 账号资料卡片                                                          |
+| `ReaderWebView.kt`       | WebView 封装。以 URL 作为 key 保证切换账号时实例隔离；`reloadTrigger` 变化时绕过缓存重新加载 |
+| `LinkedText.kt`          | 将正文中的 URL 渲染为可点击链接（`LinkAnnotation.Url`），显示为简短形式，点击跳转完整地址       |
+| `VideoPlayer.kt`         | 基于 Media3 的内联播放器                                                |
+| `SearchField.kt`         | 搜索框，使用 `BasicTextField` 自绘以规避 Material TextField 的固定高度限制        |
+| `Avatar.kt`              | 圆形头像                                                            |
+| `ConfirmDialog.kt`       | 通用二次确认对话框                                                       |
 
 ### 4.7 util 包
 
-| 文件 | 职责 |
-| --- | --- |
-| `DateUtil.kt` | UTC 时间戳转本地时区显示 |
-| `ImageSaver.kt` | 保存图片至系统相册（MediaStore；Android 10 以下需存储权限，见 6 已知约束） |
-| `VideoSaver.kt` | 保存视频至系统相册 |
-| `AccountUtil.kt` | 账号名规范化，容错 `@name`、`x.com/name`、全角空格等输入形式 |
-| `TweetIdUtil.kt` | 推文 ID 规范化，从完整推文链接中提取数字 ID |
-| `MediaUtil.kt` | 将相对路径拼接为完整 URL |
-| `LinkUtil.kt` | 正文内 URL 的识别与短链展示形式 |
+| 文件               | 职责                                                |
+|------------------|---------------------------------------------------|
+| `DateUtil.kt`    | UTC 时间戳转本地时区显示                                    |
+| `ImageSaver.kt`  | 保存图片至系统相册（MediaStore；Android 10 以下需存储权限，见 6 已知约束） |
+| `VideoSaver.kt`  | 保存视频至系统相册                                         |
+| `AccountUtil.kt` | 账号名规范化，容错 `@name`、`x.com/name`、全角空格等输入形式          |
+| `TweetIdUtil.kt` | 推文 ID 规范化，从完整推文链接中提取数字 ID                         |
+| `MediaUtil.kt`   | 将相对路径拼接为完整 URL                                    |
+| `LinkUtil.kt`    | 正文内 URL 的识别与短链展示形式                                |
 
 ---
 
@@ -307,11 +307,11 @@ UI 层不直接访问 `GitHubApi`，ViewModel 层不引用 Compose API，`util` 
 
 ### 5.2 头像的三种来源
 
-| 使用位置 | 数据来源 | 典型取值 |
-| --- | --- | --- |
-| 账号列表页 | `repos.json` 的 `avatar` | `avatar/avatar.jpg` |
-| 全站筛选面板 | 聚合表的 `av` | `avatar_2060274602710855685.jpg` |
-| 个人页单条推文 | `index.json` 的 `author_avatar` | `avatar_xxx.jpg` |
+| 使用位置    | 数据来源                           | 典型取值                             |
+|---------|--------------------------------|----------------------------------|
+| 账号列表页   | `repos.json` 的 `avatar`        | `avatar/avatar.jpg`              |
+| 全站筛选面板  | 聚合表的 `av`                      | `avatar_2060274602710855685.jpg` |
+| 个人页单条推文 | `index.json` 的 `author_avatar` | `avatar_xxx.jpg`                 |
 
 第一种通常存在，后两种常因未抓取到而缺失，表现为「列表页头像正常但筛选面板空白」。
 
@@ -361,14 +361,14 @@ if (BuildConfig.IS_ADMIN) { /* 渲染管理 Tab */ }
 
 ## 6. 已知约束
 
-| 约束 | 影响 | 处理方式 |
-| --- | --- | --- |
-| 少数历史记录的 `timestamp` 为推特原始格式（`Wed Sep 09 ... 2020`） | 字符串比较取最大值会得到错误结果 | 涉及「最新」的判断改用聚合表 `av`，不做字符串比较 |
-| `text` 字段的换行被替换为空格 | 排版与网页版不一致 | 全部渲染路径优先采用 `body_text` |
-| GitHub Pages 的 ETag 随部署变化 | `If-Range` 导致非必要全量下载 | 改用内容哈希校验 |
-| Contents API 列目录静默截断至 1000 条 | 大目录下误判文件不存在 | 改用 Git Trees API |
-| 一个仓库可能对应多个账号 | 按仓库名做缓存键会串数据 | 磁盘缓存、离线索引目录、头像检测均以 `repo/account` 为键 |
-| Android 10 以下写入 MediaStore 需 `WRITE_EXTERNAL_STORAGE` | API 26–28 保存到相册失败 | 暂未支持，仅影响旧设备的保存功能 |
+| 约束                                                    | 影响                   | 处理方式                                 |
+|-------------------------------------------------------|----------------------|--------------------------------------|
+| 少数历史记录的 `timestamp` 为推特原始格式（`Wed Sep 09 ... 2020`）    | 字符串比较取最大值会得到错误结果     | 涉及「最新」的判断改用聚合表 `av`，不做字符串比较          |
+| `text` 字段的换行被替换为空格                                    | 排版与网页版不一致            | 全部渲染路径优先采用 `body_text`               |
+| GitHub Pages 的 ETag 随部署变化                             | `If-Range` 导致非必要全量下载 | 改用内容哈希校验                             |
+| Contents API 列目录静默截断至 1000 条                          | 大目录下误判文件不存在          | 改用 Git Trees API                     |
+| 一个仓库可能对应多个账号                                          | 按仓库名做缓存键会串数据         | 磁盘缓存、离线索引目录、头像检测均以 `repo/account` 为键 |
+| Android 10 以下写入 MediaStore 需 `WRITE_EXTERNAL_STORAGE` | API 26–28 保存到相册失败    | 暂未支持，仅影响旧设备的保存功能                     |
 
 ---
 
@@ -413,15 +413,15 @@ REQ_TOKEN=ghp_xxxxxxxxxxxx
 
 **聚合层（`home` 仓库）**
 
-| 文件 | 缺失时的影响 |
-| --- | --- |
-| `repos.json` | 账号列表页无内容（必需） |
-| `search-index/meta.json` | 全站时间线与全站搜索不可用（必需） |
-| `search-index/<YYYY-MM>.json` | 对应月份的推文缺失 |
-| `search-index.json` | 仅影响未升级的旧版本，当前版本不读取 |
-| `timeline-recent.json` | 全站首屏加载变慢；完整性检测不可用 |
-| `cross-replies.json` | 跨账号回复无法展开 |
-| `manifest/<repo>.json` | 离线增量更新失效，退化为每次全量下载 |
+| 文件                            | 缺失时的影响             |
+|-------------------------------|--------------------|
+| `repos.json`                  | 账号列表页无内容（必需）       |
+| `search-index/meta.json`      | 全站时间线与全站搜索不可用（必需）  |
+| `search-index/<YYYY-MM>.json` | 对应月份的推文缺失          |
+| `search-index.json`           | 仅影响未升级的旧版本，当前版本不读取 |
+| `timeline-recent.json`        | 全站首屏加载变慢；完整性检测不可用  |
+| `cross-replies.json`          | 跨账号回复无法展开          |
+| `manifest/<repo>.json`        | 离线增量更新失效，退化为每次全量下载 |
 
 **存档层（各账号仓库）**
 
@@ -440,27 +440,27 @@ accounts/<账号>/wayback_snapshots/
 
 **各存档仓库**
 
-| 工作流 | 用途 | 输入参数 |
-| --- | --- | --- |
-| `setup.yml` | 首次建档 | `since`（起始日期，留空表示全部） |
-| `update.yml` | 增量更新 | 无；或 `from_setup=true`（建档后接力全量重试）；或 `only_index=true`（仅重建索引） |
-| `retry_all.yml` | 重试永久失败的媒体 | 无 |
+| 工作流             | 用途        | 输入参数                                                        |
+|-----------------|-----------|-------------------------------------------------------------|
+| `setup.yml`     | 首次建档      | `since`（起始日期，留空表示全部）                                        |
+| `update.yml`    | 增量更新      | 无；或 `from_setup=true`（建档后接力全量重试）；或 `only_index=true`（仅重建索引） |
+| `retry_all.yml` | 重试永久失败的媒体 | 无                                                           |
 
 **`home` 仓库**
 
-| 工作流 | 用途 | 输入参数 |
-| --- | --- | --- |
-| `update-repos.yml` | 更新账号清单 | 无 |
-| `build_search_index.yml` | 重建全站搜索索引 | 无 |
-| `build-manifest.yml` | 生成离线索引清单 | 无 |
-| `aggregate_avatars.yml` | 汇总共享头像池 | 无 |
-| `push_best_avatars.yml` | 将清晰头像推送回各仓库 | `dry_run`（true 为试运行） |
-| `delete_tweets.yml` | 删除指定推文 | `target_repo`（目标存档仓库名）、`tweet_ids`（逗号或空格分隔）、`account`（可选，留空则扫描该仓库全部账号） |
+| 工作流                      | 用途          | 输入参数                                                                   |
+|--------------------------|-------------|------------------------------------------------------------------------|
+| `update-repos.yml`       | 更新账号清单      | 无                                                                      |
+| `build_search_index.yml` | 重建全站搜索索引    | 无                                                                      |
+| `build-manifest.yml`     | 生成离线索引清单    | 无                                                                      |
+| `aggregate_avatars.yml`  | 汇总共享头像池     | 无                                                                      |
+| `push_best_avatars.yml`  | 将清晰头像推送回各仓库 | `dry_run`（true 为试运行）                                                   |
+| `delete_tweets.yml`      | 删除指定推文      | `target_repo`（目标存档仓库名）、`tweet_ids`（逗号或空格分隔）、`account`（可选，留空则扫描该仓库全部账号） |
 
 **`Dispatcher` 仓库**
 
-| 工作流 | 用途 | 输入参数 |
-| --- | --- | --- |
+| 工作流            | 用途         | 输入参数                      |
+|----------------|------------|---------------------------|
 | `dispatch.yml` | 轮转触发一批仓库更新 | 无；或 `force_all=true` 触发全部 |
 
 轮转指针存于 `Dispatcher` 仓库的 Actions 变量 `DISPATCH_PTR_NAME`，值为「下一个该轮到的仓库名」。此处刻意存名字而非下标：候选列表按字母序排列，新增一个排序靠前的仓库会让其后所有仓库的下标整体偏移，存下标会导致指针原本指向的仓库被跳过，需再等一整轮才轮得到。

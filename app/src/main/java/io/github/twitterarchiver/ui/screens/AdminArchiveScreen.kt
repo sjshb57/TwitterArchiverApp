@@ -37,6 +37,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -117,34 +121,34 @@ fun AdminArchiveScreen(
                 Text("操作", fontSize = 13.sp, fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(vertical = 6.dp))
                 // 一、查看
-                Act("查看存档内容 (Reader)") { onOpenReader(repo, account) }
-                Act("查看存档内容 (Feed)") { onOpenFeed(repo, account) }
-                Act("在 GitHub 中打开") {
+                Act("查看存档内容 (Reader)", navigates = true) { onOpenReader(repo, account) }
+                Act("查看存档内容 (Feed)", navigates = true) { onOpenFeed(repo, account) }
+                Act("在 GitHub 中打开", navigates = true) {
                     ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
                         "https://github.com/TwitterArchiver/$repo".toUri()))
                 }
                 ActGroupDivider()
                 // 二、抓取更新
                 Act("触发 增量更新") { pending = Triple("增量更新", "确定触发「$repo」的增量更新？") { vm.triggerWorkflow(repo, "update.yml") } }
-                Act("增量更新 + 全部重试") { pending = Triple("增量+重试", "确定触发「$repo」的增量更新？完成后将自动接力全量重试（新建存档后用）。") { vm.triggerWorkflow(repo, "update.yml", mapOf("from_setup" to "true")) } }
                 Act("触发 全量重试") { pending = Triple("全量重试", "确定触发「$repo」的全量重试？耗时较长。") { vm.triggerWorkflow(repo, "retry_all.yml") } }
+                Act("触发 全量重试增量") { pending = Triple("增量+重试", "确定触发「$repo」的增量更新？完成后将自动接力全量重试（新建存档后用）。") { vm.triggerWorkflow(repo, "update.yml", mapOf("from_setup" to "true")) } }
                 ActGroupDivider()
                 // 三、资料维护
-                Act("⚡ 仅重建索引（快）") { pending = Triple("重建索引", "确定重建「$repo」的索引？仅跑 build-index，不抓取，几十秒完成。改完置顶/资料后用它快速生效。") { vm.triggerWorkflow(repo, "update.yml", mapOf("only_index" to "true")) }
+                Act("重建完整索引") { pending = Triple("重建索引", "确定重建「$repo」的索引？仅跑 build-index，不抓取，几十秒完成。改完置顶/资料后用它快速生效。") { vm.triggerWorkflow(repo, "update.yml", mapOf("only_index" to "true")) }
                 }
-                Act("📦 压缩仓库历史") {
+                Act("编辑用户资料", navigates = true) { onEditProfile(repo, account) }
+                Act("上传横幅图片", navigates = true) { bannerPicker.launch("image/*") }
+                Act("压缩仓库历史", danger = true) {
                     pending = Triple("压缩历史",
                         "把「$repo」的全部提交历史压成一次提交，回收 .git 里的旧版本对象。\n\n" +
-                        "存档内容一字不改，但历史不可恢复。\n" +
-                        "该仓库若有工作流正在运行会自动中止本次操作。\n" +
-                        "体积回收由 GitHub 后台完成，可能几小时后才反映在接口上。") {
+                                "存档内容一字不改，但历史不可恢复。\n" +
+                                "该仓库若有工作流正在运行会自动中止本次操作。\n" +
+                                "体积回收由 GitHub 后台完成，可能几小时后才反映在接口上。") {
                         vm.triggerWorkflow("Dispatcher", "squash_history.yml",
                             mapOf("target_repo" to repo, "confirm" to repo))
                     }
                 }
-                Act("编辑 资料 (profile.json)") { onEditProfile(repo, account) }
-                Act("上传 Banner 图") { bannerPicker.launch("image/*") }
-                Act("🖼 修复账号头像") {
+                Act("修复账号头像") {
                     pending = Triple("修复头像",
                         "把主头像复制一份，改名成列表页 / 全站时间线引用的头像文件名。\n\n" +
                         "用于该头像没抓到导致的破图；不修改任何 json。") {
@@ -176,11 +180,40 @@ private fun ActGroupDivider() {
 }
 
 @Composable
-private fun Act(label: String, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable { onClick() }.padding(vertical = 11.dp),
-        horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, fontSize = 13.sp, color = MaterialTheme.colorScheme.onBackground)
-        Text("›", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun Act(
+    label: String,
+    /** 会跳到别处才给箭头；原地触发的动作不给，列表因此自然分成两种质感 */
+    navigates: Boolean = false,
+    /** 破坏性操作：底部一条渐变横线，不铺整行底色 */
+    danger: Boolean = false,
+    onClick: () -> Unit
+) {
+    val accent = MaterialTheme.colorScheme.error
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .then(
+                if (!danger) Modifier else Modifier.drawBehind {
+                    val h = 2.dp.toPx()
+                    drawRect(
+                        brush = Brush.horizontalGradient(
+                            listOf(accent.copy(alpha = 0.85f), accent.copy(alpha = 0f))
+                        ),
+                        topLeft = Offset(0f, size.height - h),
+                        size = Size(size.width, h)
+                    )
+                }
+            )
+            .padding(vertical = 11.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, fontSize = 13.sp,
+            color = if (danger) MaterialTheme.colorScheme.error
+            else MaterialTheme.colorScheme.onBackground)
+        if (navigates) {
+            Text("›", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 

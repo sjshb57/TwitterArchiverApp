@@ -32,12 +32,14 @@ fun RepoHealthScreen(
     privateOnly: Boolean = false
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+    var localSort by remember { mutableStateOf(HealthSort.STALE) }
+    val sort = if (privateOnly) localSort else state.healthSort
 
     LaunchedEffect(Unit) { if (state.health.isEmpty()) vm.loadHealth() }
 
     val privateRepos = state.health.filter { it.private }
     val base = if (privateOnly) privateRepos else state.health.filter { !it.private }
-    val shown = when (state.healthSort) {
+    val shown = when (sort) {
         HealthSort.STALE -> base.sortedByDescending { it.daysSincePush ?: -1 }
         HealthSort.SIZE -> base.sortedByDescending { it.sizeKb }
     }
@@ -106,14 +108,17 @@ fun RepoHealthScreen(
                         Text("全部", fontSize = 13.sp,
                             fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                         HealthSort.entries.forEach { sortMode ->
-                            val on = state.healthSort == sortMode
+                            val on = sort == sortMode
                             Text(
                                 sortMode.label, fontSize = 12.sp,
                                 fontWeight = if (on) FontWeight.Bold else FontWeight.Normal,
                                 color = if (on) MaterialTheme.colorScheme.primary
                                 else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.clip(RoundedCornerShape(999.dp))
-                                    .clickable { vm.setHealthSort(sortMode) }
+                                    .clickable {
+                                        if (privateOnly) localSort = sortMode
+                                        else vm.setHealthSort(sortMode)
+                                    }
                                     .padding(horizontal = 10.dp, vertical = 4.dp)
                             )
                         }

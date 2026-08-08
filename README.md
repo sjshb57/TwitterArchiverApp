@@ -49,20 +49,20 @@
 
 ### 工具
 
-| 项目 | 说明 | 技术 / 协议 |
-| --- | --- | --- |
-| [**TwitterArchiverApp**](https://github.com/sjshb57/TwitterArchiverApp) | 本仓库。Android 客户端，分阅读版与管理版两个构建 | Kotlin · AGPL-3.0 |
-| [**IncandescenceArchiver**](https://github.com/sjshb57/IncandescenceArchiver) | 存档工具 `archive.py`。从 Wayback CDX 抓快照、下载图片视频头像、清洗 HTML 路径、生成 `index.json`；支持断点续传、精确重试与增量更新，并附 GitHub Actions 工作流 | Python · AGPL-3.0 |
-| [**IncandescenceReader**](https://github.com/sjshb57/IncandescenceReader) | 桌面离线阅读器。Electron 打包成免安装的便携应用，多账号切换，更新存档无需重新打包 | Electron · AGPL-3.0 |
+| 项目                                                                            | 说明                                                                                                             | 技术 / 协议             |
+|-------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|---------------------|
+| [**TwitterArchiverApp**](https://github.com/sjshb57/TwitterArchiverApp)       | 本仓库。Android 客户端，分阅读版与管理版两个构建                                                                                   | Kotlin · AGPL-3.0   |
+| [**IncandescenceArchiver**](https://github.com/sjshb57/IncandescenceArchiver) | 存档工具 `archive.py`。从 Wayback CDX 抓快照、下载图片视频头像、清洗 HTML 路径、生成 `index.json`；支持断点续传、精确重试与增量更新，并附 GitHub Actions 工作流 | Python · AGPL-3.0   |
+| [**IncandescenceReader**](https://github.com/sjshb57/IncandescenceReader)     | 桌面离线阅读器。Electron 打包成免安装的便携应用，多账号切换，更新存档无需重新打包                                                                  | Electron · AGPL-3.0 |
 
 ### 存档
 
-| 仓库 | 说明 |
-| --- | --- |
-| [**TwitterArchiver**](https://github.com/TwitterArchiver) | 存档组织，每个账号一个独立仓库，各自托管 GitHub Pages |
-| [**TwitterArchiver/home**](https://github.com/TwitterArchiver/home) | 门户与聚合数据：账号清单、全站搜索索引、跨账号回复索引 |
-| [**TwitterArchiver/search**](https://twitterarchiver.github.io/home/search.html) | 网页版入口，可浏览全部账号与全站搜索 |
-| [**TwitterArchiver/guestbook**](https://twitterarchiver.github.io/home/guestbook.html) | 提交想要留档的账号（应用内也可直接申请） |
+| 仓库                                                                                     | 说明                                |
+|----------------------------------------------------------------------------------------|-----------------------------------|
+| [**TwitterArchiver**](https://github.com/TwitterArchiver)                              | 存档组织，每个账号一个独立仓库，各自托管 GitHub Pages |
+| [**TwitterArchiver/home**](https://github.com/TwitterArchiver/home)                    | 门户与聚合数据：账号清单、全站搜索索引、跨账号回复索引       |
+| [**TwitterArchiver/search**](https://twitterarchiver.github.io/home/search.html)       | 网页版入口，可浏览全部账号与全站搜索                |
+| [**TwitterArchiver/guestbook**](https://twitterarchiver.github.io/home/guestbook.html) | 提交想要留档的账号（应用内也可直接申请）              |
 
 ---
 
@@ -70,14 +70,14 @@
 
 ### 阅读
 
-| 功能 | 说明 |
-| --- | --- |
-| **列表** | 全部存档账号，下拉刷新 |
-| **全站** | 所有账号的推文汇成一条时间流，支持多选账号筛选 |
-| **关注** | 把某个账号设为主页，打开应用直接进入他的时间线 |
-| **日期树** | 年 → 月 → 日 三级折叠，直达任意一天 |
-| **图片墙** | 单账号的全部图片，可保存到相册 |
-| **Reader** | 保留网页版阅读器入口，两种渲染方式随时切换 |
+| 功能         | 说明                      |
+|------------|-------------------------|
+| **列表**     | 全部存档账号，下拉刷新             |
+| **全站**     | 所有账号的推文汇成一条时间流，支持多选账号筛选 |
+| **关注**     | 把某个账号设为主页，打开应用直接进入他的时间线 |
+| **日期树**    | 年 → 月 → 日 三级折叠，直达任意一天   |
+| **图片墙**    | 单账号的全部图片，可保存到相册         |
+| **Reader** | 保留网页版阅读器入口，两种渲染方式随时切换   |
 
 ### 推文卡片
 
@@ -133,10 +133,10 @@
 
 ### 系统要求
 
-| | |
-| --- | --- |
+|      |                                  |
+|------|----------------------------------|
 | 运行环境 | Android 8.0（API 26）及以上，arm64-v8a |
-| 构建环境 | JDK 21、Android SDK 37 |
+| 构建环境 | JDK 21、Android SDK 37            |
 
 ### 步骤
 
@@ -161,22 +161,22 @@ cd TwitterArchiverApp
 
 Kotlin + Jetpack Compose + Material 3，单 Activity，自己实现的栈式导航。
 
-| | |
-| --- | --- |
-| 构建 | AGP 9.2.1 / Gradle 9.5.1 / Kotlin 2.4.10 |
-| SDK | minSdk 26 · compileSdk 37 · targetSdk 37 |
-| UI | Compose BOM 2026.06.01 · Material 3 |
-| 网络 | Ktor 3.5.1 |
-| 序列化 | kotlinx.serialization 1.11.0 |
-| 图片 | Coil 3.5（200 MB 磁盘缓存） |
-| 视频 | Media3 1.10.1 |
-| 存储 | DataStore 1.2.1 · Android Keystore（PAT 加密） |
+|     |                                            |
+|-----|--------------------------------------------|
+| 构建  | AGP 9.2.1 / Gradle 9.5.1 / Kotlin 2.4.10   |
+| SDK | minSdk 26 · compileSdk 37 · targetSdk 37   |
+| UI  | Compose BOM 2026.06.01 · Material 3        |
+| 网络  | Ktor 3.5.1                                 |
+| 序列化 | kotlinx.serialization 1.11.0               |
+| 图片  | Coil 3.5（200 MB 磁盘缓存）                      |
+| 视频  | Media3 1.10.1                              |
+| 存储  | DataStore 1.2.1 · Android Keystore（PAT 加密） |
 
 ### 权限
 
-| 权限 | 用途 |
-| --- | --- |
-| `INTERNET` | 读取存档内容 |
+| 权限                     | 用途     |
+|------------------------|--------|
+| `INTERNET`             | 读取存档内容 |
 | `ACCESS_NETWORK_STATE` | 网络状态判断 |
 
 不申请存储权限，保存媒体走 MediaStore。
@@ -264,11 +264,11 @@ https://twitterarchiver.github.io/<仓库>/accounts/<账号>/wayback_snapshots/
 
 **特别致谢**
 
-| | |
-| --- | --- |
+|                   |        |
+|-------------------|--------|
 | X@Cheese_Ghostfox | 初次项目构建 |
-| X@damniwokeup | 想法支持 |
-| X@Wilf_Lin | 思路技术支持 |
+| X@damniwokeup     | 想法支持   |
+| X@Wilf_Lin        | 思路技术支持 |
 
 **致谢**
 
