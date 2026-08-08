@@ -562,7 +562,7 @@ class GitHubApi {
                 if (batch.size < 100) break
                 page++
             }
-            Result.success(all)
+            Result.success(all.distinctBy { it.name })
         } catch (e: Exception) {
             Result.failure(e)
         }

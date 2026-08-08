@@ -6,7 +6,8 @@ object Config {
     const val ORG_LOWER = "twitterarchiver"
 
     fun apiOrgRepos(page: Int) =
-        "https://api.github.com/orgs/$ORG/repos?per_page=100&page=$page&type=all"
+        "https://api.github.com/orgs/$ORG/repos?per_page=100&page=$page&type=all" +
+            "&sort=full_name&direction=asc"
 
     // GitHub Pages 门面
     const val PAGES_BASE = "https://$ORG_LOWER.github.io"

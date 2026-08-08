@@ -190,6 +190,7 @@ fun GlobalScreen(
                                 }
                             }
                             val missing = state.searchMissingMonth
+                            val tCode = tCodeOf(state.query)
                             when {
                                 state.fullSearchRunning -> Text(
                                     "正在逐月查找…点此停止",
@@ -205,12 +206,12 @@ fun GlobalScreen(
                                     modifier = Modifier.padding(top = 4.dp)
                                         .clickable { vm.downloadMonth(missing) }
                                 )
-                                state.searchTotal == 0 && tCodeOf(state.query) != null -> Text(
+                                state.searchTotal == 0 && tCode != null -> Text(
                                     "已加载的内容里没有找到 · 在全部月份中查找",
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.padding(top = 4.dp)
-                                        .clickable { vm.searchAllMonths(tCodeOf(state.query)!!) }
+                                        .clickable { vm.searchAllMonths(tCode) }
                                 )
                             }
                         }

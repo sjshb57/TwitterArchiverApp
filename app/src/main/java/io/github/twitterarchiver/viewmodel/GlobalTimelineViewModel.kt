@@ -147,19 +147,25 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
 
     fun deleteMonth(month: String) {
         viewModelScope.launch {
-            withContext(Dispatchers.IO) { GlobalIndexStore.deleteMonth(month) }
-            loadedMonths = loadedMonths - month
-            rebuildFromLoaded()
-            _state.value = _state.value.copy(downloadedMonths = GlobalIndexStore.downloadedMonths())
+            monthLock.withLock {
+                withContext(Dispatchers.IO) { GlobalIndexStore.deleteMonth(month) }
+                loadedMonths = loadedMonths - month
+                monthPosts.remove(month)
+                rebuildFromLoaded()
+                _state.value = _state.value.copy(downloadedMonths = GlobalIndexStore.downloadedMonths())
+            }
         }
     }
 
     fun deleteYear(year: String) {
         viewModelScope.launch {
-            withContext(Dispatchers.IO) { GlobalIndexStore.deleteYear(year) }
-            loadedMonths = loadedMonths.filterNot { it.startsWith(year) }.toSet()
-            rebuildFromLoaded()
-            _state.value = _state.value.copy(downloadedMonths = GlobalIndexStore.downloadedMonths())
+            monthLock.withLock {
+                withContext(Dispatchers.IO) { GlobalIndexStore.deleteYear(year) }
+                loadedMonths = loadedMonths.filterNot { it.startsWith(year) }.toSet()
+                monthPosts.keys.filter { it.startsWith(year) }.forEach { monthPosts.remove(it) }
+                rebuildFromLoaded()
+                _state.value = _state.value.copy(downloadedMonths = GlobalIndexStore.downloadedMonths())
+            }
         }
     }
 
@@ -173,8 +179,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
         if (!silent) _state.value = _state.value.copy(
             monthProgress = _state.value.monthProgress + (shard.month to 0f))
         try {
-            // 每 64KB 回调一次，12MB 的分片会回调近 200 次。只在百分比整数变化时才发状态，
-            // 否则下载一个月就要触发两百次重组。
             var lastPct = -1
             val posts = api.fetchGlobalShard(shard, m.accounts) { done ->
                 if (!silent && shard.bytes > 0) {
