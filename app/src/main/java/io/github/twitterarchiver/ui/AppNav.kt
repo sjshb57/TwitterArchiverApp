@@ -103,7 +103,7 @@ fun AppNav(
     val followAccount by settingsVm.followAccount.collectAsState()
     val followName by settingsVm.followName.collectAsState()
 
-    val tabs = if (io.github.twitterarchiver.BuildConfig.IS_ADMIN) {
+    val tabs = if (BuildConfig.IS_ADMIN) {
         buildList {
             add(TabItem("列表"))
             add(TabItem("全站"))

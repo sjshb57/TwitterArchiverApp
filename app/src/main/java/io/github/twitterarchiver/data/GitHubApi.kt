@@ -642,21 +642,21 @@ class GitHubApi {
         body: String,
         workflow: String,
         inputs: Map<String, String>
-    ): String = when {
-        status.value == 422 && body.contains("Unexpected inputs", ignoreCase = true) -> {
+    ): String = when (status.value) {
+        422 if body.contains("Unexpected inputs", ignoreCase = true) -> {
             val names = inputs.keys.joinToString("、")
             "该仓库的 $workflow 是旧版本，不接受参数「$names」。" +
-                "请先把仓库里的 $workflow 更新到模板最新版再试。"
+                    "请先把仓库里的 $workflow 更新到模板最新版再试。"
         }
-        status.value == 422 && body.contains("Required input", ignoreCase = true) ->
+        422 if body.contains("Required input", ignoreCase = true) ->
             "$workflow 需要必填参数但本次没有提供，请检查该仓库的工作流定义。"
-        status.value == 422 ->
+        422 ->
             "$workflow 拒绝了这次触发（422）。多半是工作流文件与 App 传的参数对不上：$body"
-        status.value == 404 ->
+        404 ->
             "找不到 $workflow，可能该仓库还没有这个工作流文件，或令牌无权访问该仓库。"
-        status.value == 403 ->
+        403 ->
             "没有权限触发 $workflow。请确认令牌具备该仓库的 Actions 写权限。"
-        status.value == 401 ->
+        401 ->
             "令牌无效或已过期，请在设置里重新填写。"
         else -> "HTTP $status: $body"
     }

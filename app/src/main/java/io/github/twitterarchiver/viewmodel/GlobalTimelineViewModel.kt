@@ -118,7 +118,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
                 val local = GlobalIndexStore.downloadedMonths()
                 m.shards.filter { it.month in local }
                     .forEach { loadShard(it, silent = true, rebuild = false) }
-                rebuildFromLoaded()
+                monthLock.withLock { rebuildFromLoaded() }
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
                     loadingFull = false,
@@ -135,7 +135,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
             // 全部月份就绪后只重建一次：逐月重建的话，一年要把几十万条重排 12 遍。
             for (shard in m.shardsOf(year).sortedByDescending { it.month })
                 loadShard(shard, rebuild = false)
-            rebuildFromLoaded()
+            monthLock.withLock { rebuildFromLoaded() }
         }
     }
 
@@ -420,9 +420,15 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
         val debounce = q.isNotBlank() && q != lastQuery
         searchJob = viewModelScope.launch {
             if (debounce) delay(SEARCH_DEBOUNCE_MS)
-            val result = withContext(Dispatchers.Default) { computeFiltered(q) }
+            val prevDate = lastFilterDate
+            val prevAccounts = lastFilterAccounts
+            val result = withContext(Dispatchers.Default) {
+                computeFiltered(q, prevDate, prevAccounts)
+            }
             lastQuery = q
             lastResult = result
+            lastFilterDate = activeDate
+            lastFilterAccounts = currentFilters
             filtered = result
             page = 0
             val missing = if (result.isEmpty() && q.isNotBlank()) {
@@ -441,11 +447,11 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
         }
     }
 
-    private fun computeFiltered(raw: String): List<GlobalPost> {
-        val prevDate = lastFilterDate
-        val prevAccounts = lastFilterAccounts
-        lastFilterDate = activeDate
-        lastFilterAccounts = currentFilters
+    private fun computeFiltered(
+        raw: String,
+        prevDate: String?,
+        prevAccounts: Set<Pair<String, String>>
+    ): List<GlobalPost> {
 
         var base = allPosts
         activeDate?.let { d -> base = base.filter { it.displayDate.startsWith(d) } }

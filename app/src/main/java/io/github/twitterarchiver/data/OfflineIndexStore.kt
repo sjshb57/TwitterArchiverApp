@@ -76,14 +76,12 @@ class OfflineIndexStore(private val api: GitHubApi) {
             val res = api.fetchIndexRange(repo, account, span.offset, span.length)
                 ?: return fullRefresh(dir, repo, account) ?: readLocal(dir)
             val (status, bytes) = res
-            when {
-                status == 206 && sha16(bytes) == span.hash ->
+            when (status) {
+                206 if sha16(bytes) == span.hash ->
                     File(dir, "$month.json").writeBytes(bytes)
-                status == 200 ->
-                    // 服务器给了全量（文件已更新，比清单还新）：直接用它落盘
+                200 ->
                     return splitAndSave(dir, bytes) ?: parseWhole(bytes)
                 else ->
-                    // 哈希不符：清单过期、offset 已失效 → 全量兜底
                     return fullRefresh(dir, repo, account) ?: readLocal(dir)
             }
         }
