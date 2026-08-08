@@ -91,7 +91,7 @@ fun AdminArchiveScreen(
     // 自动刷新：仅当有运行中的任务时才轮询（避免无谓刷新打断浏览）
     LaunchedEffect(repo) {
         while (true) {
-            kotlinx.coroutines.delay(80000.milliseconds)
+            kotlinx.coroutines.delay(8000.milliseconds)
             // 只有存在 running 状态的运行才刷新，否则不动
             val hasRunning = (state.runsByRepo[repo] ?: emptyList()).any { it.status == "in_progress" || it.status == "queued" }
             if (hasRunning) vm.loadRuns(repo, silent = true)
