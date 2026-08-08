@@ -39,6 +39,7 @@ import io.github.twitterarchiver.data.GlobalPost
 import io.github.twitterarchiver.ui.components.GlobalPostCard
 import io.github.twitterarchiver.viewmodel.GlobalTimelineViewModel
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 /** Tab 2：全站时间线（用 search-index.json，分页 + 搜索） */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -88,7 +89,7 @@ fun GlobalScreen(
             refreshing = true
             io.github.twitterarchiver.data.NetworkState.clearFailed()
             vm.load()
-            refreshScope.launch { kotlinx.coroutines.delay(800); refreshing = false }
+            refreshScope.launch { kotlinx.coroutines.delay(800.milliseconds); refreshing = false }
         },
         modifier = Modifier.fillMaxSize().statusBarsPadding()
     ) {

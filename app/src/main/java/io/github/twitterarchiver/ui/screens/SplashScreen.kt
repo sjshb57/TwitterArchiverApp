@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.twitterarchiver.ui.theme.Accent
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * 启动页：纪念语句逐行淡入 + 整体缓缓上移的滚动动效。
@@ -47,9 +48,9 @@ fun SplashScreen(onFinish: () -> Unit) {
     LaunchedEffect(Unit) {
         for (i in 1..5) {
             stage = i
-            delay(280)
+            delay(280.milliseconds)
         }
-        delay(500)
+        delay(500.milliseconds)
         onFinish()
     }
 

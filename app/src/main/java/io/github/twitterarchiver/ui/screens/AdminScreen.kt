@@ -37,6 +37,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.twitterarchiver.viewmodel.AdminViewModel
 import io.github.twitterarchiver.viewmodel.DashRepo
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 /** 管理台：4 仪表盘入口。点击进各自详情页（AdminDetailScreen）。 */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -65,7 +66,7 @@ fun AdminScreen(
             refreshing = true
             vm.loadRequests()
             vm.runIntegrityCheck()   // 下拉刷新 = 重新全量检测更新角标
-            scope.launch { kotlinx.coroutines.delay(1200); refreshing = false }
+            scope.launch { kotlinx.coroutines.delay(1200.milliseconds); refreshing = false }
         },
         modifier = Modifier.fillMaxSize().statusBarsPadding()
     ) {

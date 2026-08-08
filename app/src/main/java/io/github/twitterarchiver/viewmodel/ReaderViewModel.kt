@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val SEARCH_DEBOUNCE_MS = 200L
 
@@ -86,7 +87,7 @@ class ReaderViewModel(private val repo: Repository = Repository()) : ViewModel()
             return
         }
         searchJob = viewModelScope.launch {
-            delay(SEARCH_DEBOUNCE_MS)
+            delay(SEARCH_DEBOUNCE_MS.milliseconds)
             val hit = withContext(Dispatchers.Default) { matchQuery(s.allTweets, q) }
             _state.value = _state.value.copy(
                 searchQuery = q,

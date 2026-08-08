@@ -71,6 +71,7 @@ import io.github.twitterarchiver.ui.components.SearchResultRow
 import io.github.twitterarchiver.viewmodel.GlobalTimelineViewModel
 import io.github.twitterarchiver.viewmodel.ReaderViewModel
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * 原生个人推文页（照搬 reader.html 的结构与交互）：
@@ -177,7 +178,7 @@ fun AccountFeedScreen(
             refreshing = true
             NetworkState.clearFailed()
             readerVm.load(repo, account, forceRefresh = true)
-            scope.launch { kotlinx.coroutines.delay(800); refreshing = false }
+            scope.launch { kotlinx.coroutines.delay(800.milliseconds); refreshing = false }
         },
         state = ptrState,
         // 本页内容延伸到状态栏下，指示器需单独下移，否则会和系统状态栏重叠

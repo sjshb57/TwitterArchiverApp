@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 
 data class GlobalState(
     val loading: Boolean = true,
@@ -243,8 +244,9 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
         }
     }
 
-    // 账号 index.json 缓存（repo/account -> tweets），避免重复拉取
-    private val accountIndexCache = HashMap<String, List<io.github.twitterarchiver.data.Tweet>>()
+    // 账号 index.json 缓存（repo/account -> tweets），避免重复拉取。
+    private val accountIndexCache =
+        java.util.concurrent.ConcurrentHashMap<String, List<io.github.twitterarchiver.data.Tweet>>()
 
     /**
      * 加载某主推文的完整对话：引用原推 + 回复链。
@@ -419,7 +421,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
         searchJob?.cancel()
         val debounce = q.isNotBlank() && q != lastQuery
         searchJob = viewModelScope.launch {
-            if (debounce) delay(SEARCH_DEBOUNCE_MS)
+            if (debounce) delay(SEARCH_DEBOUNCE_MS.milliseconds)
             val prevDate = lastFilterDate
             val prevAccounts = lastFilterAccounts
             val result = withContext(Dispatchers.Default) {

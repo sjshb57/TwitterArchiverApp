@@ -50,6 +50,7 @@ import io.github.twitterarchiver.data.WorkflowRun
 import io.github.twitterarchiver.ui.components.ConfirmDialog
 import io.github.twitterarchiver.viewmodel.AdminViewModel
 import androidx.core.net.toUri
+import kotlin.time.Duration.Companion.seconds
 
 /** 单个存档仓库管理：工作流状态 + 触发更新/重试 + 编辑资料入口 */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -90,7 +91,7 @@ fun AdminArchiveScreen(
     // 自动刷新：仅当有运行中的任务时才轮询（避免无谓刷新打断浏览）
     LaunchedEffect(repo) {
         while (true) {
-            kotlinx.coroutines.delay(8000)
+            kotlinx.coroutines.delay(8.seconds)
             // 只有存在 running 状态的运行才刷新，否则不动
             val hasRunning = (state.runsByRepo[repo] ?: emptyList()).any { it.status == "in_progress" || it.status == "queued" }
             if (hasRunning) vm.loadRuns(repo, silent = true)
@@ -291,7 +292,7 @@ private fun runDurationText(run: WorkflowRun): String {
     }
     if (running) {
         androidx.compose.runtime.LaunchedEffect(run.id) {
-            while (true) { now = System.currentTimeMillis(); kotlinx.coroutines.delay(1000) }
+            while (true) { now = System.currentTimeMillis(); kotlinx.coroutines.delay(1.seconds) }
         }
     }
     if (start <= 0) return ""

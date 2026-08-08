@@ -35,6 +35,7 @@ import io.github.twitterarchiver.ui.components.Avatar
 import io.github.twitterarchiver.ui.theme.Accent
 import io.github.twitterarchiver.viewmodel.HomeViewModel
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 /** Tab 1：账号列表（顶部 logo+统计 + 搜索 + 带头像和简介的列表） */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -54,7 +55,7 @@ fun ListScreen(
         onRefresh = {
             refreshing = true
             vm.load(forceRefresh = true)
-            scope.launch { kotlinx.coroutines.delay(800); refreshing = false }
+            scope.launch { kotlinx.coroutines.delay(800.milliseconds); refreshing = false }
         },
         modifier = Modifier.fillMaxSize().statusBarsPadding()
     ) {
