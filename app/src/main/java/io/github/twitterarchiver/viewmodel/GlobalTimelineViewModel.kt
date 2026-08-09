@@ -55,7 +55,7 @@ data class GlobalState(
 
 private const val SEARCH_DEBOUNCE_MS = 200L
 
-class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewModel() {
+class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : ViewModel() {
 
     private val _state = MutableStateFlow(GlobalState())
     val state: StateFlow<GlobalState> = _state.asStateFlow()

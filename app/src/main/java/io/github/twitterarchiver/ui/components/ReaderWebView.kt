@@ -30,6 +30,14 @@ import androidx.compose.ui.viewinterop.AndroidView
 private const val ARCHIVE_HOST = "twitterarchiver.github.io"
 private val HTTP_SCHEMES = setOf("http", "https")
 
+/**
+ * 存档页内嵌浏览器。
+ *
+ * 需要 JavaScript：存档 HTML 的排版、图片网格、折叠引用都靠内联脚本实现，
+ * 关掉就只剩裸文本。风险由 shouldOverrideUrlLoading 的白名单兜住——
+ * 只有 twitterarchiver.github.io 能在此上下文内加载，其余一律拦下。
+ */
+@android.annotation.SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun ReaderWebView(
     url: String,
@@ -38,11 +46,9 @@ fun ReaderWebView(
     reloadTrigger: Int = 0
 ) {
     var loading by remember(url) { mutableStateOf(true) }
-    // 已处理的 trigger 值，仅在真正变化时 reload，避免重组误触发
     var lastTrigger by remember(url) { mutableIntStateOf(reloadTrigger) }
 
     Box(modifier = modifier.fillMaxSize()) {
-        // key(url)：url 变化时整个 WebView 重建，不复用上个账号的实例/状态
         androidx.compose.runtime.key(url) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),

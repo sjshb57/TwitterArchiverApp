@@ -51,6 +51,7 @@ import io.github.twitterarchiver.ui.components.ConfirmDialog
 import io.github.twitterarchiver.viewmodel.AdminViewModel
 import androidx.core.net.toUri
 import kotlin.time.Duration.Companion.milliseconds
+import io.github.twitterarchiver.ui.components.LifecyclePolling
 
 /** 单个存档仓库管理：工作流状态 + 触发更新/重试 + 编辑资料入口 */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -89,13 +90,10 @@ fun AdminArchiveScreen(
 
     LaunchedEffect(repo) { vm.loadRuns(repo, silent = true) }
     // 自动刷新：仅当有运行中的任务时才轮询（避免无谓刷新打断浏览）
-    LaunchedEffect(repo) {
-        while (true) {
-            kotlinx.coroutines.delay(8000.milliseconds)
-            // 只有存在 running 状态的运行才刷新，否则不动
-            val hasRunning = (state.runsByRepo[repo] ?: emptyList()).any { it.status == "in_progress" || it.status == "queued" }
-            if (hasRunning) vm.loadRuns(repo, silent = true)
-        }
+    LifecyclePolling(8000.milliseconds, keys = arrayOf(repo)) {
+        val hasRunning = (state.runsByRepo[repo] ?: emptyList())
+            .any { it.status == "in_progress" || it.status == "queued" }
+        if (hasRunning) vm.loadRuns(repo, silent = true)
     }
 
     pending?.let { (title, msg, action) ->

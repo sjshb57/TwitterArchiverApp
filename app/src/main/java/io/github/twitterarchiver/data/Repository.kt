@@ -4,7 +4,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /** 数据仓库：统一入口，带简单内存缓存 */
-class Repository(private val api: GitHubApi = GitHubApi()) {
+class Repository(private val api: GitHubApi = GitHubApi.shared) {
+
+    companion object {
+        /**
+         * 全应用共享一个实例。之前每个 ViewModel 各持一个，
+         * 意味着 tweetsCache / profileCache 也各存一份——同一个账号的
+         * index.json 在内存里存了好几遍，缓存几乎白做。
+         */
+        val shared: Repository by lazy { Repository() }
+    }
+
 
     private val offline = OfflineIndexStore(api)
     private val diskJson = kotlinx.serialization.json.Json {
@@ -14,9 +24,12 @@ class Repository(private val api: GitHubApi = GitHubApi()) {
         AppDirs.root?.let { java.io.File(it, "index_cache/_meta").apply { mkdirs() } }
             ?.let { java.io.File(it, name) }
 
+    // 改成单例共享之后，多个 ViewModel 的协程会并发读写这几个缓存，
+    // 裸 mutableMap 在 Dispatchers.IO 上会有结构损坏或 ConcurrentModificationException
+    @Volatile
     private var reposCache: List<ArchiveRepo>? = null
-    private val tweetsCache = mutableMapOf<String, List<Tweet>>()
-    private val profileCache = mutableMapOf<String, Profile>()
+    private val tweetsCache = java.util.concurrent.ConcurrentHashMap<String, List<Tweet>>()
+    private val profileCache = java.util.concurrent.ConcurrentHashMap<String, Profile>()
 
     /** 所有存档账号（排除非账号仓库） */
     suspend fun getRepos(forceRefresh: Boolean = false): List<ArchiveRepo> =

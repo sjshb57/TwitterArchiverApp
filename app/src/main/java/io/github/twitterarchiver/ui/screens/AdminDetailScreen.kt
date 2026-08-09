@@ -48,6 +48,7 @@ import io.github.twitterarchiver.viewmodel.AdminViewModel
 import io.github.twitterarchiver.viewmodel.DashRepo
 import androidx.core.net.toUri
 import kotlin.time.Duration.Companion.milliseconds
+import io.github.twitterarchiver.ui.components.LifecyclePolling
 
 /** 仪表盘详情：工作流运行状态 + 操作（触发/暂停/重试）+ 各仪表盘专属操作入口 */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -70,21 +71,13 @@ fun AdminDetailScreen(
         else vm.loadRuns(dash.repo)
     }
     // 自动刷新：仅当有运行中的任务时才轮询（避免打断浏览）
-    if (dash == DashRepo.ALL_ARCHIVES) {
-        LaunchedEffect(dash) {
-            while (true) {
-                kotlinx.coroutines.delay(8000.milliseconds)
-                if (state.repoStatus.any { it.value == "running" }) vm.refreshRunningStatus()
-            }
-        }
-    } else {
-        LaunchedEffect(dash) {
-            while (true) {
-                kotlinx.coroutines.delay(8000.milliseconds)
-                val hasRunning = (state.runsByRepo[dash.repo] ?: emptyList())
-                    .any { it.status == "in_progress" || it.status == "queued" }
-                if (hasRunning) vm.loadRuns(dash.repo, silent = true)
-            }
+    LifecyclePolling(8000.milliseconds, keys = arrayOf(dash)) {
+        if (dash == DashRepo.ALL_ARCHIVES) {
+            if (state.repoStatus.any { it.value == "running" }) vm.refreshRunningStatus()
+        } else {
+            val hasRunning = (state.runsByRepo[dash.repo] ?: emptyList())
+                .any { it.status == "in_progress" || it.status == "queued" }
+            if (hasRunning) vm.loadRuns(dash.repo, silent = true)
         }
     }
 

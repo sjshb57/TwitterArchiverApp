@@ -18,7 +18,7 @@ data class RequestState(
  * 访客申请存档：用受限 token 创建 Issue。
  * 受限 token 内置在访客版（只能对 requests 仓库开 Issue，泄露危害有限）。
  */
-class RequestViewModel(private val repo: Repository = Repository()) : ViewModel() {
+class RequestViewModel(private val repo: Repository = Repository.shared) : ViewModel() {
 
     private val _state = MutableStateFlow(RequestState())
     val state: StateFlow<RequestState> = _state.asStateFlow()

@@ -32,7 +32,7 @@ data class ReaderState(
 )
 
 /** 阅读器：某账号的时间线/日期树/搜索/排序 */
-class ReaderViewModel(private val repo: Repository = Repository()) : ViewModel() {
+class ReaderViewModel(private val repo: Repository = Repository.shared) : ViewModel() {
 
     private val _state = MutableStateFlow(ReaderState())
     val state: StateFlow<ReaderState> = _state.asStateFlow()

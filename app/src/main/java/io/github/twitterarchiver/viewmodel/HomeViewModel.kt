@@ -20,7 +20,7 @@ data class HomeState(
 )
 
 /** 首页：账号列表 + 搜索 */
-class HomeViewModel(private val repo: Repository = Repository()) : ViewModel() {
+class HomeViewModel(private val repo: Repository = Repository.shared) : ViewModel() {
 
     private val _state = MutableStateFlow(HomeState())
     val state: StateFlow<HomeState> = _state.asStateFlow()

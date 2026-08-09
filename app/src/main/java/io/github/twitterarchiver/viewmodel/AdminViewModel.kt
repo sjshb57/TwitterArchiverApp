@@ -84,7 +84,7 @@ data class MissingItem(
 
 class AdminViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val repo = Repository()
+    private val repo = Repository.shared
     private val store = SecureStore(app)
 
     private val _state = MutableStateFlow(AdminState())

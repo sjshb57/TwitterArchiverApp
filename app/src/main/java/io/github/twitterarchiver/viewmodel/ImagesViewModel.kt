@@ -26,7 +26,7 @@ data class ImagesState(
 )
 
 /** 某账号的全部媒体（图片 + 视频 + 其他如 GIF），按类型可筛选 */
-class ImagesViewModel(private val repo: Repository = Repository()) : ViewModel() {
+class ImagesViewModel(private val repo: Repository = Repository.shared) : ViewModel() {
 
     private val _state = MutableStateFlow(ImagesState())
     val state: StateFlow<ImagesState> = _state.asStateFlow()

@@ -16,29 +16,58 @@ import io.github.twitterarchiver.ui.components.ProfileDialog
 import io.github.twitterarchiver.ui.screens.*
 import io.github.twitterarchiver.viewmodel.*
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableStateListOf
 
 /** 应用内的"页面"状态（简单栈式导航） */
+/**
+ * 导航目标。标注 @Serializable 是为了能存进 rememberSaveable——
+ * 没有它的话，转屏、切深浅色、改系统字号都会重建 Activity，
+ * 导航栈全丢、直接跳回首页。
+ */
+@kotlinx.serialization.Serializable
 sealed class Screen {
-    data object Tabs : Screen()
-    data class Reader(val repo: String, val account: String, val name: String) : Screen()
-    data class AccountFeed(val repo: String, val account: String, val name: String) : Screen()
-    data class Images(val repo: String, val account: String, val name: String) : Screen()
-    data object Theme : Screen()
-    data object Bookmarks : Screen()
-    data object Request : Screen()
-    data object About : Screen()
-    data object Thanks : Screen()
-    data object DefaultTab : Screen()
-    data object FollowSelect : Screen()
-    data class AdminDash(val dash: DashRepo) : Screen()
-    data class AdminEditYml(val repo: String, val path: String) : Screen()
-    data object AdminDeleteTweets : Screen()
-    data object AdminNewArchive : Screen()
-    data object PrivateRepos : Screen()
-    data class AdminArchive(val repo: String) : Screen()
-    data class AdminEditProfile(val repo: String, val account: String) : Screen()
-    data object AdminRequests : Screen()
+    @kotlinx.serialization.Serializable data object Tabs : Screen()
+    @kotlinx.serialization.Serializable data class Reader(val repo: String, val account: String, val name: String) : Screen()
+    @kotlinx.serialization.Serializable data class AccountFeed(val repo: String, val account: String, val name: String) : Screen()
+    @kotlinx.serialization.Serializable data class Images(val repo: String, val account: String, val name: String) : Screen()
+    @kotlinx.serialization.Serializable data object Theme : Screen()
+    @kotlinx.serialization.Serializable data object Bookmarks : Screen()
+    @kotlinx.serialization.Serializable data object Request : Screen()
+    @kotlinx.serialization.Serializable data object About : Screen()
+    @kotlinx.serialization.Serializable data object Thanks : Screen()
+    @kotlinx.serialization.Serializable data object DefaultTab : Screen()
+    @kotlinx.serialization.Serializable data object FollowSelect : Screen()
+    @kotlinx.serialization.Serializable data class AdminDash(val dash: DashRepo) : Screen()
+    @kotlinx.serialization.Serializable data class AdminEditYml(val repo: String, val path: String) : Screen()
+    @kotlinx.serialization.Serializable data object AdminDeleteTweets : Screen()
+    @kotlinx.serialization.Serializable data object AdminNewArchive : Screen()
+    @kotlinx.serialization.Serializable data object PrivateRepos : Screen()
+    @kotlinx.serialization.Serializable data class AdminArchive(val repo: String) : Screen()
+    @kotlinx.serialization.Serializable data class AdminEditProfile(val repo: String, val account: String) : Screen()
+    @kotlinx.serialization.Serializable data object AdminRequests : Screen()
 }
+
+private val navJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+
+/** 单个 Screen 的 Saver */
+private val ScreenSaver = androidx.compose.runtime.saveable.Saver<Screen, String>(
+    save = { runCatching { navJson.encodeToString(it) }.getOrNull() },
+    restore = { runCatching { navJson.decodeFromString<Screen>(it) }.getOrNull() }
+)
+
+/** 返回栈的 Saver：整条栈编码成一个字符串 */
+private val BackStackSaver =
+    androidx.compose.runtime.saveable.Saver<androidx.compose.runtime.snapshots.SnapshotStateList<Screen>, String>(
+        save = { runCatching { navJson.encodeToString(it.toList()) }.getOrNull() },
+        restore = { text ->
+            runCatching {
+                androidx.compose.runtime.mutableStateListOf<Screen>().apply {
+                    addAll(navJson.decodeFromString<List<Screen>>(text))
+                }
+            }.getOrNull()
+        }
+    )
 
 /** 弹窗目标账号（统一 ListScreen 和 GlobalScreen 的来源） */
 data class DialogTarget(
@@ -64,7 +93,9 @@ fun AppNav(
         }
     }
 
-    var screen by remember { mutableStateOf<Screen>(Screen.Tabs) }
+    var screen by rememberSaveable(stateSaver = ScreenSaver) {
+        mutableStateOf<Screen>(Screen.Tabs)
+    }
     val globalListState = androidx.compose.foundation.lazy.rememberLazyListState()
     val homeListState = androidx.compose.foundation.lazy.rememberLazyListState()
     val followListState = androidx.compose.foundation.lazy.rememberLazyListState()
@@ -72,7 +103,7 @@ fun AppNav(
     val newArchiveListState = androidx.compose.foundation.lazy.rememberLazyListState()
     val tabScope = androidx.compose.runtime.rememberCoroutineScope()
 
-    val backStack = remember { mutableListOf<Screen>() }
+    val backStack = rememberSaveable(saver = BackStackSaver) { mutableStateListOf<Screen>() }
     fun navTo(s: Screen) {
         backStack.add(screen)
         screen = s
@@ -193,7 +224,7 @@ fun AppNav(
             }
             // 样式2 弹窗（统计只拉该账号 index.json，数字从0跳动到最终值）
             dialogTarget?.let { t ->
-                val statsVm: ProfileStatsViewModel = viewModel(key = "stats_${t.repo}_${t.account}")
+                val statsVm: ProfileStatsViewModel = viewModel()
                 androidx.compose.runtime.LaunchedEffect(t.repo, t.account) {
                     statsVm.load(t.repo, t.account)
                 }

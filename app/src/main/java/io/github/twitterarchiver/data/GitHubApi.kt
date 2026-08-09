@@ -753,6 +753,13 @@ class GitHubApi {
     }
 
     companion object {
+        /**
+         * 全应用共享一个实例。每 new 一个就会带起一套 OkHttp 连接池和线程池，
+         * 而之前 7 个 ViewModel 各自 new 一个 Repository、Repository 又默认
+         * new 一个 GitHubApi，等于同时活着 8 套客户端。
+         */
+        val shared: GitHubApi by lazy { GitHubApi() }
+
         private val metaJson = Json { ignoreUnknownKeys = true; isLenient = true }
 
         /** 解析 search-index/meta.json。设置页只为读清单也 new 一个 GitHubApi 会顺带建 OkHttp 客户端，故放在伴生对象 */

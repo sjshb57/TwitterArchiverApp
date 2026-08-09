@@ -59,7 +59,7 @@ fun SingleTweetDialog(
     var loading by remember(tweetId) { mutableStateOf(true) }
     var error by remember(tweetId) { mutableStateOf<String?>(null) }
 
-    val repository = remember { Repository() }
+    val repository = Repository.shared
 
     LaunchedEffect(repo, account, tweetId) {
         loading = true

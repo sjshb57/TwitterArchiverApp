@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import io.github.twitterarchiver.ui.components.LifecyclePolling
 import io.github.twitterarchiver.viewmodel.AdminViewModel
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -72,12 +73,8 @@ fun AdminNewArchiveScreen(
     LaunchedEffect(state.newlyCreated) { vm.refreshNewlyCreatedStatus() }
 
     val hasRunning = state.newlyCreated.any { state.repoStatus[it] == "running" }
-    LaunchedEffect(hasRunning) {
-        if (!hasRunning) return@LaunchedEffect
-        while (true) {
-            kotlinx.coroutines.delay(8000.milliseconds)
-            vm.refreshNewlyCreatedStatus()
-        }
+    LifecyclePolling(8000.milliseconds, enabled = hasRunning) {
+        vm.refreshNewlyCreatedStatus()
     }
     LaunchedEffect(state.pendingSetup.keys) { vm.resumePendingSetups() }
 
