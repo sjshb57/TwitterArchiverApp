@@ -3,7 +3,7 @@
 **基于 Wayback Machine 的推特账号存档 Android 客户端**
 
 [![License](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Android%208.0%2B-3DDC84.svg)](#系统要求)
+[![Platform](https://img.shields.io/badge/Platform-Android%2011%2B-3DDC84.svg)](#系统要求)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.4.10-7F52FF.svg)](https://kotlinlang.org)
 [![Compose](https://img.shields.io/badge/Jetpack%20Compose-2026.06-4285F4.svg)](https://developer.android.com/jetpack/compose)
 
@@ -135,7 +135,7 @@
 
 |      |                                  |
 |------|----------------------------------|
-| 运行环境 | Android 8.0（API 26）及以上，arm64-v8a |
+| 运行环境 | Android 11（API 30）及以上，arm64-v8a |
 | 构建环境 | JDK 21、Android SDK 37            |
 
 ### 步骤
@@ -164,7 +164,7 @@ Kotlin + Jetpack Compose + Material 3，单 Activity，自己实现的栈式导�
 |     |                                            |
 |-----|--------------------------------------------|
 | 构建  | AGP 9.2.1 / Gradle 9.5.1 / Kotlin 2.4.10   |
-| SDK | minSdk 26 · compileSdk 37 · targetSdk 37   |
+| SDK | minSdk 30 · compileSdk 37 · targetSdk 37   |
 | UI  | Compose BOM 2026.06.01 · Material 3        |
 | 网络  | Ktor 3.5.1                                 |
 | 序列化 | kotlinx.serialization 1.11.0               |

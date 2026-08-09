@@ -27,6 +27,9 @@ import androidx.compose.ui.viewinterop.AndroidView
  * WebView 默认吃缓存，仓库内容更新后不刷新看不到变化。
  */
 @SuppressLint("SetJavaScriptEnabled")
+private const val ARCHIVE_HOST = "twitterarchiver.github.io"
+private val HTTP_SCHEMES = setOf("http", "https")
+
 @Composable
 fun ReaderWebView(
     url: String,
@@ -55,8 +58,6 @@ fun ReaderWebView(
                             }
                             override fun onPageFinished(view: WebView?, u: String?) {
                                 loading = false
-                                // 注入主题：让 reader 跟随 App 的深浅色
-                                // applyTheme(light, save)：light=true 浅色，false 深色
                                 val light = if (dark) "false" else "true"
                                 view?.evaluateJavascript(
                                     "try{localStorage.setItem('reader-theme','${if (dark) "dark" else "light"}');" +
@@ -68,22 +69,14 @@ fun ReaderWebView(
                                 view: WebView?, request: WebResourceRequest?
                             ): Boolean {
                                 val target = request?.url ?: return false
-                                // 子框架/子资源不拦，否则 reader 里的 iframe 会被踢到浏览器
-                                if (request.isForMainFrame != true) return false
-                                // host 必须全等。endsWith 会把 evil-twitterarchiver.github.io
-                                // 也判成自己人
-                                if (target.host == "twitterarchiver.github.io") return false
-                                // 非 http(s) 一律拦下：存档 HTML 里可能出现
-                                // file:// intent:// javascript: 之类
-                                if (target.scheme !in setOf("http", "https")) return true
-                                // 无论能否交给外部应用打开，都返回 true 拦住。
-                                // 返回 startActivity 的成败会导致没有应用可处理时
-                                // WebView 照样把它加载进来，正好绕过这次限制
-                                runCatching {
-                                    view?.context?.startActivity(
-                                        android.content.Intent(android.content.Intent.ACTION_VIEW, target)
-                                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    )
+                                if (target.host == ARCHIVE_HOST) return false
+                                if (request.isForMainFrame) {
+                                    runCatching {
+                                        view?.context?.startActivity(
+                                            android.content.Intent(android.content.Intent.ACTION_VIEW, target)
+                                                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        )
+                                    }
                                 }
                                 return true
                             }
@@ -108,8 +101,6 @@ fun ReaderWebView(
                     }
                 },
                 onRelease = { webView ->
-                    // key(url) 会让每换一个账号就重建一个 WebView。不显式销毁的话
-                    // 旧实例的 native 内存与渲染线程会一直累积
                     webView.stopLoading()
                     webView.loadUrl("about:blank")
                     (webView.parent as? ViewGroup)?.removeView(webView)

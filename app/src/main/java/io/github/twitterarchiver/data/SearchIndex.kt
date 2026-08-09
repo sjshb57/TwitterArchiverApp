@@ -48,7 +48,6 @@ data class GlobalPost(
         get() = media.filter(::isVideoName)
             .map { "${Config.snapshotsBase(account.r, account.a)}/video/$it" }
 
-    /** 本地时区日期。不能直接截 T 前面——那既是 UTC 日期，又会把老格式的 Tue/Thu 截断 */
     /**
      * 排序用的毫秒时间戳。放进比较器里现算的话是 O(n log n) 次日期解析，
      * 48 万条的量级下开销比 displayDate 那几次读取加起来还大。
@@ -56,6 +55,8 @@ data class GlobalPost(
     val epochMs: Long = io.github.twitterarchiver.util.DateUtil.epochMillis(time)
 
     /**
+     * 本地时区日期。不能直接截 T 前面——那既是 UTC 日期，又会把老格式的 Tue/Thu 截断。
+     *
      * 日计数、按日筛选、列表渲染都要读它，而它要跑一次日期解析。
      * 用 get() 的话同一条会被解析三次以上；用 by lazy 又要为 48 万个实例
      * 各分配一个 Lazy 对象。这里直接在构造时算好，零包装、只算一次。

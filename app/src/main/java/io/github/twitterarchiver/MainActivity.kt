@@ -46,7 +46,7 @@ private fun App() {
         if (showSplash) {
             SplashScreen(onFinish = { showSplash = false })
         } else {
-            // 受限 token：访客版申请存档用。构建时通过 BuildConfig 注入（这里先留空）
+            // 受限 token：访客版申请存档用。构建时通过 BuildConfig 注入
             AppNav(restrictedToken = BuildConfig.REQ_TOKEN)
         }
     }

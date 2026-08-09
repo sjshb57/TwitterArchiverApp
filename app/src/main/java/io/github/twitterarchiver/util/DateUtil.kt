@@ -63,14 +63,28 @@ object DateUtil {
         return dateFmt.get()!!.format(d)
     }
 
+    /** timestamp → 设备本地时区的 HH:mm:ss */
+    /**
+     * 日期字符串去重池。48 万条推文各持一个 displayDate，但不同取值只有天数那么多
+     * （十年约 3650 个），不共享的话多出约 20 MB 的重复字符串。
+     * 上限用于兜底，正常情况远达不到。
+     */
+    private const val DATE_POOL_MAX = 20_000
+    private val datePool = java.util.concurrent.ConcurrentHashMap<String, String>()
+
     /**
      * 已经有毫秒数时直接格式化，省掉重复解析。
      * ms 为 0 说明原始串没解析出来，退回按字符串解析以保持与 localDate 一致的行为。
      */
-    fun localDateOf(ms: Long, fallback: String): String =
-        if (ms > 0) dateFmt.get()!!.format(java.util.Date(ms)) else localDate(fallback)
+    fun localDateOf(ms: Long, fallback: String): String {
+        val formatted = if (ms > 0) dateFmt.get()!!.format(java.util.Date(ms))
+        else localDate(fallback)
+        if (formatted.isEmpty()) return formatted
+        datePool[formatted]?.let { return it }
+        if (datePool.size < DATE_POOL_MAX) datePool[formatted] = formatted
+        return formatted
+    }
 
-    /** timestamp → 设备本地时区的 HH:mm:ss */
     fun localTime(timestamp: String): String {
         val d = parse(timestamp) ?: return ""
         return timeFmt.get()!!.format(d)

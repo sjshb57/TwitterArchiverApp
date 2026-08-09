@@ -7,8 +7,8 @@
 | 代码规模 | 约 60 余个 Kotlin 文件                        |
 | 技术栈  | Kotlin、Jetpack Compose、Material 3        |
 | 架构   | 单 Activity，自实现栈式导航，MVVM 分层               |
-| 构建   | AGP 9.2.1 / Gradle 9.5.1 / Kotlin 2.4.10 |
-| SDK  | compileSdk 37 / minSdk 26 / targetSdk 37 |
+| 构建   | AGP 9.3.1 / Gradle 9.7.0 / Kotlin 2.4.10 |
+| SDK  | compileSdk 37 / minSdk 30 / targetSdk 37 |
 
 ---
 
