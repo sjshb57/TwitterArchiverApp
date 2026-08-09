@@ -18,14 +18,32 @@ import io.github.twitterarchiver.ui.AppNav
 import io.github.twitterarchiver.ui.screens.SplashScreen
 import io.github.twitterarchiver.ui.theme.TwitterArchiverTheme
 import androidx.compose.runtime.saveable.rememberSaveable
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import io.github.twitterarchiver.util.DateUtil
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         AppDirs.init(this)
         io.github.twitterarchiver.data.NetworkState.register(this)
+        registerReceiver(tzReceiver, IntentFilter(Intent.ACTION_TIMEZONE_CHANGED))
         enableEdgeToEdge()
         setContent { App() }
+    }
+
+    /** 出国改时区、跨夏令时后，已缓存的格式化器和日期串都要失效 */
+    private val tzReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            DateUtil.onTimeZoneChanged()
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        runCatching { unregisterReceiver(tzReceiver) }
     }
 
     override fun onResume() {

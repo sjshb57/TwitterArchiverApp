@@ -30,26 +30,42 @@ object DateUtil {
             timeZone = java.util.TimeZone.getTimeZone("UTC")
         }
     }
-    private val dateFmt = ThreadLocal.withInitial {
-        java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
-    }
-    private val timeFmt = ThreadLocal.withInitial {
-        java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
-    }
-    private val dateTimeFmt = ThreadLocal.withInitial {
-        java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US)
-    }
+    private val dateFmt = LocalFmt("yyyy-MM-dd")
+    private val timeFmt = LocalFmt("HH:mm:ss")
+    private val dateTimeFmt = LocalFmt("yyyy-MM-dd HH:mm:ss")
 
     /**
-     * 把格式化器的时区校正到当前默认值。
-     *
-     * SimpleDateFormat 在构造时就把 TimeZone.getDefault() 拷了一份，而这些实例
-     * 存在 ThreadLocal 里长期复用。用户出国改时区、或跨夏令时切换之后，
-     * 不校正的话日期会一直按旧时区显示，得杀进程才恢复。
+     * 时区代际号。TimeZone.getDefault() 每次调用都会返回一份克隆，
+     * 放在格式化热路径上等于每条推文一次分配 + 比较，把复用省下的开销又还回去。
+     * 这里只在时区真的变了时自增，格式化时比一个 int 即可。
      */
-    private fun java.text.SimpleDateFormat.localized(): java.text.SimpleDateFormat = apply {
-        val now = java.util.TimeZone.getDefault()
-        if (timeZone != now) timeZone = now
+    @Volatile
+    private var tzGeneration = 0
+
+    /**
+     * 跟随系统时区的格式化器。每个实例各自记录已应用的代际号——
+     * 共用一个计数的话，一个格式化器更新后其余就再也不会更新了。
+     */
+    private class LocalFmt(pattern: String) {
+        private val tl = ThreadLocal.withInitial {
+            java.text.SimpleDateFormat(pattern, java.util.Locale.US) to intArrayOf(-1)
+        }
+
+        fun get(): java.text.SimpleDateFormat {
+            val (fmt, applied) = tl.get()!!
+            val cur = tzGeneration
+            if (applied[0] != cur) {
+                fmt.timeZone = java.util.TimeZone.getDefault()
+                applied[0] = cur
+            }
+            return fmt
+        }
+    }
+
+    /** 系统时区变化时调用 */
+    fun onTimeZoneChanged() {
+        tzGeneration++
+        datePool.clear()
     }
 
     private fun parse(timestamp: String): java.util.Date? {
@@ -72,7 +88,7 @@ object DateUtil {
     /** timestamp → 设备本地时区的 yyyy-MM-dd */
     fun localDate(timestamp: String): String {
         val d = parse(timestamp) ?: return ""
-        return dateFmt.get()!!.localized().format(d)
+        return dateFmt.get().format(d)
     }
 
     /**
@@ -88,7 +104,7 @@ object DateUtil {
      * ms 为 0 说明原始串没解析出来，退回按字符串解析以保持与 localDate 一致的行为。
      */
     fun localDateOf(ms: Long, fallback: String): String {
-        val formatted = if (ms > 0) dateFmt.get()!!.localized().format(java.util.Date(ms))
+        val formatted = if (ms > 0) dateFmt.get().format(java.util.Date(ms))
         else localDate(fallback)
         if (formatted.isEmpty()) return formatted
         datePool[formatted]?.let { return it }
@@ -99,12 +115,12 @@ object DateUtil {
     /** timestamp → 设备本地时区的 HH:mm:ss */
     fun localTime(timestamp: String): String {
         val d = parse(timestamp) ?: return ""
-        return timeFmt.get()!!.localized().format(d)
+        return timeFmt.get().format(d)
     }
 
     /** timestamp → 设备本地时区的 yyyy-MM-dd HH:mm:ss（推文精确时间） */
     fun localDateTime(timestamp: String): String {
         val d = parse(timestamp) ?: return ""
-        return dateTimeFmt.get()!!.localized().format(d)
+        return dateTimeFmt.get().format(d)
     }
 }

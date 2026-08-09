@@ -11,13 +11,14 @@ val reqToken: String = Properties().apply {
         ?.inputStream()?.use { load(it) }
 }.getProperty("REQ_TOKEN") ?: ""
 
-gradle.taskGraph.whenReady {
-    val buildingRelease = allTasks.any { it.name.contains("Release", ignoreCase = true) }
-    if (buildingRelease && reqToken.isBlank()) {
-        throw GradleException(
-            "local.properties 缺少 REQ_TOKEN，正式包的「申请存档」会失效。" +
-                "如确认不需要该功能，请显式设为 REQ_TOKEN=none"
-        )
+tasks.matching { it.name == "assembleVisitorRelease" }.configureEach {
+    doFirst {
+        if (reqToken.isBlank()) {
+            throw GradleException(
+                "local.properties 缺少 REQ_TOKEN，访客正式包的「申请存档」会失效。" +
+                    "如确认不需要该功能，请显式设为 REQ_TOKEN=none"
+            )
+        }
     }
 }
 

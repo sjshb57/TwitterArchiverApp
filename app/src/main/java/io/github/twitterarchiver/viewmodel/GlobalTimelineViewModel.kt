@@ -22,6 +22,7 @@ import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import io.github.twitterarchiver.util.MediaUtil
 
 data class GlobalState(
     val loading: Boolean = true,
@@ -89,7 +90,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
                 recentPosts = recentUnique
                 allPosts = recentUnique
                 filtered = recentUnique
-                allAccounts = accts.distinctBy { it.r to it.a }
+                allAccounts = accts
                 recentLoaded = true
                 page = 0
                 emitPage()
@@ -109,7 +110,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
             try {
                 val m = api.fetchGlobalMeta()
                 meta = m
-                allAccounts = m.accounts.distinctBy { it.r to it.a }
+                allAccounts = m.accounts
                 fullLoaded = true
                 _state.value = _state.value.copy(
                     loadingFull = false,
@@ -270,7 +271,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
 
         val idIndex = tweets.associateBy { it.tweetId }
         fun avatarUrl(av: String) = if (av.isBlank()) "" else
-            "${io.github.twitterarchiver.data.Config.snapshotsBase(repo, account)}/${io.github.twitterarchiver.util.MediaUtil.sanitizeRelPath(av)}"
+            "${io.github.twitterarchiver.data.Config.snapshotsBase(repo, account)}/${MediaUtil.sanitizeRelPath(av)}"
         fun imgUrls(t: io.github.twitterarchiver.data.Tweet): List<String> {
             // 回复/推文的图在 images 字段（media_keys 为空但 images 有值的情况也要显示）
             if (t.images.isEmpty()) return emptyList()

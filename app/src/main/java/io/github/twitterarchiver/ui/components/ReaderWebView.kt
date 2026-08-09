@@ -71,8 +71,8 @@ fun ReaderWebView(
                                 view: WebView?, request: WebResourceRequest?
                             ): Boolean {
                                 val target = request?.url ?: return false
-                                if (target.host == ARCHIVE_HOST) return false
                                 if (target.scheme !in HTTP_SCHEMES) return true
+                                if (target.host == ARCHIVE_HOST) return false
                                 if (request.isForMainFrame) {
                                     runCatching {
                                         view?.context?.startActivity(

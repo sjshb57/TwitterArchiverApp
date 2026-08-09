@@ -33,5 +33,6 @@ google-services.json
 # Android Profiling
 *.hprof
 
+.kotlin/
 admin/
 visitor/

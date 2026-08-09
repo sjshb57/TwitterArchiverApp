@@ -82,7 +82,10 @@ class SecureStore(private val context: Context) {
             )
             String(cipher.doFinal(encrypted), Charsets.UTF_8)
         } catch (e: Exception) {
-            runCatching { clearPat() }
+            val permanent = e is android.security.keystore.KeyPermanentlyInvalidatedException ||
+                e is java.security.UnrecoverableKeyException ||
+                e is javax.crypto.AEADBadTagException
+            if (permanent) runCatching { clearPat() }
             null
         }
     }
