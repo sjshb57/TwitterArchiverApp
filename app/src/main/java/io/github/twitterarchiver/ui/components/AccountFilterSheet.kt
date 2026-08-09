@@ -81,7 +81,7 @@ fun AccountFilterSheet(
             HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
 
             LazyColumn(Modifier.weight(1f)) {
-                items(filtered) { acc ->
+                items(filtered, key = { it.r + "/" + it.a }) { acc ->
                     val key = acc.r to acc.a
                     val isSel = key in selected
                     Row(

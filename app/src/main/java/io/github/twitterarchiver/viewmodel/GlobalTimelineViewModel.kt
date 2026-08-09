@@ -20,6 +20,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 data class GlobalState(
     val loading: Boolean = true,
@@ -121,6 +123,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
                     .forEach { loadShard(it, silent = true, rebuild = false) }
                 monthLock.withLock { rebuildFromLoaded() }
             } catch (e: Exception) {
+                currentCoroutineContext().ensureActive()
                 _state.value = _state.value.copy(
                     loadingFull = false,
                     indexError = "索引清单加载失败：${e::class.simpleName} ${e.message ?: ""}"
@@ -201,6 +204,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
                 indexError = null
             )
         } catch (e: Exception) {
+            currentCoroutineContext().ensureActive()
             _state.value = _state.value.copy(
                 monthProgress = _state.value.monthProgress - shard.month,
                 indexError = "${shard.month} 下载失败：${e::class.simpleName} ${e.message ?: ""}"

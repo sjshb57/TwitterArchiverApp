@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 private const val SEARCH_DEBOUNCE_MS = 200L
 
@@ -57,6 +59,7 @@ class ReaderViewModel(private val repo: Repository = Repository()) : ViewModel()
                     visibleTweets = applyFilters(tweets, prev)
                 )
             } catch (e: Exception) {
+                currentCoroutineContext().ensureActive()
                 if (forceRefresh) _state.value = _state.value.copy(loading = false)
                 else _state.value = ReaderState(loading = false, error = "加载失败：${e.message}")
             }

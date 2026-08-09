@@ -103,7 +103,7 @@ fun ListScreen(
                 Text(state.error!!, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             else -> LazyColumn(Modifier.fillMaxSize(), state = listState) {
-                items(state.filtered) { repo ->
+                items(state.filtered, key = { it.repoName + "/" + it.account }) { repo ->
                     AccountRow(repo, onOpenAccount, onAvatarClick)
                     HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
                 }

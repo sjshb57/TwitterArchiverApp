@@ -185,7 +185,7 @@ private fun DashDetailView(
         } else if (runs.isEmpty()) {
             item { Text("暂无运行记录", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(12.dp)) }
         } else {
-            items(runs) { run -> RunRow(run, dash.repo, vm) }
+            items(runs, key = { it.id }) { run -> RunRow(run, dash.repo, vm) }
         }
     }
 }
@@ -314,7 +314,7 @@ private fun AllArchivesView(
                         Text("全部正常 ✓", fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    items(missingAvatar) { m ->
+                    items(missingAvatar, key = { it.repo + "/" + it.account }) { m ->
                         Row(
                             Modifier.fillMaxWidth()
                                 .clickable { onFixAvatar(m) }
@@ -338,7 +338,7 @@ private fun AllArchivesView(
                         Text("全部已设置 ✓", fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    items(missingBanner) { m ->
+                    items(missingBanner, key = { it.repo + "/" + it.account }) { m ->
                         Text("· ${m.displayName} ›", fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.fillMaxWidth()
@@ -354,7 +354,7 @@ private fun AllArchivesView(
                         Text("全部已设置 ✓", fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    items(missingPinned) { m ->
+                    items(missingPinned, key = { it.repo + "/" + it.account }) { m ->
                         Text("· ${m.displayName} ›", fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.fillMaxWidth()
@@ -412,7 +412,7 @@ private fun AllArchivesView(
         if (loading && shown.isEmpty()) {
             item { Box(Modifier.fillMaxWidth().padding(20.dp), Alignment.Center) { CircularProgressIndicator(Modifier.size(24.dp)) } }
         } else {
-            items(shown) { r ->
+            items(shown, key = { it.repoName }) { r ->
                 val st = status[r.repoName]
                 Row(
                     Modifier.fillMaxWidth().clickable { onOpen(r.repoName) }.padding(vertical = 12.dp),

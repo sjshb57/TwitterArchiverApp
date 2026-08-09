@@ -218,7 +218,7 @@ fun GlobalScreen(
                         }
                         HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
                     }
-                    items(state.visible) { post ->
+                    items(state.visible, key = { it.tweetId }) { post ->
                         SearchResultRow(
                             date = post.displayDate,
                             time = post.displayTime,
@@ -241,7 +241,7 @@ fun GlobalScreen(
                         )
                     }
                 } else {
-                items(state.visible) { post ->
+                items(state.visible, key = { it.tweetId }) { post ->
                     GlobalPostCard(
                         post = post,
                         onAvatarClick = { onAvatarClick(post) },

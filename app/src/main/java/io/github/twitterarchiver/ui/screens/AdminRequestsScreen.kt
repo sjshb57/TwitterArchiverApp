@@ -70,7 +70,7 @@ fun AdminRequestsScreen(vm: AdminViewModel, onBack: () -> Unit) {
                 Text("暂无待处理申请", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             else -> LazyColumn(Modifier.fillMaxSize().padding(horizontal = 14.dp)) {
-                items(state.requests) { req ->
+                items(state.requests, key = { it.number }) { req ->
                     RequestCard(
                         req,
                         onApprove = { acct ->

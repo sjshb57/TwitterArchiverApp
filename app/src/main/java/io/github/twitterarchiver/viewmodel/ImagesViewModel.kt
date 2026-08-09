@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 /** 媒体类型 */
 enum class MediaType { IMAGE, VIDEO, OTHER }
@@ -48,6 +50,7 @@ class ImagesViewModel(private val repo: Repository = Repository()) : ViewModel()
                 }
                 _state.value = ImagesState(loading = false, all = items)
             } catch (e: Exception) {
+                currentCoroutineContext().ensureActive()
                 _state.value = ImagesState(loading = false, error = "加载失败：${e.message}")
             }
         }

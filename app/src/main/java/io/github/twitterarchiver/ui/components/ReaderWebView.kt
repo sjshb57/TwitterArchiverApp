@@ -66,7 +66,18 @@ fun ReaderWebView(
                             }
                             override fun shouldOverrideUrlLoading(
                                 view: WebView?, request: WebResourceRequest?
-                            ): Boolean = false
+                            ): Boolean {
+                                val target = request?.url ?: return false
+                                if (target.host?.endsWith("twitterarchiver.github.io") == true) {
+                                    return false
+                                }
+                                return runCatching {
+                                    view?.context?.startActivity(
+                                        android.content.Intent(android.content.Intent.ACTION_VIEW, target)
+                                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    )
+                                }.isSuccess
+                            }
                         }
                         settings.apply {
                             javaScriptEnabled = true
@@ -86,6 +97,12 @@ fun ReaderWebView(
                         webView.reload()
                         webView.settings.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
                     }
+                },
+                onRelease = { webView ->
+                    webView.stopLoading()
+                    webView.loadUrl("about:blank")
+                    (webView.parent as? ViewGroup)?.removeView(webView)
+                    webView.destroy()
                 }
             )
         }

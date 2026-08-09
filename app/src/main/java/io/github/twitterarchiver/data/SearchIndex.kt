@@ -35,22 +35,25 @@ data class GlobalPost(
         else ""
 
     /** 媒体按扩展名分流：视频存在 video/ 目录，图片在 image/ 目录 */
-    private val isVideoName: (String) -> Boolean
-        get() = { n -> n.substringAfterLast('.', "").lowercase() in VIDEO_EXTS }
+    private fun isVideoName(n: String): Boolean =
+        n.substringAfterLast('.', "").lowercase() in VIDEO_EXTS
 
     /** 图片直链（不含视频） */
     val mediaUrls: List<String>
-        get() = media.filterNot(isVideoName)
+        get() = media.filterNot(::isVideoName)
             .map { "${Config.snapshotsBase(account.r, account.a)}/image/$it" }
 
     /** 视频直链 */
     val videoUrls: List<String>
-        get() = media.filter(isVideoName)
+        get() = media.filter(::isVideoName)
             .map { "${Config.snapshotsBase(account.r, account.a)}/video/$it" }
 
-    /** 本地时区日期。不能直接截 T 前面——那既是 UTC 日期，又会把老格式的 Tue/Thu 截断 */
-    val displayDate: String
-        get() = io.github.twitterarchiver.util.DateUtil.localDate(time)
+    /**
+     * 日计数、按日筛选、列表渲染都要读它，而它要跑一次日期解析。
+     * 用 get() 的话同一条会被解析三次以上；用 by lazy 又要为 48 万个实例
+     * 各分配一个 Lazy 对象。这里直接在构造时算好，零包装、只算一次。
+     */
+    val displayDate: String = io.github.twitterarchiver.util.DateUtil.localDate(time)
 
     /** 本地时区时间（HH:mm:ss），搜索结果条用来定位 */
     val displayTime: String

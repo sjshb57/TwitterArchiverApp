@@ -23,6 +23,8 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.launch
 import androidx.core.content.edit
 import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 /** 4 个仪表盘之一 */
 enum class DashRepo(val repo: String, val title: String) {
@@ -522,6 +524,7 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                 val reqs = repo.getRequests(pat)
                 _state.value = _state.value.copy(requests = reqs, requestsLoading = false)
             } catch (e: Exception) {
+                currentCoroutineContext().ensureActive()
                 _state.value = _state.value.copy(requestsLoading = false, message = "加载申请失败：${e.message}")
             }
         }

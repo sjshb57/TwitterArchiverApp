@@ -28,21 +28,26 @@ object VideoSaver {
                 val uri = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
                     ?: return@withContext false
 
-                resolver.openOutputStream(uri)?.use { out ->
-                    val conn = URL(url).openConnection().apply {
-                        connectTimeout = 15_000
-                        readTimeout = 30_000
+                try {
+                    resolver.openOutputStream(uri)?.use { out ->
+                        val conn = URL(url).openConnection().apply {
+                            connectTimeout = 15_000
+                            readTimeout = 30_000
+                        }
+                        conn.getInputStream().use { input ->
+                            input.copyTo(out, bufferSize = 64 * 1024)
+                        }
                     }
-                    conn.getInputStream().use { input ->
-                        input.copyTo(out, bufferSize = 64 * 1024)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        values.clear()
+                        values.put(MediaStore.Video.Media.IS_PENDING, 0)
+                        resolver.update(uri, values, null, null)
                     }
+                    true
+                } catch (e: Exception) {
+                    runCatching { resolver.delete(uri, null, null) }
+                    throw e
                 }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    values.clear()
-                    values.put(MediaStore.Video.Media.IS_PENDING, 0)
-                    resolver.update(uri, values, null, null)
-                }
-                true
             } catch (e: Exception) {
                 false
             }

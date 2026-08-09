@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 data class HomeState(
     val loading: Boolean = true,
@@ -37,6 +39,7 @@ class HomeViewModel(private val repo: Repository = Repository()) : ViewModel() {
                     filtered = applyFilter(list, _state.value.query)
                 )
             } catch (e: Exception) {
+                currentCoroutineContext().ensureActive()
                 _state.value = _state.value.copy(
                     loading = false,
                     error = "加载失败：${e.message}"

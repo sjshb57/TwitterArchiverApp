@@ -32,16 +32,20 @@ object ImageSaver {
                     MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values
                 ) ?: return@withContext false
 
-                resolver.openOutputStream(uri)?.use { out: OutputStream ->
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 95, out)
+                try {
+                    resolver.openOutputStream(uri)?.use { out: OutputStream ->
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, 95, out)
+                    }
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        values.clear()
+                        values.put(MediaStore.Images.Media.IS_PENDING, 0)
+                        resolver.update(uri, values, null, null)
+                    }
+                    true
+                } catch (e: Exception) {
+                    runCatching { resolver.delete(uri, null, null) }
+                    throw e
                 }
-
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    values.clear()
-                    values.put(MediaStore.Images.Media.IS_PENDING, 0)
-                    resolver.update(uri, values, null, null)
-                }
-                true
             } catch (e: Exception) {
                 false
             }

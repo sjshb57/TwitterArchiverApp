@@ -83,7 +83,7 @@ fun FollowSelectScreen(
         SearchField(value = query, onValueChange = { query = it }, placeholder = "搜索账号…")
         Spacer(Modifier.height(8.dp))
         LazyColumn(Modifier.fillMaxSize()) {
-            items(shown) { r ->
+            items(shown, key = { it.repoName + "/" + it.account }) { r ->
                 FollowRow(r, selected = enabled && curAccount == r.account) {
                     settingsVm.setFollow(r.repoName, r.account, r.displayName)
                     onBack()

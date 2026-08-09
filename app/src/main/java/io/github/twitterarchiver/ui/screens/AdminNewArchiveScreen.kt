@@ -200,7 +200,7 @@ fun AdminNewArchiveScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp, bottom = 10.dp))
                 }
-                items(state.newlyCreated) { repoName ->
+                items(state.newlyCreated, key = { it }) { repoName ->
                     val status = state.repoStatus[repoName] ?: ""
                     NewlyCreatedRow(
                         repoName = repoName,
@@ -246,7 +246,7 @@ fun AdminNewArchiveScreen(
                 Text(if (state.hasCheckedOnce) "全部已设置 ✓" else "尚未检测",
                     fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            items(state.missingBanner) { m ->
+            items(state.missingBanner, key = { it.repo + "/" + it.account }) { m ->
                 MissingRow(m.displayName, "上传 banner") { onOpenArchive(m.repo) }
             }
 
@@ -259,7 +259,7 @@ fun AdminNewArchiveScreen(
                 Text(if (state.hasCheckedOnce) "全部已设置 ✓" else "尚未检测",
                     fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            items(state.missingPinned) { m ->
+            items(state.missingPinned, key = { it.repo + "/" + it.account }) { m ->
                 MissingRow(m.displayName, "设置置顶") { onOpenArchive(m.repo) }
             }
             item { Spacer(Modifier.height(30.dp)) }

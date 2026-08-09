@@ -64,7 +64,7 @@ fun BookmarkScreen(
             }
         } else {
             LazyColumn(Modifier.fillMaxSize()) {
-                items(bookmarks) { b ->
+                items(bookmarks, key = { it.tweetId }) { b ->
                     Row(
                         Modifier.fillMaxWidth()
                             .clickable { onOpen(b) }

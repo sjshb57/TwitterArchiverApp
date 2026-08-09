@@ -165,7 +165,7 @@ fun AdminArchiveScreen(
             } else if (runs.isEmpty()) {
                 item { Text("暂无运行记录", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(12.dp)) }
             } else {
-                items(runs) { run -> ArchiveRunRow(run, repo, vm) }
+                items(runs, key = { it.id }) { run -> ArchiveRunRow(run, repo, vm) }
             }
         }
     }
