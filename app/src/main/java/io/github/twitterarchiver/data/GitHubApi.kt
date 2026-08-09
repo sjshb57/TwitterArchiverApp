@@ -29,6 +29,8 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 /** 统一的网络层：读公开数据 + 带 PAT 的写操作 */
 class GitHubApi {
@@ -227,7 +229,10 @@ class GitHubApi {
         val resp = client.get(Config.indexManifestUrl(repo))
         if (resp.status.value != 200) null
         else json.decodeFromString<IndexManifest>(resp.bodyAsText())
-    } catch (e: Exception) { null }
+    } catch (e: Exception) {
+        currentCoroutineContext().ensureActive()
+        null
+    }
 
     /** 离线增量：整个 index.json 的原始字节（用于全量落盘/分片） */
     suspend fun fetchIndexBytes(repo: String, account: String): ByteArray =
@@ -258,7 +263,10 @@ class GitHubApi {
         if (file.isBlank()) return null
         val html = try {
             client.get(Config.tweetHtmlUrl(repo, account, file)).bodyAsText()
-        } catch (e: Exception) { return null }
+        } catch (e: Exception) {
+            currentCoroutineContext().ensureActive()
+            return null
+        }
 
         val i = html.indexOf("class=\"embedded-tweet-container\"")
         if (i < 0) return null
@@ -739,6 +747,7 @@ class GitHubApi {
                 header("Accept", "application/vnd.github+json")
             }.body()
         } catch (e: Exception) {
+            currentCoroutineContext().ensureActive()
             emptyList()
         }
     }

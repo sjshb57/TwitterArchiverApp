@@ -63,6 +63,13 @@ object DateUtil {
         return dateFmt.get()!!.format(d)
     }
 
+    /**
+     * 已经有毫秒数时直接格式化，省掉重复解析。
+     * ms 为 0 说明原始串没解析出来，退回按字符串解析以保持与 localDate 一致的行为。
+     */
+    fun localDateOf(ms: Long, fallback: String): String =
+        if (ms > 0) dateFmt.get()!!.format(java.util.Date(ms)) else localDate(fallback)
+
     /** timestamp → 设备本地时区的 HH:mm:ss */
     fun localTime(timestamp: String): String {
         val d = parse(timestamp) ?: return ""

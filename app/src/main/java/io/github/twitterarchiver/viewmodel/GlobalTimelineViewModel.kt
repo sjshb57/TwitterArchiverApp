@@ -85,9 +85,10 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
             _state.value = GlobalState(loading = true)
             try {
                 val (accts, recent) = api.fetchRecentTimeline()
-                recentPosts = recent
-                allPosts = recent
-                filtered = recent
+                val recentUnique = recent.distinctBy { it.tweetId }
+                recentPosts = recentUnique
+                allPosts = recentUnique
+                filtered = recentUnique
                 allAccounts = accts
                 recentLoaded = true
                 page = 0
@@ -221,7 +222,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi()) : ViewMo
             for (month in monthPosts.keys.sortedDescending())
                 for (p in monthPosts[month].orEmpty()) if (seen.add(p.tweetId)) out.add(p)
             // 两种时间格式并存，必须解析成时间戳再比，直接比字符串会把老格式全排到最前
-            out.sortByDescending { io.github.twitterarchiver.util.DateUtil.epochMillis(it.time) }
+            out.sortByDescending { it.epochMs }
             out
         }
         allPosts = merged

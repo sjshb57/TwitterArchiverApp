@@ -23,7 +23,10 @@ class Repository(private val api: GitHubApi = GitHubApi()) {
         withContext(Dispatchers.IO) {
             if (!forceRefresh) reposCache?.let { return@withContext it }
             val list = try {
-                api.fetchRepos().filter { it.repoName.isNotBlank() }.also { fresh ->
+                api.fetchRepos()
+                    .filter { it.repoName.isNotBlank() }
+                    .distinctBy { it.repoName to it.account }
+                    .also { fresh ->
                     // 成功即落盘，断网时兜底
                     metaFile("repos.json")?.let { f ->
                         try { f.writeText(diskJson.encodeToString(
