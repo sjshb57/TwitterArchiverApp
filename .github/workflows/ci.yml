@@ -1,12 +1,13 @@
 name: CI
 
-# 这个项目没有测试和 CI 的那段时间里，同一个修复被丢失过三次
-# （账号去重），也出过好几次"改动引入回退"。下面这几步都是能自动发现那类问题的。
 on:
   push:
     branches: [main]
   pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -35,14 +36,13 @@ jobs:
         run: echo "REQ_TOKEN=ci-placeholder" > local.properties
 
       - name: 单元测试
-        run: ./gradlew --no-daemon testAdminDebugUnitTest
+        run: ./gradlew testAdminDebugUnitTest
 
       - name: Lint
-        run: ./gradlew --no-daemon lintAdminDebug
+        run: ./gradlew lintAdminDebug
 
       - name: 构建两个 flavor 的 release
-        # release 才会跑 R8。proguard 规则收窄过，那类问题只在 release 暴露
-        run: ./gradlew --no-daemon assembleAdminRelease assembleVisitorRelease
+        run: ./gradlew assembleAdminRelease assembleVisitorRelease
 
       - name: 上传测试与 lint 报告
         if: always()

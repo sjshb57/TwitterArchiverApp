@@ -32,6 +32,8 @@ android {
         targetSdk = 37
         versionCode = 14
         versionName = "1.3.0"
+        // 受限申请 token：只能对 requests 仓库开 Issue，权限极小
+        buildConfigField("String", "REQ_TOKEN", "\"$reqToken\"")
         vectorDrawables { useSupportLibrary = true }
         ndk {
             //noinspection ChromeOsAbiSupport
@@ -47,8 +49,6 @@ android {
             versionNameSuffix = "-visitor"
             resValue("string", "app_name", "推文存档")
             buildConfigField("boolean", "IS_ADMIN", "false")
-            // 受限申请 token：只能对 requests 仓库开 Issue，权限极小
-            buildConfigField("String", "REQ_TOKEN", "\"$reqToken\"")
         }
         create("admin") {
             dimension = "mode"
@@ -56,7 +56,6 @@ android {
             versionNameSuffix = "-admin"
             resValue("string", "app_name", "存档管理")
             buildConfigField("boolean", "IS_ADMIN", "true")
-            buildConfigField("String", "REQ_TOKEN", "\"$reqToken\"")
         }
     }
 

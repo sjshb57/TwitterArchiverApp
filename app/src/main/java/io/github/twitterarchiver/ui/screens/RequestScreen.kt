@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -65,9 +66,14 @@ fun RequestScreen(
                 modifier = Modifier.padding(top = 4.dp))
 
             Spacer(Modifier.height(20.dp))
+            val accountInvalid = account.isNotBlank() && !AccountUtil.isValidHandle(account)
             OutlinedTextField(
                 value = account, onValueChange = { account = it },
                 label = { Text("账号用户名（如 @example）") },
+                isError = accountInvalid,
+                supportingText = if (accountInvalid) {
+                    { Text("应为 1–15 位字母、数字或下划线") }
+                } else null,
                 singleLine = true, modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(12.dp))
@@ -75,8 +81,7 @@ fun RequestScreen(
                 value = note,
                 onValueChange = { if (it.length <= RequestViewModel.NOTE_MAX) note = it },
                 label = { Text("备注（可选）") },
-                supportingText = { Text("${note.length} / ${RequestViewModel.NOTE_MAX}") },
-                modifier = Modifier.fillMaxWidth().height(120.dp)
+                modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp)
             )
 
             Spacer(Modifier.height(20.dp))

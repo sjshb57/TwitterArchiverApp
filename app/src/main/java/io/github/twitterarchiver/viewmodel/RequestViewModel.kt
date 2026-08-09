@@ -26,7 +26,7 @@ class RequestViewModel(private val repo: Repository = Repository.shared) : ViewM
 
     companion object {
         /** 备注上限。不限长的话能往 Issue 正文里塞几 MB */
-        const val NOTE_MAX = 500
+        const val NOTE_MAX = 100
 
         /** 两次提交的最小间隔。挡的是误触和连点，真正的防护要靠服务端 */
         private const val COOLDOWN_MS = 60_000L
@@ -41,7 +41,7 @@ class RequestViewModel(private val repo: Repository = Repository.shared) : ViewM
 
     fun submit(restrictedToken: String, account: String, note: String) {
         val handle = AccountUtil.normalize(account)
-        if (!AccountUtil.isValidHandle(account)) {
+        if (!AccountUtil.isValidHandle(handle)) {
             _state.value = RequestState(result = "账号名不合法：应为 1–15 位字母、数字或下划线")
             return
         }
