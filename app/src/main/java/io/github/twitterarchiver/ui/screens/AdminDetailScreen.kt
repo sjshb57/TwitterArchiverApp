@@ -307,7 +307,7 @@ private fun AllArchivesView(
                         Text("全部正常 ✓", fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    items(missingAvatar, key = { it.repo + "/" + it.account }) { m ->
+                    items(missingAvatar, key = { "avatar:" + it.repo + "/" + it.account }) { m ->
                         Row(
                             Modifier.fillMaxWidth()
                                 .clickable { onFixAvatar(m) }
@@ -331,7 +331,7 @@ private fun AllArchivesView(
                         Text("全部已设置 ✓", fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    items(missingBanner, key = { it.repo + "/" + it.account }) { m ->
+                    items(missingBanner, key = { "banner:" + it.repo + "/" + it.account }) { m ->
                         Text("· ${m.displayName} ›", fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.fillMaxWidth()
@@ -347,7 +347,7 @@ private fun AllArchivesView(
                         Text("全部已设置 ✓", fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    items(missingPinned, key = { it.repo + "/" + it.account }) { m ->
+                    items(missingPinned, key = { "pinned:" + it.repo + "/" + it.account }) { m ->
                         Text("· ${m.displayName} ›", fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.fillMaxWidth()

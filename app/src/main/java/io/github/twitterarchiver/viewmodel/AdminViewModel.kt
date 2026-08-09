@@ -25,6 +25,7 @@ import androidx.core.content.edit
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.Job
 
 /** 4 个仪表盘之一 */
 enum class DashRepo(val repo: String, val title: String) {
@@ -71,6 +72,10 @@ data class PendingSetup(
     val since: String,
     val createdAt: Long
 )
+
+/** 列表用 repo/account 做 key，重复会崩，排序时一并去重 */
+private fun List<MissingItem>.uniqueSorted(): List<MissingItem> =
+    distinctBy { it.repo to it.account }.sortedBy { it.displayName }
 
 /** 待完善项：某仓库缺 banner / 置顶 / 最新推文头像 */
 data class MissingItem(
@@ -310,8 +315,11 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
      * 完整性检测：并发读每个仓库的 profile.json，找出缺 banner 和缺置顶的仓库。
      * banner 判断：profile.banner 字段为空；置顶判断：profile.pinned 字段为空。
      */
+    private var integrityJob: Job? = null
+
     fun runIntegrityCheck() {
-        viewModelScope.launch {
+        if (integrityJob?.isActive == true) return
+        integrityJob = viewModelScope.launch {
             val archives = _state.value.allArchives.ifEmpty {
                 try { repo.getRepos() } catch (e: Exception) { emptyList() }
             }
@@ -359,6 +367,7 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                                 if (!bannerJob.await()) noBanner.add(item)
                                 if (avatarJob.await()) noAvatar.add(item.copy(avatarName = av))
                             } catch (e: Exception) {
+                                currentCoroutineContext().ensureActive()
                                 noBanner.add(MissingItem(arc.repoName, arc.account, "${arc.displayName} [读取失败]"))
                             }
                         }
@@ -366,16 +375,16 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                             done++
                             _state.value = _state.value.copy(
                                 checkProgress = done,
-                                missingBanner = noBanner.sortedBy { m -> m.displayName },
-                                missingPinned = noPinned.sortedBy { m -> m.displayName },
-                                missingAvatar = noAvatar.sortedBy { m -> m.displayName })
+                                missingBanner = noBanner.uniqueSorted(),
+                                missingPinned = noPinned.uniqueSorted(),
+                                missingAvatar = noAvatar.uniqueSorted())
                         }
                     }
                 }.awaitAll()
             }
-            val mb = noBanner.sortedBy { it.displayName }
-            val mp = noPinned.sortedBy { it.displayName }
-            val ma = noAvatar.sortedBy { it.displayName }
+            val mb = noBanner.uniqueSorted()
+            val mp = noPinned.uniqueSorted()
+            val ma = noAvatar.uniqueSorted()
             _state.value = _state.value.copy(
                 checking = false, checkDone = true, hasCheckedOnce = true,
                 missingBanner = mb, missingPinned = mp, missingAvatar = ma)
@@ -457,7 +466,7 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
             return raw.split("\n").mapNotNull { line ->
                 val p = line.split("\t")
                 if (p.size >= 3) MissingItem(p[0], p[1], p[2], p.getOrElse(3) { "" }) else null
-            }
+            }.distinctBy { it.repo to it.account }
         }
         _state.value = _state.value.copy(
             missingBanner = parse("missing_banner"),

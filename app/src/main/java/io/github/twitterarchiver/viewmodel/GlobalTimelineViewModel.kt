@@ -89,7 +89,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
                 recentPosts = recentUnique
                 allPosts = recentUnique
                 filtered = recentUnique
-                allAccounts = accts
+                allAccounts = accts.distinctBy { it.r to it.a }
                 recentLoaded = true
                 page = 0
                 emitPage()
@@ -109,7 +109,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
             try {
                 val m = api.fetchGlobalMeta()
                 meta = m
-                allAccounts = m.accounts
+                allAccounts = m.accounts.distinctBy { it.r to it.a }
                 fullLoaded = true
                 _state.value = _state.value.copy(
                     loadingFull = false,

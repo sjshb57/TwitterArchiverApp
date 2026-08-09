@@ -17,7 +17,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.TwitterArchiver"
         android:usesCleartextTraffic="false"
-        tools:targetApi="34">
+        tools:targetApi="37">
 
         <activity
             android:name=".MainActivity"

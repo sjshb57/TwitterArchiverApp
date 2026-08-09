@@ -228,7 +228,9 @@ fun AppNav(
                 androidx.compose.runtime.LaunchedEffect(t.repo, t.account) {
                     statsVm.load(t.repo, t.account)
                 }
-                val stats by statsVm.stats.collectAsState()
+                val rawStats by statsVm.stats.collectAsState()
+                val stats = if (rawStats.key == "${t.repo}/${t.account}") rawStats
+                else ProfileStats(loading = true)
                 ProfileDialog(
                     repo = io.github.twitterarchiver.data.ArchiveRepo(
                         repo = t.repo, name = t.name, acct = t.account,

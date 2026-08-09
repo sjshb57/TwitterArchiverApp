@@ -243,7 +243,7 @@ fun AdminNewArchiveScreen(
                 Text(if (state.hasCheckedOnce) "全部已设置 ✓" else "尚未检测",
                     fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            items(state.missingBanner, key = { it.repo + "/" + it.account }) { m ->
+            items(state.missingBanner, key = { "banner:" + it.repo + "/" + it.account }) { m ->
                 MissingRow(m.displayName, "上传 banner") { onOpenArchive(m.repo) }
             }
 
@@ -256,7 +256,7 @@ fun AdminNewArchiveScreen(
                 Text(if (state.hasCheckedOnce) "全部已设置 ✓" else "尚未检测",
                     fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            items(state.missingPinned, key = { it.repo + "/" + it.account }) { m ->
+            items(state.missingPinned, key = { "pinned:" + it.repo + "/" + it.account }) { m ->
                 MissingRow(m.displayName, "设置置顶") { onOpenArchive(m.repo) }
             }
             item { Spacer(Modifier.height(30.dp)) }
