@@ -44,13 +44,12 @@ class GitHubApi {
 
     private val client = HttpClient(OkHttp) {
         engine {
-            // 默认 maxRequestsPerHost = 5，而本应用几乎所有请求都指向同一域名
-            config {
-                dispatcher(okhttp3.Dispatcher().apply {
+            preconfigured = HttpClients.shared.newBuilder()
+                .dispatcher(okhttp3.Dispatcher().apply {
                     maxRequests = 64
                     maxRequestsPerHost = 16
                 })
-            }
+                .build()
         }
         install(ContentNegotiation) { json(this@GitHubApi.json) }
         install(HttpTimeout) {
@@ -58,6 +57,18 @@ class GitHubApi {
             socketTimeoutMillis = 30_000
         }
     }
+
+    /**
+     * 把响应整理成给用户看的错误说明，并读取限流头。
+     * 直接拼 bodyAsText() 会把 GitHub 的错误 JSON 原样显示到界面上。
+     */
+    private suspend fun describeError(resp: io.ktor.client.statement.HttpResponse): String =
+        GitHubError.describe(
+            status = resp.status.value,
+            body = runCatching { resp.bodyAsText() }.getOrDefault(""),
+            remaining = resp.headers["X-RateLimit-Remaining"],
+            resetEpoch = resp.headers["X-RateLimit-Reset"]
+        )
 
     // ---------- 公开数据（无需 PAT）----------
 
@@ -401,6 +412,7 @@ class GitHubApi {
             }
             if (resp.status.isSuccess()) resp.body<AuthUser>() else null
         } catch (e: Exception) {
+            currentCoroutineContext().ensureActive()
             null
         }
     }
@@ -445,7 +457,7 @@ class GitHubApi {
         }
         if (resp.status.isSuccess() || resp.status == HttpStatusCode.Created)
             Result.success(Unit)
-        else Result.failure(Exception("HTTP ${resp.status}: ${resp.bodyAsText()}"))
+        else Result.failure(Exception(describeError(resp)))
     } catch (e: Exception) { Result.failure(e) }
 
     /** 读取仓库里某文件内容 + sha（编辑 yml 前先读） */
@@ -501,7 +513,7 @@ class GitHubApi {
             setBody(body)
         }
         if (resp.status.isSuccess()) Result.success(Unit)
-        else Result.failure(Exception("HTTP ${resp.status}: ${resp.bodyAsText()}"))
+        else Result.failure(Exception(describeError(resp)))
     } catch (e: Exception) { Result.failure(e) }
 
     /** 上传（覆盖）仓库里某文件（编辑 yml 后上传） */
@@ -521,7 +533,7 @@ class GitHubApi {
             setBody(body)
         }
         if (resp.status.isSuccess()) Result.success(Unit)
-        else Result.failure(Exception("HTTP ${resp.status}: ${resp.bodyAsText()}"))
+        else Result.failure(Exception(describeError(resp)))
     } catch (e: Exception) { Result.failure(e) }
 
     /** 上传二进制文件（banner 图片，content 已是 base64）。会先查已有 sha */
@@ -545,7 +557,7 @@ class GitHubApi {
             setBody(body)
         }
         if (resp.status.isSuccess()) Result.success(Unit)
-        else Result.failure(Exception("HTTP ${resp.status}: ${resp.bodyAsText()}"))
+        else Result.failure(Exception(describeError(resp)))
     } catch (e: Exception) { Result.failure(e) }
 
     /** 查询某仓库最近的工作流运行（管理版监控用） */
@@ -570,6 +582,7 @@ class GitHubApi {
             }
             Result.success(all.distinctBy { it.name })
         } catch (e: Exception) {
+            currentCoroutineContext().ensureActive()
             Result.failure(e)
         }
     }
@@ -604,6 +617,7 @@ class GitHubApi {
                 Result.failure(Exception("HTTP ${resp.status}"))
             }
         } catch (e: Exception) {
+            currentCoroutineContext().ensureActive()
             Result.failure(e)
         }
     }
@@ -637,6 +651,7 @@ class GitHubApi {
                 Result.failure(Exception(explainDispatchError(resp.status, resp.bodyAsText(), workflow, inputs)))
             }
         } catch (e: Exception) {
+            currentCoroutineContext().ensureActive()
             Result.failure(e)
         }
     }
@@ -681,6 +696,7 @@ class GitHubApi {
         }
         resp.status.isSuccess()
     } catch (e: Exception) {
+        currentCoroutineContext().ensureActive()
         false
     }
 
@@ -693,6 +709,7 @@ class GitHubApi {
             }
             if (resp.status.isSuccess()) resp.body<GitHubContent>().sha else null
         } catch (e: Exception) {
+            currentCoroutineContext().ensureActive()
             null
         }
     }
@@ -718,8 +735,9 @@ class GitHubApi {
                 setBody(bodyObj)
             }
             if (resp.status.isSuccess()) Result.success(Unit)
-            else Result.failure(Exception("HTTP ${resp.status}: ${resp.bodyAsText()}"))
+            else Result.failure(Exception(describeError(resp)))
         } catch (e: Exception) {
+            currentCoroutineContext().ensureActive()
             Result.failure(e)
         }
     }

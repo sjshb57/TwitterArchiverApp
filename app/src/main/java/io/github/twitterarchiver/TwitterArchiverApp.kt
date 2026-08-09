@@ -10,6 +10,7 @@ import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
 import coil3.video.VideoFrameDecoder
 import okio.Path.Companion.toOkioPath
+import io.github.twitterarchiver.data.HttpClients
 
 /** 配置 Coil 全局图片缓存（内存 + 磁盘缓存到 app 私有目录 Android/data） */
 class TwitterArchiverApp : Application(), SingletonImageLoader.Factory {
@@ -18,15 +19,7 @@ class TwitterArchiverApp : Application(), SingletonImageLoader.Factory {
             .components {
                 add(VideoFrameDecoder.Factory())
                 add(
-                    OkHttpNetworkFetcherFactory(
-                        callFactory = {
-                            okhttp3.OkHttpClient.Builder()
-                                .connectTimeout(4, java.util.concurrent.TimeUnit.SECONDS)
-                                .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-                                .retryOnConnectionFailure(false)
-                                .build()
-                        }
-                    )
+                    OkHttpNetworkFetcherFactory(callFactory = { HttpClients.shared })
                 )
             }
             .memoryCache {

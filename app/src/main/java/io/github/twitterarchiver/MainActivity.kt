@@ -23,13 +23,17 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import io.github.twitterarchiver.util.DateUtil
+import androidx.core.content.ContextCompat
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         AppDirs.init(this)
         io.github.twitterarchiver.data.NetworkState.register(this)
-        registerReceiver(tzReceiver, IntentFilter(Intent.ACTION_TIMEZONE_CHANGED))
+        ContextCompat.registerReceiver(
+            this, tzReceiver, IntentFilter(Intent.ACTION_TIMEZONE_CHANGED),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
         enableEdgeToEdge()
         setContent { App() }
     }
