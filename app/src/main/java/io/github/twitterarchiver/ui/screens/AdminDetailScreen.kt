@@ -467,10 +467,8 @@ private fun runDuration(run: WorkflowRun): String {
     val start = parseIso(run.runStartedAt)
     // 运行中：每秒触发重组
     var now by remember(run.id) { mutableLongStateOf(System.currentTimeMillis()) }
-    if (running) {
-        androidx.compose.runtime.LaunchedEffect(run.id) {
-            while (true) { now = System.currentTimeMillis(); kotlinx.coroutines.delay(1000.milliseconds) }
-        }
+    LifecyclePolling(1000.milliseconds, enabled = running, keys = arrayOf(run.id)) {
+        now = System.currentTimeMillis()
     }
     if (start <= 0) return run.runStartedAt?.substringBefore("T") ?: ""
     val end = if (running) now else parseIso(run.updatedAt).takeIf { it > 0 } ?: now

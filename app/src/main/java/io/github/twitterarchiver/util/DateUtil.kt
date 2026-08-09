@@ -40,6 +40,18 @@ object DateUtil {
         java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US)
     }
 
+    /**
+     * 把格式化器的时区校正到当前默认值。
+     *
+     * SimpleDateFormat 在构造时就把 TimeZone.getDefault() 拷了一份，而这些实例
+     * 存在 ThreadLocal 里长期复用。用户出国改时区、或跨夏令时切换之后，
+     * 不校正的话日期会一直按旧时区显示，得杀进程才恢复。
+     */
+    private fun java.text.SimpleDateFormat.localized(): java.text.SimpleDateFormat = apply {
+        val now = java.util.TimeZone.getDefault()
+        if (timeZone != now) timeZone = now
+    }
+
     private fun parse(timestamp: String): java.util.Date? {
         if (timestamp.isBlank()) return null
         return try {
@@ -60,10 +72,9 @@ object DateUtil {
     /** timestamp → 设备本地时区的 yyyy-MM-dd */
     fun localDate(timestamp: String): String {
         val d = parse(timestamp) ?: return ""
-        return dateFmt.get()!!.format(d)
+        return dateFmt.get()!!.localized().format(d)
     }
 
-    /** timestamp → 设备本地时区的 HH:mm:ss */
     /**
      * 日期字符串去重池。48 万条推文各持一个 displayDate，但不同取值只有天数那么多
      * （十年约 3650 个），不共享的话多出约 20 MB 的重复字符串。
@@ -77,7 +88,7 @@ object DateUtil {
      * ms 为 0 说明原始串没解析出来，退回按字符串解析以保持与 localDate 一致的行为。
      */
     fun localDateOf(ms: Long, fallback: String): String {
-        val formatted = if (ms > 0) dateFmt.get()!!.format(java.util.Date(ms))
+        val formatted = if (ms > 0) dateFmt.get()!!.localized().format(java.util.Date(ms))
         else localDate(fallback)
         if (formatted.isEmpty()) return formatted
         datePool[formatted]?.let { return it }
@@ -85,14 +96,15 @@ object DateUtil {
         return formatted
     }
 
+    /** timestamp → 设备本地时区的 HH:mm:ss */
     fun localTime(timestamp: String): String {
         val d = parse(timestamp) ?: return ""
-        return timeFmt.get()!!.format(d)
+        return timeFmt.get()!!.localized().format(d)
     }
 
     /** timestamp → 设备本地时区的 yyyy-MM-dd HH:mm:ss（推文精确时间） */
     fun localDateTime(timestamp: String): String {
         val d = parse(timestamp) ?: return ""
-        return dateTimeFmt.get()!!.format(d)
+        return dateTimeFmt.get()!!.localized().format(d)
     }
 }

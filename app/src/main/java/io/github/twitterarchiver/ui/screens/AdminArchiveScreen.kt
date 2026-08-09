@@ -288,10 +288,8 @@ private fun runDurationText(run: WorkflowRun): String {
     var now by androidx.compose.runtime.remember(run.id) {
         mutableLongStateOf(System.currentTimeMillis())
     }
-    if (running) {
-        androidx.compose.runtime.LaunchedEffect(run.id) {
-            while (true) { now = System.currentTimeMillis(); kotlinx.coroutines.delay(1000.milliseconds) }
-        }
+    LifecyclePolling(1000.milliseconds, enabled = running, keys = arrayOf(run.id)) {
+        now = System.currentTimeMillis()
     }
     if (start <= 0) return ""
     val end = if (running) now else parseIso(run.updatedAt).takeIf { it > 0 } ?: now

@@ -2,6 +2,8 @@ package io.github.twitterarchiver.data
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 /** 数据仓库：统一入口，带简单内存缓存 */
 class Repository(private val api: GitHubApi = GitHubApi.shared) {
@@ -75,6 +77,7 @@ class Repository(private val api: GitHubApi = GitHubApi.shared) {
         withContext(Dispatchers.IO) {
             val key = "$repo/$account"
             if (!forceRefresh) profileCache[key]?.let { return@withContext it }
+            var cacheable = true
             val p = try {
                 api.fetchProfile(repo, account).also { fresh ->
                     metaFile("profile_${repo}_$account.json")?.let { f ->
@@ -83,12 +86,15 @@ class Repository(private val api: GitHubApi = GitHubApi.shared) {
                     }
                 }
             } catch (e: Exception) {
+                currentCoroutineContext().ensureActive()
                 metaFile("profile_${repo}_$account.json")?.takeIf { it.isFile }?.let { f ->
                     try { diskJson.decodeFromString<Profile>(f.readText()) }
                     catch (e2: Exception) { null }
-                } ?: Profile()
+                } ?: Profile().also {
+                    cacheable = false
+                }
             }
-            profileCache[key] = p
+            if (cacheable) profileCache[key] = p
             p
         }
 

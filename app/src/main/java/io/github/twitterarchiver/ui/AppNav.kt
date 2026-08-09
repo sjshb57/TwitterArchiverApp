@@ -117,8 +117,8 @@ fun AppNav(
     fun navBack() { screen = if (backStack.isNotEmpty()) backStack.removeAt(backStack.size - 1) else Screen.Tabs }
     val settingsVm: SettingsViewModel = viewModel()
     val defaultTab by settingsVm.defaultTab.collectAsState()
-    var selectedTab by remember { mutableIntStateOf(0) }
-    var appliedDefault by remember { mutableStateOf(false) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    var appliedDefault by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(defaultTab) {
         // -1 表示还没从存储加载完；只有拿到真实值(0/1)才应用一次
         if (!appliedDefault && defaultTab >= 0) {

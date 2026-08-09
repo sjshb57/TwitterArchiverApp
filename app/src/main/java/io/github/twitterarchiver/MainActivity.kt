@@ -17,6 +17,7 @@ import io.github.twitterarchiver.data.ThemeMode
 import io.github.twitterarchiver.ui.AppNav
 import io.github.twitterarchiver.ui.screens.SplashScreen
 import io.github.twitterarchiver.ui.theme.TwitterArchiverTheme
+import androidx.compose.runtime.saveable.rememberSaveable
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,7 +41,7 @@ private fun App() {
     val themeMode by settings.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
     val dynamicColor by settings.dynamicColor.collectAsState(initial = false)
 
-    var showSplash by remember { mutableStateOf(true) }
+    var showSplash by rememberSaveable { mutableStateOf(true) }
 
     TwitterArchiverTheme(themeMode = themeMode, dynamicColor = dynamicColor) {
         if (showSplash) {

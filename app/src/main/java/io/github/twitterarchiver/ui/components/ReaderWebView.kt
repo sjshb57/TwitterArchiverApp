@@ -19,25 +19,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 
+private const val ARCHIVE_HOST = "twitterarchiver.github.io"
+private val HTTP_SCHEMES = setOf("http", "https")
+
 /**
  * 复用 reader.html 的 WebView（系统内核，不打包）。
  * 用 url 作为 key —— 不同账号是不同的 WebView 实例，彻底避免状态串账号(#15)。
  *
  * reloadTrigger：值每变化一次就重新加载当前页。
  * WebView 默认吃缓存，仓库内容更新后不刷新看不到变化。
- */
-@SuppressLint("SetJavaScriptEnabled")
-private const val ARCHIVE_HOST = "twitterarchiver.github.io"
-private val HTTP_SCHEMES = setOf("http", "https")
-
-/**
- * 存档页内嵌浏览器。
  *
  * 需要 JavaScript：存档 HTML 的排版、图片网格、折叠引用都靠内联脚本实现，
  * 关掉就只剩裸文本。风险由 shouldOverrideUrlLoading 的白名单兜住——
  * 只有 twitterarchiver.github.io 能在此上下文内加载，其余一律拦下。
  */
-@android.annotation.SuppressLint("SetJavaScriptEnabled")
+@SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun ReaderWebView(
     url: String,
@@ -76,6 +72,7 @@ fun ReaderWebView(
                             ): Boolean {
                                 val target = request?.url ?: return false
                                 if (target.host == ARCHIVE_HOST) return false
+                                if (target.scheme !in HTTP_SCHEMES) return true
                                 if (request.isForMainFrame) {
                                     runCatching {
                                         view?.context?.startActivity(

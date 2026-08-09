@@ -163,13 +163,13 @@ Kotlin + Jetpack Compose + Material 3，单 Activity，自己实现的栈式导�
 
 |     |                                            |
 |-----|--------------------------------------------|
-| 构建  | AGP 9.2.1 / Gradle 9.5.1 / Kotlin 2.4.10   |
+| 构建  | AGP 9.3.1 / Gradle 9.7.0 / Kotlin 2.4.10   |
 | SDK | minSdk 30 · compileSdk 37 · targetSdk 37   |
 | UI  | Compose BOM 2026.06.01 · Material 3        |
-| 网络  | Ktor 3.5.1                                 |
+| 网络  | Ktor 3.5.2                                 |
 | 序列化 | kotlinx.serialization 1.11.0               |
 | 图片  | Coil 3.5（200 MB 磁盘缓存）                      |
-| 视频  | Media3 1.10.1                              |
+| 视频  | Media3 1.11.0                              |
 | 存储  | DataStore 1.2.1 · Android Keystore（PAT 加密） |
 
 ### 权限
