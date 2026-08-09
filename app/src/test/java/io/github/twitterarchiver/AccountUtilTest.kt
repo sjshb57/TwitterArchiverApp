@@ -6,6 +6,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+@Suppress("NonAsciiCharacters")
 class AccountUtilTest {
 
     @Test
@@ -17,7 +18,7 @@ class AccountUtilTest {
     }
 
     @Test
-    fun `合法用户名`() {
+    fun 合法用户名() {
         assertTrue(AccountUtil.isValidHandle("sjshb57"))
         assertTrue(AccountUtil.isValidHandle("@sjshb57"))
         assertTrue(AccountUtil.isValidHandle("a"))
@@ -26,7 +27,7 @@ class AccountUtilTest {
     }
 
     @Test
-    fun `不合法用户名`() {
+    fun 不合法用户名() {
         assertFalse(AccountUtil.isValidHandle(""))
         assertFalse(AccountUtil.isValidHandle("   "))
         assertFalse(AccountUtil.isValidHandle("abcdefghijklmnop"))

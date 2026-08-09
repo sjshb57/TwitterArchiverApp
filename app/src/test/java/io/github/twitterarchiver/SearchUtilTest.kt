@@ -11,6 +11,7 @@ import org.junit.Test
  * 雪花 ID 反推月份。搜完整推文 ID 时靠它决定下载哪个分片，
  * 算错的话表现是"搜不到"，不会报错，属于最难发现的那类。
  */
+@Suppress("NonAsciiCharacters")
 class SearchUtilTest {
 
     @Test
@@ -29,7 +30,7 @@ class SearchUtilTest {
     }
 
     @Test
-    fun `定位短码提取`() {
+    fun 定位短码提取() {
         assertEquals("abc12345", SearchUtil.extractTCode("?t=abc12345"))
         assertEquals("abc12345", SearchUtil.extractTCode("t=abc12345"))
         assertNull(SearchUtil.extractTCode("普通搜索词"))
@@ -48,7 +49,6 @@ class SearchUtilTest {
     fun `匹配对中文走原样比较，对英文折叠大小写`() {
         assertTrue(SearchUtil.matches("今天天气不错", "天气", "天气", false))
         assertFalse(SearchUtil.matches("今天天气不错", "下雨", "下雨", false))
-        // 含 ASCII 时应当忽略大小写
         assertTrue(SearchUtil.matches("Hello World", "hello", "hello", true))
         assertTrue(SearchUtil.matches("HELLO", "hello", "hello", true))
     }

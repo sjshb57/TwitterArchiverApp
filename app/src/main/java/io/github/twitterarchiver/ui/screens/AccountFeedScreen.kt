@@ -470,7 +470,7 @@ private fun TabBtn(text: String, selected: Boolean, modifier: Modifier, onClick:
 private fun ProfileHeader(
     profile: io.github.twitterarchiver.data.Profile,
     repo: String, account: String, displayName: String,
-    showHamburger: Boolean = false,
+    @Suppress("SameParameterValue") showHamburger: Boolean = false,
     onHamburger: () -> Unit = {}
 ) {
     val base = Config.snapshotsBase(repo, account)

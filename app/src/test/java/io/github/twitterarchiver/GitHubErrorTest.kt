@@ -7,6 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** 错误文案。用户看到的第一手信息，取错字段会误导排查方向 */
+@Suppress("NonAsciiCharacters")
 class GitHubErrorTest {
 
     @Test
@@ -16,14 +17,14 @@ class GitHubErrorTest {
     }
 
     @Test
-    fun `解析失败时返回空串而不是抛异常`() {
+    fun 解析失败时返回空串而不是抛异常() {
         assertEquals("", GitHubError.reasonOf("not json at all"))
         assertEquals("", GitHubError.reasonOf(""))
         assertEquals("", GitHubError.reasonOf("{}"))
     }
 
     @Test
-    fun `主限流与二级限流要区分开`() {
+    fun 主限流与二级限流要区分开() {
         val primary = GitHubError.describe(403, "", remaining = "0", resetEpoch = null)
         assertTrue(primary.contains("上限"))
 
@@ -47,7 +48,7 @@ class GitHubErrorTest {
     }
 
     @Test
-    fun `常见状态码都有人话`() {
+    fun 常见状态码都有人话() {
         assertTrue(GitHubError.describe(401, "", null, null).contains("令牌"))
         assertTrue(GitHubError.describe(404, "", null, null).contains("不存在"))
         assertTrue(GitHubError.describe(500, "", null, null).contains("服务异常"))

@@ -1,6 +1,7 @@
 package io.github.twitterarchiver.data
 
 /** 全局配置：组织、仓库、URL 拼接 */
+@Suppress("SameReturnValue")
 object Config {
     const val ORG = "TwitterArchiver"
     const val ORG_LOWER = "twitterarchiver"
