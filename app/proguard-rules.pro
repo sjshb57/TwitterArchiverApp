@@ -2,7 +2,9 @@
 -dontobfuscate
 
 # ── 本项目数据类 / 序列化 ──
--keep class io.github.twitterarchiver.data.** { *; }
+-keepclassmembers @kotlinx.serialization.Serializable class io.github.twitterarchiver.** {
+    <fields>;
+}
 -keepclassmembers class io.github.twitterarchiver.** { *** Companion; }
 
 # ── kotlinx.serialization ──

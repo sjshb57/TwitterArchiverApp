@@ -474,7 +474,7 @@ private fun ProfileHeader(
 ) {
     val base = Config.snapshotsBase(repo, account)
     val bannerUrl = if (profile.banner.isNotBlank())
-        "$base/${profile.banner.removePrefix("../")}" else null
+        "$base/${io.github.twitterarchiver.util.MediaUtil.sanitizeRelPath(profile.banner)}" else null
     val statusBarH = androidx.compose.foundation.layout.WindowInsets.statusBars
         .asPaddingValues().calculateTopPadding()
     Column(Modifier.fillMaxWidth()) {
@@ -499,7 +499,7 @@ private fun ProfileHeader(
                     .background(MaterialTheme.colorScheme.background).padding(3.dp)
             ) {
                 Avatar(
-                    url = if (profile.avatar.isNotBlank()) "$base/${profile.avatar.removePrefix("../")}" else "",
+                    url = if (profile.avatar.isNotBlank()) "$base/${io.github.twitterarchiver.util.MediaUtil.sanitizeRelPath(profile.avatar)}" else "",
                     size = 94.dp)
             }
             // 关注页：banner 左上角汉堡（随 banner 滚动划走，吸顶后由搜索栏汉堡接替）

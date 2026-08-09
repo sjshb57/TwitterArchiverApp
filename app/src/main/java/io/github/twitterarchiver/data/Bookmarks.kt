@@ -66,12 +66,12 @@ class Bookmarks(private val context: Context) {
 
     /** 从备份 JSON 导入（合并去重） */
     suspend fun importJson(content: String): Int {
-        val backup = try {
-            json.decodeFromString<BookmarkBackup>(content)
-        } catch (e: Exception) {
-            // 兼容直接是数组的旧格式
-            BookmarkBackup(bookmarks = json.decodeFromString(content))
-        }
+        val backup = runCatching { json.decodeFromString<BookmarkBackup>(content) }
+            .recoverCatching {
+                // 兼容直接是数组的旧格式
+                BookmarkBackup(bookmarks = json.decodeFromString(content))
+            }
+            .getOrElse { throw IllegalArgumentException("备份文件格式无法识别", it) }
         var added = 0
         update { list ->
             val existing = list.map { it.tweetId }.toSet()

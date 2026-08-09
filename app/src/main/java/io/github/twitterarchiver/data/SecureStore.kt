@@ -82,6 +82,7 @@ class SecureStore(private val context: Context) {
             )
             String(cipher.doFinal(encrypted), Charsets.UTF_8)
         } catch (e: Exception) {
+            runCatching { clearPat() }
             null
         }
     }

@@ -359,7 +359,7 @@ class GitHubApi {
      */
     suspend fun bannerExists(repo: String, account: String, bannerPath: String): Boolean {
         return try {
-            val path = bannerPath.removePrefix("../").trim()
+            val path = io.github.twitterarchiver.util.MediaUtil.sanitizeRelPath(bannerPath.trim())
             if (path.isBlank()) return false
             val base = Config.snapshotsBase(repo, account)
             val fileName = path.substringAfterLast('/')
@@ -369,7 +369,7 @@ class GitHubApi {
 
     /** 存档目录下某文件是否存在（Pages 直连，不耗 API 配额） */
     suspend fun snapshotFileExists(repo: String, account: String, relPath: String): Boolean = try {
-        val p = relPath.removePrefix("../").trim()
+        val p = io.github.twitterarchiver.util.MediaUtil.sanitizeRelPath(relPath.trim())
         if (p.isBlank()) false
         else client.head("${Config.snapshotsBase(repo, account)}/$p").status.isSuccess()
     } catch (e: Exception) { false }

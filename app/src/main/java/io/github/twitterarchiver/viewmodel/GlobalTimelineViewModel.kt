@@ -270,7 +270,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
 
         val idIndex = tweets.associateBy { it.tweetId }
         fun avatarUrl(av: String) = if (av.isBlank()) "" else
-            "${io.github.twitterarchiver.data.Config.snapshotsBase(repo, account)}/${av.removePrefix("../")}"
+            "${io.github.twitterarchiver.data.Config.snapshotsBase(repo, account)}/${io.github.twitterarchiver.util.MediaUtil.sanitizeRelPath(av)}"
         fun imgUrls(t: io.github.twitterarchiver.data.Tweet): List<String> {
             // 回复/推文的图在 images 字段（media_keys 为空但 images 有值的情况也要显示）
             if (t.images.isEmpty()) return emptyList()
