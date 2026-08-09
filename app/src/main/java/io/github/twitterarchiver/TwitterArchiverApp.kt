@@ -19,7 +19,7 @@ class TwitterArchiverApp : Application(), SingletonImageLoader.Factory {
             .components {
                 add(VideoFrameDecoder.Factory())
                 add(
-                    OkHttpNetworkFetcherFactory(callFactory = { HttpClients.shared })
+                    OkHttpNetworkFetcherFactory(callFactory = { HttpClients.images })
                 )
             }
             .memoryCache {

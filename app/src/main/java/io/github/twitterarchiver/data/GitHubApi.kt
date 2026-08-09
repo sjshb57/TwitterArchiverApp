@@ -44,12 +44,7 @@ class GitHubApi {
 
     private val client = HttpClient(OkHttp) {
         engine {
-            preconfigured = HttpClients.shared.newBuilder()
-                .dispatcher(okhttp3.Dispatcher().apply {
-                    maxRequests = 64
-                    maxRequestsPerHost = 16
-                })
-                .build()
+            preconfigured = HttpClients.shared
         }
         install(ContentNegotiation) { json(this@GitHubApi.json) }
         install(HttpTimeout) {
@@ -67,7 +62,8 @@ class GitHubApi {
             status = resp.status.value,
             body = runCatching { resp.bodyAsText() }.getOrDefault(""),
             remaining = resp.headers["X-RateLimit-Remaining"],
-            resetEpoch = resp.headers["X-RateLimit-Reset"]
+            resetEpoch = resp.headers["X-RateLimit-Reset"],
+            retryAfter = resp.headers["Retry-After"]
         )
 
     // ---------- 公开数据（无需 PAT）----------
@@ -427,7 +423,7 @@ class GitHubApi {
             header("X-GitHub-Api-Version", "2022-11-28")
         }
         if (resp.status.isSuccess() || resp.status == HttpStatusCode.Accepted)
-            Result.success(Unit) else Result.failure(Exception("HTTP ${resp.status}"))
+            Result.success(Unit) else Result.failure(Exception(describeError(resp)))
     } catch (e: Exception) { Result.failure(e) }
 
     /** 重跑失败的 workflow run（失败变红后手动重试） */
@@ -438,7 +434,7 @@ class GitHubApi {
             header("X-GitHub-Api-Version", "2022-11-28")
         }
         if (resp.status.isSuccess() || resp.status == HttpStatusCode.Created)
-            Result.success(Unit) else Result.failure(Exception("HTTP ${resp.status}"))
+            Result.success(Unit) else Result.failure(Exception(describeError(resp)))
     } catch (e: Exception) { Result.failure(e) }
 
     /** 从模板创建新仓库（建档第一步）。name=新仓库名(=账号名) */
@@ -473,7 +469,7 @@ class GitHubApi {
             val sha = o["sha"]?.jsonPrimitive?.contentOrNull ?: ""
             val decoded = String(android.util.Base64.decode(contentB64, android.util.Base64.DEFAULT))
             Result.success(decoded to sha)
-        } else Result.failure(Exception("HTTP ${resp.status}"))
+        } else Result.failure(Exception(describeError(resp)))
     } catch (e: Exception) { Result.failure(e) }
 
     /**
@@ -572,7 +568,7 @@ class GitHubApi {
                     header("X-GitHub-Api-Version", "2022-11-28")
                 }
                 if (!resp.status.isSuccess()) {
-                    return@withContext if (all.isEmpty()) Result.failure(Exception("HTTP ${resp.status}"))
+                    return@withContext if (all.isEmpty()) Result.failure(Exception(describeError(resp)))
                     else Result.success(all)
                 }
                 val batch = json.decodeFromString<List<OrgRepo>>(resp.bodyAsText())
@@ -614,7 +610,7 @@ class GitHubApi {
                 val body = json.decodeFromString<WorkflowRunsResponse>(resp.bodyAsText())
                 Result.success(body.workflowRuns)
             } else {
-                Result.failure(Exception("HTTP ${resp.status}"))
+                Result.failure(Exception(describeError(resp)))
             }
         } catch (e: Exception) {
             currentCoroutineContext().ensureActive()
@@ -674,14 +670,15 @@ class GitHubApi {
         422 if body.contains("Required input", ignoreCase = true) ->
             "$workflow 需要必填参数但本次没有提供，请检查该仓库的工作流定义。"
         422 ->
-            "$workflow 拒绝了这次触发（422）。多半是工作流文件与 App 传的参数对不上：$body"
+            "$workflow 拒绝了这次触发（422）。多半是工作流文件与 App 传的参数对不上" +
+                GitHubError.reasonOf(body).let { if (it.isBlank()) "" else "：$it" }
         404 ->
             "找不到 $workflow，可能该仓库还没有这个工作流文件，或令牌无权访问该仓库。"
         403 ->
             "没有权限触发 $workflow。请确认令牌具备该仓库的 Actions 写权限。"
         401 ->
             "令牌无效或已过期，请在设置里重新填写。"
-        else -> "HTTP $status: $body"
+        else -> GitHubError.describe(status.value, body, null, null)
     }
 
     /**
@@ -752,7 +749,7 @@ class GitHubApi {
             setBody(buildJsonObject { put("state", "closed") })
         }
         if (resp.status.isSuccess()) Result.success(Unit)
-        else Result.failure(Exception("HTTP ${resp.status}"))
+        else Result.failure(Exception(describeError(resp)))
     } catch (e: Exception) { Result.failure(e) }
 
     /** 管理员拉取所有存档申请（open 状态的 Issue） */

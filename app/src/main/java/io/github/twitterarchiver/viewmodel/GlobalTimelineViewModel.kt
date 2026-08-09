@@ -419,24 +419,31 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
 
     /** 应用账号筛选 + 搜索词 */
     private var searchJob: Job? = null
-    /** 上一次的查询词与结果，用于增量收窄 */
-    @Volatile private var lastQuery: String = ""
-    @Volatile private var lastResult: List<GlobalPost> = emptyList()
+    /**
+     * 上一次搜索的快照，用于增量收窄。
+     *
+     * 四个值必须一起读：分开存的话，即便每个都 @Volatile，也可能读到
+     * "ab" 的 query 配上 "abc" 的结果集——基集比实际小，收窄后会漏结果，
+     * 而且这种错配恰好绕过了"不是前缀就全量重算"的兜底。
+     */
+    private data class Narrow(
+        val query: String,
+        val result: List<GlobalPost>,
+        val date: String?,
+        val accounts: Set<Pair<String, String>>
+    )
+
+    @Volatile private var lastNarrow: Narrow? = null
 
     private fun applyFilter(q: String) {
         searchJob?.cancel()
-        val debounce = q.isNotBlank() && q != lastQuery
+        val debounce = q.isNotBlank() && q != lastNarrow?.query
         searchJob = viewModelScope.launch {
             if (debounce) delay(SEARCH_DEBOUNCE_MS.milliseconds)
-            val prevDate = lastFilterDate
-            val prevAccounts = lastFilterAccounts
-            val result = withContext(Dispatchers.Default) {
-                computeFiltered(q, prevDate, prevAccounts)
-            }
-            lastQuery = q
-            lastResult = result
-            lastFilterDate = activeDate
-            lastFilterAccounts = currentFilters
+            // 一次读一个引用，四个值天然一致
+            val prev = lastNarrow
+            val result = withContext(Dispatchers.Default) { computeFiltered(q, prev) }
+            lastNarrow = Narrow(q, result, activeDate, currentFilters)
             filtered = result
             page = 0
             val missing = if (result.isEmpty() && q.isNotBlank()) {
@@ -455,11 +462,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         }
     }
 
-    private fun computeFiltered(
-        raw: String,
-        prevDate: String?,
-        prevAccounts: Set<Pair<String, String>>
-    ): List<GlobalPost> {
+    private fun computeFiltered(raw: String, prev: Narrow?): List<GlobalPost> {
 
         var base = allPosts
         activeDate?.let { d -> base = base.filter { it.displayDate.startsWith(d) } }
@@ -475,12 +478,13 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
             return base.filter { it.tweetId == raw.trim() }
         }
 
-        val canNarrow = lastQuery.isNotBlank() &&
-            raw.startsWith(lastQuery) &&
-            lastResult.isNotEmpty() &&
-            activeDate == prevDate &&
-            currentFilters == prevAccounts
-        val source = if (canNarrow) lastResult else base
+        val canNarrow = prev != null &&
+            prev.query.isNotBlank() &&
+            raw.startsWith(prev.query) &&
+            prev.result.isNotEmpty() &&
+            activeDate == prev.date &&
+            currentFilters == prev.accounts
+        val source = if (canNarrow) prev.result else base
 
         val hasAscii = SearchUtil.hasAsciiLetter(raw)
         val lower = raw.lowercase(java.util.Locale.ROOT)
@@ -492,17 +496,13 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         }
     }
 
-    @Volatile private var lastFilterDate: String? = null
-    @Volatile private var lastFilterAccounts: Set<Pair<String, String>> = emptySet()
-
     /**
      * 从搜索结果跳到某条推文：清空搜索词、把日期筛选定位到它那一天，
      * 并记下要高亮的 tweetId 供列表滚动定位。
      */
     fun jumpToPost(post: GlobalPost) {
         val day = post.displayDate
-        lastQuery = ""
-        lastResult = emptyList()
+        lastNarrow = null
         activeDate = day.takeIf { it.isNotBlank() }
         _state.value = _state.value.copy(
             query = "",
