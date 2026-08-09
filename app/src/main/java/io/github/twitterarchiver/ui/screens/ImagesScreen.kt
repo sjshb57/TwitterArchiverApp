@@ -114,7 +114,7 @@ fun ImagesScreen(
                 columns = GridCells.Fixed(3),
                 modifier = Modifier.fillMaxSize().padding(2.dp)
             ) {
-                items(shown) { item ->
+                items(shown, key = { it.tweetId + "|" + it.url }) { item ->
                     MediaCell(item) {
                         when (item.type) {
                             MediaType.VIDEO -> playVideo = item.url

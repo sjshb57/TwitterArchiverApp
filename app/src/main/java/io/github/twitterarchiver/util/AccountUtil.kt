@@ -22,4 +22,14 @@ object AccountUtil {
         while (s.startsWith("@")) s = s.removePrefix("@").trim()
         return s
     }
+
+    /** 推特用户名：1–15 位字母数字下划线 */
+    private val HANDLE = Regex("^[A-Za-z0-9_]{1,15}$")
+
+    /**
+     * 规范化后是否是合法用户名。
+     * 既拦住脚本刷接口，也防呆——用户把整条推文链接粘进来时，
+     * normalize 剥不干净的部分会在这里被挡下，而不是提交一堆垃圾。
+     */
+    fun isValidHandle(raw: String): Boolean = HANDLE.matches(normalize(raw))
 }

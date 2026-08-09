@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.twitterarchiver.viewmodel.RequestViewModel
+import io.github.twitterarchiver.util.AccountUtil
 
 /** 申请存档页（访客用受限 token 提交 Issue） */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,15 +72,17 @@ fun RequestScreen(
             )
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
-                value = note, onValueChange = { note = it },
+                value = note,
+                onValueChange = { if (it.length <= RequestViewModel.NOTE_MAX) note = it },
                 label = { Text("备注（可选）") },
+                supportingText = { Text("${note.length} / ${RequestViewModel.NOTE_MAX}") },
                 modifier = Modifier.fillMaxWidth().height(120.dp)
             )
 
             Spacer(Modifier.height(20.dp))
             Button(
                 onClick = { vm.submit(restrictedToken, account, note) },
-                enabled = account.isNotBlank() && !state.submitting,
+                enabled = AccountUtil.isValidHandle(account) && !state.submitting,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (state.submitting) CircularProgressIndicator(

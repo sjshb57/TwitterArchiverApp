@@ -26,7 +26,9 @@ object GitHubError {
     ): String = when {
         status == 401 -> "令牌无效或已过期，请重新填写"
 
-        status == 429 || (status == 403 && retryAfter != null) -> {
+        status == 429 ||
+            (status == 403 && (retryAfter != null ||
+                body.contains("secondary rate limit", ignoreCase = true))) -> {
             val secs = retryAfter?.toLongOrNull()
             if (secs != null) "请求过于频繁，请 ${humanize(secs)}后再试"
             else "请求过于频繁，请稍后再试"

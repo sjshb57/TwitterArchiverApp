@@ -16,7 +16,9 @@ enum class MediaType { IMAGE, VIDEO, OTHER }
 
 data class MediaItem(
     val url: String,
-    val type: MediaType
+    val type: MediaType,
+    /** 所属推文。url 本身不唯一（同一张图可能被多条推文引用），列表 key 要靠它区分 */
+    val tweetId: String = ""
 )
 
 data class ImagesState(
@@ -41,14 +43,16 @@ class ImagesViewModel(private val repo: Repository = Repository.shared) : ViewMo
                 val items = mutableListOf<MediaItem>()
                 for (t in tweets) {
                     MediaUtil.resolveImages(repoName, account, t.images).forEach {
-                        items.add(MediaItem(it, classify(it)))
+                        items.add(MediaItem(it, classify(it), t.tweetId))
                     }
                     (t.wantedVideos + t.embeddedVideos).forEach { rel ->
                         val url = MediaUtil.resolveAsset(repoName, account, rel)
-                        items.add(MediaItem(url, MediaType.VIDEO))
+                        items.add(MediaItem(url, MediaType.VIDEO, t.tweetId))
                     }
                 }
-                _state.value = ImagesState(loading = false, all = items)
+                _state.value = ImagesState(
+                    loading = false,
+                    all = items.distinctBy { it.tweetId to it.url })
             } catch (e: Exception) {
                 currentCoroutineContext().ensureActive()
                 _state.value = ImagesState(loading = false, error = "加载失败：${e.message}")

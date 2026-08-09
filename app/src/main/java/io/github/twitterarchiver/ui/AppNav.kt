@@ -94,7 +94,7 @@ fun AppNav(
     }
 
     var screen by rememberSaveable(stateSaver = ScreenSaver) {
-        mutableStateOf<Screen>(Screen.Tabs)
+        mutableStateOf(Screen.Tabs)
     }
     val globalListState = androidx.compose.foundation.lazy.rememberLazyListState()
     val homeListState = androidx.compose.foundation.lazy.rememberLazyListState()
@@ -103,7 +103,7 @@ fun AppNav(
     val newArchiveListState = androidx.compose.foundation.lazy.rememberLazyListState()
     val tabScope = androidx.compose.runtime.rememberCoroutineScope()
 
-    val backStack = rememberSaveable(saver = BackStackSaver) { mutableStateListOf<Screen>() }
+    val backStack = rememberSaveable(saver = BackStackSaver) { mutableStateListOf() }
     fun navTo(s: Screen) {
         backStack.add(screen)
         screen = s
