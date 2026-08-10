@@ -24,6 +24,10 @@ import android.content.Intent
 import android.content.IntentFilter
 import io.github.twitterarchiver.util.DateUtil
 import androidx.core.content.ContextCompat
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.LaunchedEffect
+import androidx.core.graphics.drawable.toDrawable
+import io.github.twitterarchiver.data.ThemeMirror
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,6 +37,9 @@ class MainActivity : ComponentActivity() {
         ContextCompat.registerReceiver(
             this, tzReceiver, IntentFilter(Intent.ACTION_TIMEZONE_CHANGED),
             ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+        window.setBackgroundDrawable(
+            (if (ThemeMirror.isDark(this)) 0xFF000000 else 0xFFF7F9F9).toInt().toDrawable()
         )
         enableEdgeToEdge()
         setContent { App() }
@@ -64,6 +71,15 @@ private fun App() {
     val dynamicColor by settings.dynamicColor.collectAsState(initial = false)
 
     var showSplash by rememberSaveable { mutableStateOf(true) }
+
+    val systemDark = isSystemInDarkTheme()
+    LaunchedEffect(themeMode, systemDark) {
+        ThemeMirror.save(ctx, when (themeMode) {
+            ThemeMode.LIGHT -> false
+            ThemeMode.DARK -> true
+            ThemeMode.SYSTEM -> systemDark
+        })
+    }
 
     TwitterArchiverTheme(themeMode = themeMode, dynamicColor = dynamicColor) {
         if (showSplash) {

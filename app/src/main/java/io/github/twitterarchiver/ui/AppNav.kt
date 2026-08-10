@@ -5,7 +5,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -51,6 +50,11 @@ sealed class Screen {
 private val navJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
 
 /** 单个 Screen 的 Saver */
+private val TabIdSaver = androidx.compose.runtime.saveable.Saver<TabId, String>(
+    save = { it.name },
+    restore = { runCatching { TabId.valueOf(it) }.getOrNull() }
+)
+
 private val ScreenSaver = androidx.compose.runtime.saveable.Saver<Screen, String>(
     save = { runCatching { navJson.encodeToString(it) }.getOrNull() },
     restore = { runCatching { navJson.decodeFromString<Screen>(it) }.getOrNull() }
@@ -117,12 +121,15 @@ fun AppNav(
     fun navBack() { screen = if (backStack.isNotEmpty()) backStack.removeAt(backStack.size - 1) else Screen.Tabs }
     val settingsVm: SettingsViewModel = viewModel()
     val defaultTab by settingsVm.defaultTab.collectAsState()
-    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    var selectedTab by rememberSaveable(stateSaver = TabIdSaver) {
+        mutableStateOf(TabId.LIST)
+    }
     var appliedDefault by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(defaultTab) {
         // -1 表示还没从存储加载完；只有拿到真实值(0/1)才应用一次
         if (!appliedDefault && defaultTab >= 0) {
-            selectedTab = defaultTab.coerceIn(0, 1); appliedDefault = true
+            selectedTab = if (defaultTab == 1) TabId.GLOBAL else TabId.LIST
+            appliedDefault = true
         }
     }
     var dialogTarget by remember { mutableStateOf<DialogTarget?>(null) }
@@ -168,7 +175,8 @@ fun AppNav(
 
     when (val s = screen) {
         is Screen.Tabs -> {
-            AppScaffold(tabs, selectedTab.coerceIn(0, tabs.size - 1), { selectedTab = it },
+            val selectedIdx = tabs.indexOfFirst { it.id == selectedTab }.coerceAtLeast(0)
+            AppScaffold(tabs, selectedIdx, { selectedTab = tabs[it].id },
                 onTabReselected = { idx ->
                     when (tabs[idx].id) {
                         TabId.LIST -> tabScope.launch { homeListState.animateScrollToItem(0) }

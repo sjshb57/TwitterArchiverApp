@@ -119,7 +119,7 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             _state.value = _state.value.copy(patVerifying = true, message = null)
             val user = repo.verifyToken(pat).getOrElse { err ->
-                _state.value = _state.value.copy(patVerifying = false, message = err.message)
+                _state.value = _state.value.copy(patVerifying = false, message = err.message ?: "校验失败")
                 return@launch
             }
             store.savePat(pat)

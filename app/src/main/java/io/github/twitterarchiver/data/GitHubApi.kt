@@ -429,7 +429,11 @@ class GitHubApi {
         else Result.failure(Exception(describeError(resp)))
     } catch (e: Exception) {
         currentCoroutineContext().ensureActive()
-        Result.failure(java.io.IOException("网络不可用，无法校验令牌"))
+        val networkIssue = e is java.io.IOException
+        Result.failure(
+            if (networkIssue) java.io.IOException("网络不可用，无法校验令牌")
+            else Exception("校验令牌失败：${e.message ?: e::class.simpleName}")
+        )
     }
 
     // ---------- 管理操作（需 PAT）----------
