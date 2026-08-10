@@ -1,0 +1,69 @@
+# 只开真正能挡住问题的规则。默认规则集在既有项目上噪音很大，
+# 这里把风格类的关掉，保留"会静默出错"的那些。
+build:
+  maxIssues: 0
+
+comments:
+  active: false
+
+complexity:
+  active: true
+  LongMethod:
+    active: false
+  LongParameterList:
+    active: false
+  TooManyFunctions:
+    active: false
+  CyclomaticComplexMethod:
+    active: false
+  NestedBlockDepth:
+    active: false
+  LargeClass:
+    active: false
+
+style:
+  active: true
+  UnusedImports:
+    active: true
+  UnusedPrivateMember:
+    active: true
+  MagicNumber:
+    active: false
+  MaxLineLength:
+    active: false
+  ReturnCount:
+    active: false
+  WildcardImport:
+    active: false
+  ForbiddenComment:
+    active: false
+  LoopWithTooManyJumpStatements:
+    active: false
+  DestructuringDeclarationWithTooManyEntries:
+    active: false
+  ThrowsCount:
+    active: false
+
+exceptions:
+  active: true
+  TooGenericExceptionCaught:
+    active: false
+  InstanceOfCheckForException:
+    active: false
+  SwallowedException:
+    active: false
+  TooGenericExceptionThrown:
+    active: false
+
+naming:
+  active: true
+  FunctionNaming:
+    active: false
+
+potential-bugs:
+  active: true
+
+performance:
+  active: true
+  SpreadOperator:
+    active: false

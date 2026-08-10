@@ -39,7 +39,11 @@ class MainActivity : ComponentActivity() {
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
         window.setBackgroundDrawable(
-            (if (ThemeMirror.isDark(this)) 0xFF000000 else 0xFFF7F9F9).toInt().toDrawable()
+            ContextCompat.getColor(
+                this,
+                if (ThemeMirror.isDark(this)) R.color.window_background_dark
+                else R.color.window_background_light
+            ).toDrawable()
         )
         enableEdgeToEdge()
         setContent { App() }
@@ -67,21 +71,28 @@ class MainActivity : ComponentActivity() {
 private fun App() {
     val ctx = LocalContext.current
     val settings = remember { Settings(ctx) }
-    val themeMode by settings.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
+    // initial 用 null：DataStore 是异步的，用 SYSTEM 占位的话首帧会按系统深浅色
+    // 先写一次镜像，用户设 DARK 而系统浅色时那次是错的
+    val themeMode by settings.themeMode.collectAsState(initial = null)
     val dynamicColor by settings.dynamicColor.collectAsState(initial = false)
 
     var showSplash by rememberSaveable { mutableStateOf(true) }
 
     val systemDark = isSystemInDarkTheme()
     LaunchedEffect(themeMode, systemDark) {
-        ThemeMirror.save(ctx, when (themeMode) {
+        val mode = themeMode ?: return@LaunchedEffect
+        ThemeMirror.save(ctx, when (mode) {
             ThemeMode.LIGHT -> false
             ThemeMode.DARK -> true
             ThemeMode.SYSTEM -> systemDark
         })
     }
 
-    TwitterArchiverTheme(themeMode = themeMode, dynamicColor = dynamicColor) {
+    // DataStore 还没读出来时用镜像兜底，而不是 SYSTEM——窗口背景已经按镜像画好了，
+    // 用 SYSTEM 渲染首帧反而会和它对不上
+    val effectiveMode = themeMode
+        ?: if (ThemeMirror.isDark(ctx)) ThemeMode.DARK else ThemeMode.LIGHT
+    TwitterArchiverTheme(themeMode = effectiveMode, dynamicColor = dynamicColor) {
         if (showSplash) {
             SplashScreen(onFinish = { showSplash = false })
         } else {

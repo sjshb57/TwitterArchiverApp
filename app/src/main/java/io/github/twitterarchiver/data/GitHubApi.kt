@@ -432,7 +432,7 @@ class GitHubApi {
         val networkIssue = e is java.io.IOException
         Result.failure(
             if (networkIssue) java.io.IOException("网络不可用，无法校验令牌")
-            else Exception("校验令牌失败：${e.message ?: e::class.simpleName}")
+            else Exception("校验令牌失败：${e.message ?: e::class.java.simpleName}")
         )
     }
 

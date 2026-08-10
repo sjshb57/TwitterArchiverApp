@@ -175,6 +175,9 @@ fun AppNav(
 
     when (val s = screen) {
         is Screen.Tabs -> {
+            LaunchedEffect(tabs) {
+                if (tabs.none { it.id == selectedTab }) selectedTab = tabs.first().id
+            }
             val selectedIdx = tabs.indexOfFirst { it.id == selectedTab }.coerceAtLeast(0)
             AppScaffold(tabs, selectedIdx, { selectedTab = tabs[it].id },
                 onTabReselected = { idx ->

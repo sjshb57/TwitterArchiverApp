@@ -1,0 +1,12 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:GlobalPostCard.kt$(expanded || quoteExpanded) &amp;&amp; !loaded &amp;&amp; !loading</ID>
+    <ID>ComplexCondition:GlobalTimelineViewModel.kt$GlobalTimelineViewModel$quoted == null &amp;&amp; (mainTweet.text.startsWith("RT @") || mainTweet.bodyText.startsWith("RT @") || mainTweet.embeddedImages.isNotEmpty())</ID>
+    <ID>ComplexCondition:OfflineIndexStore.kt$OfflineIndexStore$b == ','.code || b == ' '.code || b == '\n'.code || b == '\r'.code || b == '\t'.code</ID>
+    <ID>EmptyCatchBlock:GitHubApi.kt$GitHubApi${ }</ID>
+    <ID>EmptyCatchBlock:Repository.kt$Repository${ }</ID>
+    <ID>EmptyCatchBlock:SettingsScreen.kt${ }</ID>
+  </CurrentIssues>
+</SmellBaseline>

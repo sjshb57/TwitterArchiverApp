@@ -31,12 +31,13 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
 
       - name: 准备 local.properties
-        # REQ_TOKEN 只影响访客版的「申请存档」，CI 不需要真 token；
-        # 但构建脚本会在 assembleVisitorRelease 时校验非空，这里给个占位
         run: echo "REQ_TOKEN=ci-placeholder" > local.properties
 
       - name: 单元测试
         run: ./gradlew testAdminDebugUnitTest
+
+      - name: 静态检查
+        run: ./gradlew detekt
 
       - name: Lint
         run: ./gradlew lintAdminDebug
