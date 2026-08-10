@@ -88,10 +88,8 @@ private fun App() {
         })
     }
 
-    // DataStore 还没读出来时用镜像兜底，而不是 SYSTEM——窗口背景已经按镜像画好了，
-    // 用 SYSTEM 渲染首帧反而会和它对不上
-    val effectiveMode = themeMode
-        ?: if (ThemeMirror.isDark(ctx)) ThemeMode.DARK else ThemeMode.LIGHT
+    val mirrorDark = remember { ThemeMirror.isDark(ctx) }
+    val effectiveMode = themeMode ?: if (mirrorDark) ThemeMode.DARK else ThemeMode.LIGHT
     TwitterArchiverTheme(themeMode = effectiveMode, dynamicColor = dynamicColor) {
         if (showSplash) {
             SplashScreen(onFinish = { showSplash = false })
