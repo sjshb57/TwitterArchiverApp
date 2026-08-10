@@ -82,6 +82,7 @@ class GitHubApi {
                 cache?.let { runCatching { it.parentFile?.mkdirs(); it.writeBytes(bytes) } }
                 parsed
             } catch (e: Exception) {
+                currentCoroutineContext().ensureActive()
                 val local = cache?.takeIf { it.isFile }
                     ?.let { f -> runCatching { parseIndexStream(f.inputStream()) }.getOrNull() }
                 local ?: throw e
@@ -100,6 +101,7 @@ class GitHubApi {
                 try { GlobalIndexStore.writeMetaRaw(it) } catch (e: Exception) { }
             }
         } catch (e: Exception) {
+            currentCoroutineContext().ensureActive()
             GlobalIndexStore.readMetaRaw() ?: throw e
         }
         parseGlobalMeta(text)
@@ -258,7 +260,10 @@ class GitHubApi {
             header(HttpHeaders.Range, "bytes=$offset-${offset + length - 1}")
         }
         resp.status.value to resp.body<ByteArray>()
-    } catch (e: Exception) { null }
+    } catch (e: Exception) {
+        currentCoroutineContext().ensureActive()
+        null
+    }
 
     /**
      * 解析某推文 html 里的转推/引用原推（embedded-tweet-container）。
@@ -372,7 +377,10 @@ class GitHubApi {
             val base = Config.snapshotsBase(repo, account)
             val fileName = path.substringAfterLast('/')
             client.head("$base/avatar/$fileName").status.isSuccess()
-        } catch (e: Exception) { false }
+        } catch (e: Exception) {
+            currentCoroutineContext().ensureActive()
+            false
+        }
     }
 
     /** 存档目录下某文件是否存在（Pages 直连，不耗 API 配额） */
@@ -380,7 +388,10 @@ class GitHubApi {
         val p = MediaUtil.sanitizeRelPath(relPath.trim())
         if (p.isBlank()) false
         else client.head("${Config.snapshotsBase(repo, account)}/$p").status.isSuccess()
-    } catch (e: Exception) { false }
+    } catch (e: Exception) {
+        currentCoroutineContext().ensureActive()
+        false
+    }
 
     /** 组织下是否已有该仓库。true=已存在，false=可用，null=查不到（网络/权限问题） */
     suspend fun repoExists(pat: String, name: String): Boolean? = try {
@@ -394,23 +405,31 @@ class GitHubApi {
             404 -> false
             else -> null
         }
-    } catch (e: Exception) { null }
+    } catch (e: Exception) {
+        currentCoroutineContext().ensureActive()
+        null
+    }
 
     // ---------- 认证 ----------
 
-    /** 用 PAT 验证身份，返回登录用户；失败返回 null */
-    suspend fun verifyToken(pat: String): AuthUser? {
-        return try {
-            val resp = client.get(Config.apiUser()) {
-                header("Authorization", "Bearer $pat")
-                header("Accept", "application/vnd.github+json")
-                header("X-GitHub-Api-Version", "2022-11-28")
-            }
-            if (resp.status.isSuccess()) resp.body<AuthUser>() else null
-        } catch (e: Exception) {
-            currentCoroutineContext().ensureActive()
-            null
+    /**
+     * 校验令牌。
+     *
+     * 返回 Result 而不是可空值：否则网络异常和"令牌无效"都变成 null，
+     * 调用方只能一律提示"令牌无效"，断网时会让用户白跑去重新生成令牌。
+     * 现在失败原因由 [GitHubError] 描述，调用方直接展示即可。
+     */
+    suspend fun verifyToken(pat: String): Result<AuthUser> = try {
+        val resp = client.get(Config.apiUser()) {
+            header("Authorization", "Bearer $pat")
+            header("Accept", "application/vnd.github+json")
+            header("X-GitHub-Api-Version", "2022-11-28")
         }
+        if (resp.status.isSuccess()) Result.success(resp.body<AuthUser>())
+        else Result.failure(Exception(describeError(resp)))
+    } catch (e: Exception) {
+        currentCoroutineContext().ensureActive()
+        Result.failure(java.io.IOException("网络不可用，无法校验令牌"))
     }
 
     // ---------- 管理操作（需 PAT）----------
@@ -424,7 +443,10 @@ class GitHubApi {
         }
         if (resp.status.isSuccess() || resp.status == HttpStatusCode.Accepted)
             Result.success(Unit) else Result.failure(Exception(describeError(resp)))
-    } catch (e: Exception) { Result.failure(e) }
+    } catch (e: Exception) {
+        currentCoroutineContext().ensureActive()
+        Result.failure(e)
+    }
 
     /** 重跑失败的 workflow run（失败变红后手动重试） */
     suspend fun rerunRun(pat: String, repo: String, runId: Long): Result<Unit> = try {
@@ -435,7 +457,10 @@ class GitHubApi {
         }
         if (resp.status.isSuccess() || resp.status == HttpStatusCode.Created)
             Result.success(Unit) else Result.failure(Exception(describeError(resp)))
-    } catch (e: Exception) { Result.failure(e) }
+    } catch (e: Exception) {
+        currentCoroutineContext().ensureActive()
+        Result.failure(e)
+    }
 
     /** 从模板创建新仓库（建档第一步）。name=新仓库名(=账号名) */
     suspend fun generateRepo(pat: String, name: String, private: Boolean = false): Result<Unit> = try {
@@ -454,7 +479,10 @@ class GitHubApi {
         if (resp.status.isSuccess() || resp.status == HttpStatusCode.Created)
             Result.success(Unit)
         else Result.failure(Exception(describeError(resp)))
-    } catch (e: Exception) { Result.failure(e) }
+    } catch (e: Exception) {
+        currentCoroutineContext().ensureActive()
+        Result.failure(e)
+    }
 
     /** 读取仓库里某文件内容 + sha（编辑 yml 前先读） */
     suspend fun fetchFileContent(pat: String, repo: String, path: String): Result<Pair<String, String>> = try {
@@ -470,7 +498,10 @@ class GitHubApi {
             val decoded = String(android.util.Base64.decode(contentB64, android.util.Base64.DEFAULT))
             Result.success(decoded to sha)
         } else Result.failure(Exception(describeError(resp)))
-    } catch (e: Exception) { Result.failure(e) }
+    } catch (e: Exception) {
+        currentCoroutineContext().ensureActive()
+        Result.failure(e)
+    }
 
     /**
      * 读取仓库文件的原始 base64（不解码，用于图片等二进制）。
@@ -489,7 +520,10 @@ class GitHubApi {
             val sha = o["sha"]?.jsonPrimitive?.contentOrNull ?: ""
             if (b64.isBlank()) null else b64 to sha
         } else null
-    } catch (e: Exception) { null }
+    } catch (e: Exception) {
+        currentCoroutineContext().ensureActive()
+        null
+    }
 
     /**
      * 新建仓库文件（调用方已确认目标不存在，因此不带 sha，也不预查一次）。
@@ -510,7 +544,10 @@ class GitHubApi {
         }
         if (resp.status.isSuccess()) Result.success(Unit)
         else Result.failure(Exception(describeError(resp)))
-    } catch (e: Exception) { Result.failure(e) }
+    } catch (e: Exception) {
+        currentCoroutineContext().ensureActive()
+        Result.failure(e)
+    }
 
     /** 上传（覆盖）仓库里某文件（编辑 yml 后上传） */
     suspend fun putFileContent(pat: String, repo: String, path: String,
@@ -530,7 +567,10 @@ class GitHubApi {
         }
         if (resp.status.isSuccess()) Result.success(Unit)
         else Result.failure(Exception(describeError(resp)))
-    } catch (e: Exception) { Result.failure(e) }
+    } catch (e: Exception) {
+        currentCoroutineContext().ensureActive()
+        Result.failure(e)
+    }
 
     /** 上传二进制文件（banner 图片，content 已是 base64）。会先查已有 sha */
     suspend fun putFileContentRaw(pat: String, repo: String, path: String,
@@ -554,7 +594,10 @@ class GitHubApi {
         }
         if (resp.status.isSuccess()) Result.success(Unit)
         else Result.failure(Exception(describeError(resp)))
-    } catch (e: Exception) { Result.failure(e) }
+    } catch (e: Exception) {
+        currentCoroutineContext().ensureActive()
+        Result.failure(e)
+    }
 
     /** 查询某仓库最近的工作流运行（管理版监控用） */
     suspend fun fetchOrgRepos(pat: String): Result<List<OrgRepo>> = withContext(Dispatchers.IO) {
@@ -750,7 +793,10 @@ class GitHubApi {
         }
         if (resp.status.isSuccess()) Result.success(Unit)
         else Result.failure(Exception(describeError(resp)))
-    } catch (e: Exception) { Result.failure(e) }
+    } catch (e: Exception) {
+        currentCoroutineContext().ensureActive()
+        Result.failure(e)
+    }
 
     /** 管理员拉取所有存档申请（open 状态的 Issue） */
     suspend fun fetchArchiveRequests(pat: String): List<GitHubIssue> {

@@ -136,32 +136,29 @@ fun AppNav(
 
     val tabs = if (BuildConfig.IS_ADMIN) {
         buildList {
-            add(TabItem("列表"))
-            add(TabItem("全站"))
-            if (followEnabled && followAccount.isNotBlank()) add(TabItem("关注"))
-            add(TabItem("管理"))
-            add(TabItem("设置"))
+            add(TabItem(TabId.LIST, "列表"))
+            add(TabItem(TabId.GLOBAL, "全站"))
+            if (followEnabled && followAccount.isNotBlank()) add(TabItem(TabId.FOLLOW, "关注"))
+            add(TabItem(TabId.ADMIN, "管理"))
+            add(TabItem(TabId.SETTINGS, "设置"))
         }
     } else {
         buildList {
-            add(TabItem("列表"))
-            add(TabItem("全站"))
-            if (followEnabled && followAccount.isNotBlank()) add(TabItem("关注"))
-            add(TabItem("设置"))
+            add(TabItem(TabId.LIST, "列表"))
+            add(TabItem(TabId.GLOBAL, "全站"))
+            if (followEnabled && followAccount.isNotBlank()) add(TabItem(TabId.FOLLOW, "关注"))
+            add(TabItem(TabId.SETTINGS, "设置"))
         }
     }
 
-    // 返回键：二级页面返回到主 Tab；主 Tab 时不拦截（交系统，可退出）
     BackHandler(enabled = screen !is Screen.Tabs) {
         navBack()
     }
-    // 主 Tab 时：双击返回退出，首次按给 Toast 提示
     val backCtx = LocalContext.current
     var lastBackAt by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
     BackHandler(enabled = screen is Screen.Tabs) {
         val now = System.currentTimeMillis()
         if (now - lastBackAt < 2000) {
-            // 2秒内再次返回 → 退出
             (backCtx as? android.app.Activity)?.finish()
         } else {
             lastBackAt = now
@@ -173,15 +170,15 @@ fun AppNav(
         is Screen.Tabs -> {
             AppScaffold(tabs, selectedTab.coerceIn(0, tabs.size - 1), { selectedTab = it },
                 onTabReselected = { idx ->
-                    // 双击(重复点击)当前 Tab → 回到顶部
-                    when (tabs[idx].label) {
-                        "列表" -> tabScope.launch { homeListState.animateScrollToItem(0) }
-                        "全站" -> tabScope.launch { globalListState.animateScrollToItem(0) }
-                        "关注" -> tabScope.launch { followListState.animateScrollToItem(0) }
+                    when (tabs[idx].id) {
+                        TabId.LIST -> tabScope.launch { homeListState.animateScrollToItem(0) }
+                        TabId.GLOBAL -> tabScope.launch { globalListState.animateScrollToItem(0) }
+                        TabId.FOLLOW -> tabScope.launch { followListState.animateScrollToItem(0) }
+                        TabId.ADMIN, TabId.SETTINGS -> Unit
                     }
                 }) { tab ->
-                when (tabs[tab].label) {
-                    "列表" -> ListScreen(
+                when (tabs[tab].id) {
+                    TabId.LIST -> ListScreen(
                         vm = homeVm,
                         listState = homeListState,
                         onOpenAccount = { navTo(Screen.AccountFeed(it.repoName, it.account, it.displayName)) },
@@ -189,7 +186,7 @@ fun AppNav(
                             dialogTarget = DialogTarget(it.repoName, it.account, it.displayName, it.handle, it.description ?: "", it.avatar ?: "")
                         }
                     )
-                    "全站" -> GlobalScreen(
+                    TabId.GLOBAL -> GlobalScreen(
                         vm = globalVm,
                         listState = globalListState,
                         onAvatarClick = { post ->
@@ -197,20 +194,20 @@ fun AppNav(
                         },
                         onImageClick = { urls, idx -> imagePreview = urls to idx }
                     )
-                    "关注" -> AccountFeedScreen(
+                    TabId.FOLLOW -> AccountFeedScreen(
                         repo = followRepo,
                         account = followAccount,
                         displayName = followName,
                         onImageClick = { urls, idx -> imagePreview = urls to idx },
                         externalListState = followListState
                     )
-                    "管理" -> AdminScreen(
+                    TabId.ADMIN -> AdminScreen(
                         vm = adminVm,
                         onOpenDash = { navTo(Screen.AdminDash(it)) },
                         onOpenRequests = { navTo(Screen.AdminRequests) },
                         onNewArchive = { navTo(Screen.AdminNewArchive) }
                     )
-                    "设置" -> SettingsScreen(
+                    TabId.SETTINGS -> SettingsScreen(
                         followSummary = if (followEnabled && followName.isNotBlank())
                             "已关注：$followName" else "在底栏固定显示某个账号",
                         onOpenFollow = { navTo(Screen.FollowSelect) },
@@ -222,7 +219,6 @@ fun AppNav(
                     )
                 }
             }
-            // 样式2 弹窗（统计只拉该账号 index.json，数字从0跳动到最终值）
             dialogTarget?.let { t ->
                 val statsVm: ProfileStatsViewModel = viewModel()
                 androidx.compose.runtime.LaunchedEffect(t.repo, t.account) {

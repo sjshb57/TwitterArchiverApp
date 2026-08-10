@@ -113,7 +113,7 @@ class Repository(private val api: GitHubApi = GitHubApi.shared) {
     suspend fun repoExists(pat: String, name: String): Boolean? =
         withContext(Dispatchers.IO) { api.repoExists(pat, name) }
 
-    suspend fun verifyToken(pat: String): AuthUser? =
+    suspend fun verifyToken(pat: String): Result<AuthUser> =
         withContext(Dispatchers.IO) { api.verifyToken(pat) }
 
     // 管理操作

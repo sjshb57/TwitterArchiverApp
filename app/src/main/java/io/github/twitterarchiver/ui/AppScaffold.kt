@@ -16,8 +16,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** 底部 Tab（纯文字，样式6） */
-data class TabItem(val label: String)
+// 底部 Tab
+enum class TabId { LIST, GLOBAL, FOLLOW, ADMIN, SETTINGS }
+
+data class TabItem(val id: TabId, val label: String)
 
 @Composable
 fun AppScaffold(

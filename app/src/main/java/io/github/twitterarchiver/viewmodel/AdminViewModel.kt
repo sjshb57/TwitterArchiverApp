@@ -1,7 +1,6 @@
 package io.github.twitterarchiver.viewmodel
 
 import io.github.twitterarchiver.data.HealthSort
-import io.github.twitterarchiver.data.NetworkState
 import io.github.twitterarchiver.data.RepoHealth
 import io.github.twitterarchiver.data.RotationConfig
 import io.github.twitterarchiver.util.DateUtil
@@ -119,13 +118,8 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
     fun savePat(pat: String) {
         viewModelScope.launch {
             _state.value = _state.value.copy(patVerifying = true, message = null)
-            val user = repo.verifyToken(pat)
-            if (user == null) {
-                _state.value = _state.value.copy(
-                    patVerifying = false,
-                    message = if (!NetworkState.online) "当前离线，无法验证令牌，请联网后重试"
-                    else "令牌无效或权限不足，请确认已勾选 repo 与 workflow"
-                )
+            val user = repo.verifyToken(pat).getOrElse { err ->
+                _state.value = _state.value.copy(patVerifying = false, message = err.message)
                 return@launch
             }
             store.savePat(pat)
