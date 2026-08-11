@@ -33,6 +33,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import io.github.twitterarchiver.util.VideoSaver
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
+import io.github.twitterarchiver.data.AppStrings
 
 /**
  * 视频播放浮层：视频按自身宽高比显示（aspectRatio 跟随视频尺寸），
@@ -89,14 +92,14 @@ fun VideoPlayerOverlay(
                 onClick = onDismiss,
                 modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(8.dp)
             ) {
-                Icon(Icons.Filled.Close, "关闭", tint = Color.White)
+                Icon(Icons.Filled.Close, stringResource(R.string.close), tint = Color.White)
             }
             IconButton(
                 onClick = {
-                    Toast.makeText(context, "开始下载视频…", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, AppStrings[R.string.video_player_01], Toast.LENGTH_SHORT).show()
                     scope.launch {
                         val ok = VideoSaver.saveVideo(context, url, "TA_${System.currentTimeMillis()}.mp4")
-                        Toast.makeText(context, if (ok) "已保存到相册" else "保存失败", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, if (ok) AppStrings[R.string.img_preview_02] else AppStrings[R.string.img_preview_01], Toast.LENGTH_SHORT).show()
                     }
                 },
                 modifier = Modifier
@@ -105,7 +108,7 @@ fun VideoPlayerOverlay(
                     .padding(bottom = 60.dp, end = 24.dp)
                     .background(Color.Black.copy(alpha = 0.5f), CircleShape)
             ) {
-                Icon(Icons.Filled.Download, "保存", tint = Color.White)
+                Icon(Icons.Filled.Download, stringResource(R.string.save), tint = Color.White)
             }
         }
     }

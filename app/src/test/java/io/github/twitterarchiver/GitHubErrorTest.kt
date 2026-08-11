@@ -2,7 +2,6 @@ package io.github.twitterarchiver
 
 import io.github.twitterarchiver.data.GitHubError
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -25,34 +24,42 @@ class GitHubErrorTest {
 
     @Test
     fun 主限流与二级限流要区分开() {
-        val primary = GitHubError.describe(403, "", remaining = "0", resetEpoch = null)
-        assertTrue(primary.contains("上限"))
-
-        val secondary = GitHubError.describe(
-            403, "", remaining = "42", resetEpoch = null, retryAfter = "30")
-        assertTrue(secondary.contains("频繁"))
-        assertFalse(secondary.contains("权限"))
-
-        val noHeader = GitHubError.describe(
-            403, """{"message":"You have exceeded a secondary rate limit"}""",
-            remaining = "42", resetEpoch = null)
-        assertTrue(noHeader.contains("频繁"))
-
-        val forbidden = GitHubError.describe(403, "", remaining = "42", resetEpoch = null)
-        assertTrue(forbidden.contains("权限"))
+        // 测 classify 而不是 describe：文案要经过 Android 资源，单测里拿不到 Context，
+        // 而这里真正要验的是「判断成哪一类」——那才是会出错的地方
+        assertTrue(
+            GitHubError.classify(403, "", remaining = "0", resetEpoch = null)
+                is GitHubError.Kind.QuotaExhausted
+        )
+        // 带 Retry-After = 二级限流，不该判成权限问题
+        assertTrue(
+            GitHubError.classify(403, "", remaining = "42", resetEpoch = null, retryAfter = "30")
+                is GitHubError.Kind.RateLimited
+        )
+        // 响应体写明 secondary rate limit，即便没有 Retry-After 也要认出来
+        assertTrue(
+            GitHubError.classify(
+                403, """{"message":"You have exceeded a secondary rate limit"}""",
+                remaining = "42", resetEpoch = null
+            ) is GitHubError.Kind.RateLimited
+        )
+        assertEquals(
+            GitHubError.Kind.Forbidden,
+            GitHubError.classify(403, "", remaining = "42", resetEpoch = null)
+        )
     }
 
     @Test
     fun `429 也归到频繁`() {
-        assertTrue(GitHubError.describe(429, "", null, null).contains("频繁"))
+        assertTrue(GitHubError.classify(429, "", null, null) is GitHubError.Kind.RateLimited)
     }
 
     @Test
-    fun 常见状态码都有人话() {
-        assertTrue(GitHubError.describe(401, "", null, null).contains("令牌"))
-        assertTrue(GitHubError.describe(404, "", null, null).contains("不存在"))
-        assertTrue(GitHubError.describe(500, "", null, null).contains("服务异常"))
-        assertFalse(GitHubError.describe(404, """{"documentation_url":"x"}""", null, null)
-            .contains("documentation_url"))
+    fun 常见状态码各归各类() {
+        assertEquals(GitHubError.Kind.TokenInvalid, GitHubError.classify(401, "", null, null))
+        assertEquals(GitHubError.Kind.NotFound, GitHubError.classify(404, "", null, null))
+        assertTrue(GitHubError.classify(500, "", null, null) is GitHubError.Kind.ServerError)
+        // 原始 JSON 不该整个漏进结果，只取 message
+        val other = GitHubError.classify(418, """{"documentation_url":"x"}""", null, null)
+        assertTrue(other is GitHubError.Kind.Other && other.reason.isBlank())
     }
 }

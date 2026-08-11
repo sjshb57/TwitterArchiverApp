@@ -30,6 +30,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.twitterarchiver.data.Bookmark
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
 
 /** 书签管理页：列表 + 导出/导入 */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,18 +51,18 @@ fun BookmarkScreen(
                 titleContentColor = MaterialTheme.colorScheme.onBackground,
                 navigationIconContentColor = MaterialTheme.colorScheme.onBackground
             ),
-            title = { Text("书签", fontSize = 16.sp) },
+            title = { Text(stringResource(R.string.bookmark_01), fontSize = 16.sp) },
             navigationIcon = {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
+                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
             }
         )
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
-            TextButton(onClick = onExport) { Text("导出备份") }
-            TextButton(onClick = onImport) { Text("导入备份") }
+            TextButton(onClick = onExport) { Text(stringResource(R.string.bookmark_03)) }
+            TextButton(onClick = onImport) { Text(stringResource(R.string.bookmark_02)) }
         }
         if (bookmarks.isEmpty()) {
             Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Text("还没有收藏任何推文", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.bookmark_04), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             LazyColumn(Modifier.fillMaxSize()) {
@@ -81,7 +83,7 @@ fun BookmarkScreen(
                                 modifier = Modifier.padding(top = 2.dp))
                         }
                         IconButton(onClick = { onRemove(b.tweetId) }) {
-                            Icon(Icons.Filled.Delete, "删除",
+                            Icon(Icons.Filled.Delete, stringResource(R.string.delete),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }

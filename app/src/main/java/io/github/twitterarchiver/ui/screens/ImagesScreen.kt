@@ -44,6 +44,8 @@ import io.github.twitterarchiver.ui.components.VideoPlayerOverlay
 import io.github.twitterarchiver.viewmodel.ImagesViewModel
 import io.github.twitterarchiver.viewmodel.MediaItem
 import io.github.twitterarchiver.viewmodel.MediaType
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
 
 /** 媒体浏览页：图片+视频+其他，右上角类型筛选 */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -65,19 +67,19 @@ fun ImagesScreen(
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         var menuOpen by remember { mutableStateOf(false) }
         val filterLabel = when (filter) {
-            null -> "全部"
-            MediaType.IMAGE -> "图片"
-            MediaType.VIDEO -> "视频"
-            MediaType.OTHER -> "其他"
+            null -> stringResource(R.string.images_screen_01)
+            MediaType.IMAGE -> stringResource(R.string.images)
+            MediaType.VIDEO -> stringResource(R.string.videos)
+            MediaType.OTHER -> stringResource(R.string.others)
         }
         TopAppBar(
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("$title · 媒体", fontSize = 16.sp)
+                    Text(stringResource(R.string.images_title, title), fontSize = 16.sp)
                 }
             },
             navigationIcon = {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
+                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
             },
             actions = {
                 // 左上角风格的下拉筛选（放在 actions 区，点开往下展开）
@@ -90,10 +92,10 @@ fun ImagesScreen(
                         expanded = menuOpen,
                         onDismissRequest = { menuOpen = false }
                     ) {
-                        DropItem("全部") { filter = null; menuOpen = false }
-                        DropItem("图片") { filter = MediaType.IMAGE; menuOpen = false }
-                        DropItem("视频") { filter = MediaType.VIDEO; menuOpen = false }
-                        DropItem("其他") { filter = MediaType.OTHER; menuOpen = false }
+                        DropItem(stringResource(R.string.images_screen_01)) { filter = null; menuOpen = false }
+                        DropItem(stringResource(R.string.images)) { filter = MediaType.IMAGE; menuOpen = false }
+                        DropItem(stringResource(R.string.videos)) { filter = MediaType.VIDEO; menuOpen = false }
+                        DropItem(stringResource(R.string.others)) { filter = MediaType.OTHER; menuOpen = false }
                     }
                 }
             },
@@ -108,7 +110,7 @@ fun ImagesScreen(
         when {
             state.loading -> Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
             shown.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Text("暂无该类型媒体", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.images_screen_03), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             else -> LazyVerticalGrid(
                 columns = GridCells.Fixed(3),
@@ -169,10 +171,10 @@ private fun MediaCell(item: MediaItem, onClick: () -> Unit) {
                     Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Filled.PlayArrow, "播放", tint = Color.White.copy(alpha = 0.9f),
+                    Icon(Icons.Filled.PlayArrow, stringResource(R.string.images_screen_02), tint = Color.White.copy(alpha = 0.9f),
                         modifier = Modifier.padding(4.dp))
                 }
-                Text("视频", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold,
+                Text(stringResource(R.string.videos), color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold,
                     modifier = Modifier.align(Alignment.BottomStart)
                         .padding(4.dp)
                         .background(Color.Black.copy(alpha = 0.5f))

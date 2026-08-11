@@ -17,6 +17,9 @@ import io.github.twitterarchiver.viewmodel.*
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
+import io.github.twitterarchiver.data.AppStrings
 
 /** 应用内的"页面"状态（简单栈式导航） */
 /**
@@ -143,18 +146,18 @@ fun AppNav(
 
     val tabs = if (BuildConfig.IS_ADMIN) {
         buildList {
-            add(TabItem(TabId.LIST, "列表"))
-            add(TabItem(TabId.GLOBAL, "全站"))
-            if (followEnabled && followAccount.isNotBlank()) add(TabItem(TabId.FOLLOW, "关注"))
-            add(TabItem(TabId.ADMIN, "管理"))
-            add(TabItem(TabId.SETTINGS, "设置"))
+            add(TabItem(TabId.LIST, stringResource(R.string.tab_list)))
+            add(TabItem(TabId.GLOBAL, stringResource(R.string.tab_global)))
+            if (followEnabled && followAccount.isNotBlank()) add(TabItem(TabId.FOLLOW, stringResource(R.string.tab_follow)))
+            add(TabItem(TabId.ADMIN, stringResource(R.string.tab_admin)))
+            add(TabItem(TabId.SETTINGS, stringResource(R.string.tab_settings)))
         }
     } else {
         buildList {
-            add(TabItem(TabId.LIST, "列表"))
-            add(TabItem(TabId.GLOBAL, "全站"))
-            if (followEnabled && followAccount.isNotBlank()) add(TabItem(TabId.FOLLOW, "关注"))
-            add(TabItem(TabId.SETTINGS, "设置"))
+            add(TabItem(TabId.LIST, stringResource(R.string.tab_list)))
+            add(TabItem(TabId.GLOBAL, stringResource(R.string.tab_global)))
+            if (followEnabled && followAccount.isNotBlank()) add(TabItem(TabId.FOLLOW, stringResource(R.string.tab_follow)))
+            add(TabItem(TabId.SETTINGS, stringResource(R.string.tab_settings)))
         }
     }
 
@@ -169,7 +172,7 @@ fun AppNav(
             (backCtx as? android.app.Activity)?.finish()
         } else {
             lastBackAt = now
-            android.widget.Toast.makeText(backCtx, "再按一次返回键退出", android.widget.Toast.LENGTH_SHORT).show()
+            android.widget.Toast.makeText(backCtx, AppStrings[R.string.nav_01], android.widget.Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -220,7 +223,7 @@ fun AppNav(
                     )
                     TabId.SETTINGS -> SettingsScreen(
                         followSummary = if (followEnabled && followName.isNotBlank())
-                            "已关注：$followName" else "在底栏固定显示某个账号",
+                            stringResource(R.string.nav_following, followName) else stringResource(R.string.nav_02),
                         onOpenFollow = { navTo(Screen.FollowSelect) },
                         onOpenTheme = { navTo(Screen.Theme) },
                         onOpenDefaultTab = { navTo(Screen.DefaultTab) },
@@ -306,9 +309,9 @@ fun AppNav(
                         bmCtx.contentResolver.openOutputStream(it)?.use { os ->
                             os.write(bmVm.exportJson(list).toByteArray())
                         }
-                        android.widget.Toast.makeText(bmCtx, "已导出 ${list.size} 条书签", android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(bmCtx, AppStrings.get(R.string.nav_exported, list.size), android.widget.Toast.LENGTH_SHORT).show()
                     } catch (e: Exception) {
-                        android.widget.Toast.makeText(bmCtx, "导出失败", android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(bmCtx, AppStrings[R.string.nav_05], android.widget.Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -322,11 +325,11 @@ fun AppNav(
                             input.readBytes().decodeToString()
                         } ?: ""
                         bmVm.importJson(content) { count ->
-                            val msg = if (count < 0) "导入失败：文件格式不正确" else "已导入 $count 条书签"
+                            val msg = if (count < 0) AppStrings[R.string.nav_04] else AppStrings.get(R.string.nav_imported, count)
                             android.widget.Toast.makeText(bmCtx, msg, android.widget.Toast.LENGTH_SHORT).show()
                         }
                     } catch (e: Exception) {
-                        android.widget.Toast.makeText(bmCtx, "导入失败", android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(bmCtx, AppStrings[R.string.nav_03], android.widget.Toast.LENGTH_SHORT).show()
                     }
                 }
             }

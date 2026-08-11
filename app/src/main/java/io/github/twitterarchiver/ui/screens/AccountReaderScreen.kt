@@ -23,6 +23,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import io.github.twitterarchiver.data.Config
 import io.github.twitterarchiver.ui.components.ReaderWebView
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
 
 /**
  * 个人推文页：整个 reader 页塞进 WebView（系统内核，复用你喜欢的 reader.html）。
@@ -47,13 +49,13 @@ fun AccountReaderScreen(
             navigationIcon = {
                 if (showBack) {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             },
             actions = {
                 IconButton(onClick = { reloadTick++ }) {
-                    Icon(Icons.Filled.Refresh, contentDescription = "刷新")
+                    Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.refresh))
                 }
             },
             // 主 Tab 模式下 AppScaffold 已消费状态栏 inset，这里置 0 避免重复留白；

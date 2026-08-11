@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import io.github.twitterarchiver.util.AccountUtil
+import io.github.twitterarchiver.R
+import io.github.twitterarchiver.data.AppStrings
 
 data class RequestState(
     val submitting: Boolean = false,
@@ -42,13 +44,13 @@ class RequestViewModel(private val repo: Repository = Repository.shared) : ViewM
     fun submit(restrictedToken: String, account: String, note: String) {
         val handle = AccountUtil.normalize(account)
         if (!AccountUtil.isValidHandle(handle)) {
-            _state.value = RequestState(result = "账号名不合法：应为 1–15 位字母、数字或下划线")
+            _state.value = RequestState(result = AppStrings[R.string.request_invalid_handle])
             return
         }
         val since = System.currentTimeMillis() - lastSubmitAt
         if (lastSubmitAt > 0 && since < COOLDOWN_MS) {
             _state.value = RequestState(
-                result = "提交太频繁，请 ${((COOLDOWN_MS - since) / 1000) + 1} 秒后再试")
+                result = AppStrings.get(R.string.request_too_frequent, ((COOLDOWN_MS - since) / 1000) + 1))
             return
         }
         viewModelScope.launch {
@@ -58,8 +60,8 @@ class RequestViewModel(private val repo: Repository = Repository.shared) : ViewM
             _state.value = RequestState(
                 submitting = false,
                 success = r.isSuccess,
-                result = if (r.isSuccess) "申请已提交，感谢！我们会尽快处理。"
-                else "提交失败：${r.exceptionOrNull()?.message}"
+                result = if (r.isSuccess) AppStrings[R.string.request_success]
+                else AppStrings.get(R.string.request_failed, r.exceptionOrNull()?.message.orEmpty())
             )
         }
     }

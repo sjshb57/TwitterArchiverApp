@@ -25,14 +25,15 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.Job
+import io.github.twitterarchiver.R
 
 /** 4 个仪表盘之一 */
-enum class DashRepo(val repo: String, val title: String) {
-    HOME("home", "Home 聚合"),
-    DISPATCHER("Dispatcher", "调度中心"),
-    HEALTH("", "仓库健康"),
-    STARTER("project-starter", "存档模板"),
-    ALL_ARCHIVES("", "所有存档")
+enum class DashRepo(val repo: String, @androidx.annotation.StringRes val titleRes: Int) {
+    HOME("home", R.string.dash_home),
+    DISPATCHER("Dispatcher", R.string.dash_dispatcher),
+    HEALTH("", R.string.dash_health),
+    STARTER("project-starter", R.string.dash_starter),
+    ALL_ARCHIVES("", R.string.dash_all_archives)
 }
 
 data class AdminState(
@@ -87,6 +88,11 @@ data class MissingItem(
 
 class AdminViewModel(app: Application) : AndroidViewModel(app) {
 
+    /** AndroidViewModel 能拿到 Application，直接取资源即可 */
+    private fun str(@androidx.annotation.StringRes id: Int, vararg args: Any) =
+        if (args.isEmpty()) getApplication<Application>().getString(id)
+        else getApplication<Application>().getString(id, *args)
+
     private val repo = Repository.shared
 
     /**
@@ -119,7 +125,7 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             _state.value = _state.value.copy(patVerifying = true, message = null)
             val user = repo.verifyToken(pat).getOrElse { err ->
-                _state.value = _state.value.copy(patVerifying = false, message = err.message ?: "校验失败")
+                _state.value = _state.value.copy(patVerifying = false, message = err.message ?: str(R.string.admin_verify_failed))
                 return@launch
             }
             store.savePat(pat)
@@ -127,7 +133,7 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
             _state.value = _state.value.copy(
                 patVerifying = false,
                 hasPat = pat.isNotBlank(),
-                message = "已保存令牌（${user.login}）"
+                message = str(R.string.admin_token_saved, user.login)
             )
         }
     }
@@ -135,7 +141,7 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             store.clearPat()
             patValue = null
-            _state.value = _state.value.copy(hasPat = false, message = "已清除令牌")
+            _state.value = _state.value.copy(hasPat = false, message = str(R.string.admin_token_cleared))
         }
     }
 
@@ -155,7 +161,7 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                 .onFailure {
                     // 轮询失败不打扰：保留原有数据，不弹提示
                     _state.value = if (silent) _state.value.copy(loadingRepo = null)
-                    else _state.value.copy(loadingRepo = null, message = "加载失败：${it.message}")
+                    else _state.value.copy(loadingRepo = null, message = str(R.string.admin_load_failed, it.message.orEmpty()))
                 }
         }
     }
@@ -221,7 +227,7 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
             val repos = repo.fetchOrgRepos(pat).getOrElse {
                 _state.value = _state.value.copy(
                     healthLoading = false,
-                    healthError = "读取仓库列表失败：${it.message}")
+                    healthError = str(R.string.admin_repo_list_failed, it.message.orEmpty()))
                 return@launch
             }.filter { it.name !in nonArchiveRepos && !it.archived }
 
@@ -245,7 +251,7 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                 healthLoading = false,
                 health = list,
                 rotation = rotation,
-                healthError = if (rotation == null) "未能读取轮转配置，已跳过超期判定" else null
+                healthError = if (rotation == null) str(R.string.admin_rotation_unreadable) else null
             )
         }
     }
@@ -300,7 +306,7 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                 _state.value = _state.value.copy(allArchives = repos, archivesLoading = false)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(archivesLoading = false,
-                    message = "加载账号列表失败：${e.message}")
+                    message = str(R.string.admin_accounts_failed, e.message.orEmpty()))
             }
         }
     }
@@ -318,7 +324,7 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                 try { repo.getRepos() } catch (e: Exception) { emptyList() }
             }
             if (archives.isEmpty()) {
-                _state.value = _state.value.copy(message = "没有账号可检测")
+                _state.value = _state.value.copy(message = str(R.string.admin_no_accounts))
                 return@launch
             }
             _state.value = _state.value.copy(
@@ -362,7 +368,7 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                                 if (avatarJob.await()) noAvatar.add(item.copy(avatarName = av))
                             } catch (e: Exception) {
                                 currentCoroutineContext().ensureActive()
-                                noBanner.add(MissingItem(arc.repoName, arc.account, "${arc.displayName} [读取失败]"))
+                                noBanner.add(MissingItem(arc.repoName, arc.account, str(R.string.admin_read_failed_suffix, arc.displayName)))
                             }
                         }
                         lock.withLock {
@@ -496,16 +502,16 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ---------- 运行操作 ----------
-    fun cancelRun(repoName: String, runId: Long) = op("已请求暂停") {
+    fun cancelRun(repoName: String, runId: Long) = op(str(R.string.admin_pause_requested)) {
         repo.cancelRun(it, repoName, runId)
     }
-    fun rerunRun(repoName: String, runId: Long) = op("已请求重试") {
+    fun rerunRun(repoName: String, runId: Long) = op(str(R.string.admin_retry_requested)) {
         repo.rerunRun(it, repoName, runId)
     }
     fun triggerWorkflow(repoName: String, workflow: String, inputs: Map<String, String> = emptyMap()) {
         // 触发后把该仓库置顶（放到最前），并标记运行中
         pinRepo(repoName)
-        op("已触发 $workflow") { repo.dispatchWorkflow(it, repoName, workflow, inputs) }
+        op(str(R.string.admin_workflow_triggered, workflow)) { repo.dispatchWorkflow(it, repoName, workflow, inputs) }
     }
 
     /** 把仓库置顶（最近操作的在最前） */
@@ -523,7 +529,7 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
             _state.value = _state.value.copy(busy = true)
             action(pat)
                 .onSuccess { _state.value = _state.value.copy(busy = false, message = successMsg) }
-                .onFailure { _state.value = _state.value.copy(busy = false, message = "操作失败：${it.message}") }
+                .onFailure { _state.value = _state.value.copy(busy = false, message = str(R.string.admin_action_failed, it.message.orEmpty())) }
         }
     }
 
@@ -537,7 +543,7 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                 _state.value = _state.value.copy(requests = reqs, requestsLoading = false)
             } catch (e: Exception) {
                 currentCoroutineContext().ensureActive()
-                _state.value = _state.value.copy(requestsLoading = false, message = "加载申请失败：${e.message}")
+                _state.value = _state.value.copy(requestsLoading = false, message = str(R.string.admin_requests_failed, e.message.orEmpty()))
             }
         }
     }
@@ -548,7 +554,7 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         // 兜底规范化：带 @ 或空白的账号名会让 generateRepo 直接 422
         val account = io.github.twitterarchiver.util.AccountUtil.normalize(rawAccount)
         if (account.isBlank()) {
-            _state.value = _state.value.copy(message = "账号名为空，无法建档")
+            _state.value = _state.value.copy(message = str(R.string.admin_account_empty))
             return
         }
         pinRepo(account)
@@ -560,10 +566,10 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                     repo.dispatchWorkflow(pat, account, "setup.yml", mapOf("since" to ""))
                     repo.closeIssue(pat, number)
                     addNewlyCreated(account)   // 加入新建记录
-                    _state.value = _state.value.copy(busy = false, message = "已批准并建档：$account")
+                    _state.value = _state.value.copy(busy = false, message = str(R.string.admin_approved, account))
                     loadRequests()
                 }
-                .onFailure { _state.value = _state.value.copy(busy = false, message = "建档失败：${it.message}") }
+                .onFailure { _state.value = _state.value.copy(busy = false, message = str(R.string.admin_create_failed, it.message.orEmpty())) }
         }
     }
 
@@ -573,8 +579,8 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             _state.value = _state.value.copy(busy = true)
             repo.closeIssue(pat, number)
-                .onSuccess { _state.value = _state.value.copy(busy = false, message = "已拒绝申请"); loadRequests() }
-                .onFailure { _state.value = _state.value.copy(busy = false, message = "操作失败：${it.message}") }
+                .onSuccess { _state.value = _state.value.copy(busy = false, message = str(R.string.admin_request_rejected)); loadRequests() }
+                .onFailure { _state.value = _state.value.copy(busy = false, message = str(R.string.admin_action_failed, it.message.orEmpty())) }
         }
     }
 
@@ -584,21 +590,21 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         val pat = patValue ?: return
         val name = io.github.twitterarchiver.util.AccountUtil.normalize(rawName)
         if (name.isBlank()) {
-            _state.value = _state.value.copy(message = "账号名为空，无法建档")
+            _state.value = _state.value.copy(message = str(R.string.admin_account_empty))
             return
         }
         pinRepo(name)  // 新建的置顶
         viewModelScope.launch {
-            _state.value = _state.value.copy(busy = true, message = "正在创建仓库…")
+            _state.value = _state.value.copy(busy = true, message = str(R.string.admin_creating_repo))
             repo.generateRepo(pat, name)
                 .onSuccess {
                     addNewlyCreated(name)
                     markPendingSetup(name, since)
-                    _state.value = _state.value.copy(message = "仓库已创建，等待工作流就绪…")
+                    _state.value = _state.value.copy(message = str(R.string.admin_repo_created))
                     dispatchSetup(pat, name, since, fromUser = true)
                 }
                 .onFailure { _state.value = _state.value.copy(busy = false,
-                    message = "创建仓库失败：${it.message}") }
+                    message = str(R.string.admin_create_repo_failed, it.message.orEmpty())) }
         }
     }
 
@@ -614,18 +620,18 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
     private suspend fun dispatchSetup(pat: String, name: String, since: String, fromUser: Boolean) {
         if (!awaitSetupReady(pat, name)) {
             _state.value = _state.value.copy(busy = false,
-                message = "「$name」仓库已建好，但模板工作流还没就绪。记录已保存，下次进入本页会自动重试。")
+                message = str(R.string.admin_workflow_not_ready, name))
             return
         }
         repo.dispatchWorkflow(pat, name, "setup.yml", mapOf("since" to since))
             .onSuccess {
                 clearPendingSetup(name)
-                _state.value = _state.value.copy(busy = false, message = "已触发建档：$name")
+                _state.value = _state.value.copy(busy = false, message = str(R.string.admin_setup_triggered, name))
             }
             .onFailure {
                 _state.value = _state.value.copy(busy = false,
-                    message = if (fromUser) "「$name」仓库已建好，但触发建档失败：${it.message}"
-                              else "「$name」自动重试建档失败：${it.message}")
+                    message = if (fromUser) str(R.string.admin_setup_failed, name, it.message.orEmpty())
+                              else str(R.string.admin_retry_setup_failed, name, it.message.orEmpty()))
             }
     }
 
@@ -653,26 +659,26 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------- 文件编辑 ----------
     suspend fun readFile(repoName: String, path: String): Result<Pair<String, String>> {
-        val pat = patValue ?: return Result.failure(Exception("无令牌"))
+        val pat = patValue ?: return Result.failure(Exception(str(R.string.admin_no_token)))
         return repo.fetchFileContent(pat, repoName, path)
     }
     /** 读取 profile.json */
     suspend fun readProfile(repoName: String, account: String): Result<Pair<String, String>> {
-        val pat = patValue ?: return Result.failure(Exception("无令牌"))
+        val pat = patValue ?: return Result.failure(Exception(str(R.string.admin_no_token)))
         return repo.fetchFileContent(pat, repoName, "accounts/$account/wayback_snapshots/profile.json")
     }
     /** 写 profile.json */
     fun writeProfile(repoName: String, account: String, content: String, sha: String) =
-        op("已更新资料") {
+        op(str(R.string.admin_profile_updated)) {
             repo.putFileContent(it, repoName, "accounts/$account/wayback_snapshots/profile.json",
-                content, sha, "更新 $account 资料 [skip ci]")
+                content, sha, str(R.string.admin_profile_commit, account))
         }
     /** 上传 banner（图片 base64） */
     fun uploadBanner(repoName: String, account: String, base64NoWrap: String, sha: String) =
-        op("已上传 Banner") {
+        op(str(R.string.admin_banner_uploaded)) {
             val r = repo.putFileContentRaw(it, repoName,
                 "accounts/$account/wayback_snapshots/avatar/1500x500.jpg",
-                base64NoWrap, sha, "更新 $account banner [skip ci]")
+                base64NoWrap, sha, str(R.string.admin_banner_commit, account))
             markBannerDone(repoName)   // 传成功 → 从待完善移除，即时更新角标
             r
         }
@@ -691,10 +697,10 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                         busy = false, message = it,
                         missingAvatar = _state.value.missingAvatar.filterNot { m -> m.repo == repoName })
                 }
-                .onFailure { _state.value = _state.value.copy(busy = false, message = "修复失败：${it.message}") }
+                .onFailure { _state.value = _state.value.copy(busy = false, message = str(R.string.admin_fix_failed, it.message.orEmpty())) }
         }
     }
 
     fun writeFile(repoName: String, path: String, content: String, sha: String) =
-        op("已上传 $path") { repo.putFileContent(it, repoName, path, content, sha, "更新 $path [skip ci]") }
+        op(str(R.string.admin_file_uploaded, path)) { repo.putFileContent(it, repoName, path, content, sha, str(R.string.admin_file_commit, path)) }
 }

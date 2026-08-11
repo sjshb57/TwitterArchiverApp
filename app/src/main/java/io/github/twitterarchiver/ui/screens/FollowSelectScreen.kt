@@ -41,6 +41,8 @@ import io.github.twitterarchiver.ui.components.Avatar
 import io.github.twitterarchiver.ui.components.SearchField
 import io.github.twitterarchiver.viewmodel.HomeViewModel
 import io.github.twitterarchiver.viewmodel.SettingsViewModel
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
 
 /** 关注对象选择：从所有账号里选一个固定成"关注"Tab。可关闭关注。 */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -65,11 +67,11 @@ fun FollowSelectScreen(
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         TopAppBar(
-            title = { Text("关注标签页", fontSize = 16.sp) },
-            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } },
+            title = { Text(stringResource(R.string.follow_01), fontSize = 16.sp) },
+            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
             actions = {
                 if (enabled) TextButton(onClick = { settingsVm.setFollowEnabled(false); onBack() }) {
-                    Text("关闭关注", color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
+                    Text(stringResource(R.string.follow_02), color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
@@ -77,10 +79,10 @@ fun FollowSelectScreen(
                 titleContentColor = MaterialTheme.colorScheme.onBackground,
                 navigationIconContentColor = MaterialTheme.colorScheme.onBackground)
         )
-        Text("选择一个账号固定为「关注」标签页，打开应用即可直达，无需搜索。",
+        Text(stringResource(R.string.follow_03),
             fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-        SearchField(value = query, onValueChange = { query = it }, placeholder = "搜索账号…")
+        SearchField(value = query, onValueChange = { query = it }, placeholder = stringResource(R.string.search_account_hint))
         Spacer(Modifier.height(8.dp))
         LazyColumn(Modifier.fillMaxSize()) {
             items(shown, key = { it.repoName + "/" + it.account }) { r ->
@@ -110,7 +112,7 @@ private fun FollowRow(r: ArchiveRepo, selected: Boolean, onClick: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        if (selected) Icon(Icons.Filled.Check, "已选", tint = MaterialTheme.colorScheme.primary,
+        if (selected) Icon(Icons.Filled.Check, stringResource(R.string.deftab_02), tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(20.dp))
     }
 }

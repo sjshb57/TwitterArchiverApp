@@ -1,0 +1,488 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ===== GitHub 接口错误 ===== -->
+    <string name="err_token_invalid">令牌无效或已过期，请重新填写</string>
+    <string name="err_rate_limited_in">请求过于频繁，请 %1$s后再试</string>
+    <string name="err_rate_limited">请求过于频繁，请稍后再试</string>
+    <string name="err_quota_reset_in">已达 GitHub 接口调用上限，约 %1$s后恢复</string>
+    <string name="err_quota_exhausted">已达 GitHub 接口调用上限，请稍后再试</string>
+    <string name="err_forbidden">没有权限执行此操作，请确认令牌勾选了 repo 与 workflow</string>
+    <string name="err_not_found">目标不存在或令牌无权访问</string>
+    <string name="err_conflict">仓库状态冲突，请稍后重试</string>
+    <string name="err_rejected">请求被拒绝</string>
+    <string name="err_server">GitHub 服务异常（%1$d），请稍后重试</string>
+    <string name="err_generic">请求失败（%1$d）</string>
+    <string name="err_reason_suffix">：%1$s</string>
+    <string name="dur_seconds">%1$d 秒</string>
+    <string name="dur_minutes">%1$d 分钟</string>
+
+    <!-- ===== 工作流触发失败 ===== -->
+    <string name="wf_err_outdated">该仓库的 %1$s 是旧版本，不接受参数「%2$s」。\n请先把仓库里的 %1$s 更新到模板最新版再试。</string>
+    <string name="wf_err_missing_input">%1$s 需要必填参数但本次没有提供，请检查该仓库的工作流定义。</string>
+    <string name="wf_err_rejected">%1$s 拒绝了这次触发（422）。多半是工作流文件与 App 传的参数对不上</string>
+    <string name="wf_err_not_found">找不到 %1$s，可能该仓库还没有这个工作流文件，或令牌无权访问该仓库。</string>
+    <string name="wf_err_forbidden">没有权限触发 %1$s。请确认令牌具备该仓库的 Actions 写权限。</string>
+    <string name="wf_err_unauthorized">令牌无效或已过期，请在设置里重新填写。</string>
+
+    <!-- ===== 令牌校验 ===== -->
+    <string name="token_verify_offline">网络不可用，无法校验令牌</string>
+    <string name="token_verify_failed">校验令牌失败：%1$s</string>
+
+    <!-- ===== 存档申请 ===== -->
+    <string name="request_issue_title">存档申请：%1$s</string>
+    <string name="request_issue_body">申请存档账号：@%1$s\n\n备注：%2$s</string>
+    <string name="request_invalid_handle">账号名不合法：应为 1–15 位字母、数字或下划线</string>
+    <string name="request_too_frequent">提交太频繁，请 %1$d 秒后再试</string>
+    <string name="request_success">申请已提交，感谢！我们会尽快处理。</string>
+    <string name="request_failed">提交失败：%1$s</string>
+
+    <!-- ===== 头像修复 ===== -->
+    <string name="avatar_no_filename">聚合数据里没有该账号的头像文件名</string>
+    <string name="avatar_same_as_main">最新推文用的就是主头像，无需修复</string>
+    <string name="avatar_exists">头像已存在，无需修复：%1$s</string>
+    <string name="avatar_src_unreadable">读不到主头像 %1$s</string>
+    <string name="avatar_commit_msg">补最新推文头像 %1$s [skip ci]</string>
+    <string name="avatar_copied">已复制 %1$s → %2$s</string>
+
+    <!-- ===== 仓库健康排序 ===== -->
+    <string name="health_sort_stale">更新</string>
+    <string name="health_sort_size">体积</string>
+
+    <!-- ===== 通用 ===== -->
+    <string name="backup_format_unknown">备份文件格式无法识别</string>
+    <string name="io_open_output_failed">无法打开输出流</string>
+    <string name="load_failed">加载失败：%1$s</string>
+    <string name="index_manifest_failed">索引清单加载失败：%1$s</string>
+    <string name="shard_download_failed">%1$s 下载失败：%2$s</string>
+    <string name="unknown_account">某账号</string>
+
+    <!-- ===== 管理台 ===== -->
+    <string name="dash_home">Home 聚合</string>
+    <string name="dash_dispatcher">调度中心</string>
+    <string name="dash_health">仓库健康</string>
+    <string name="dash_starter">存档模板</string>
+    <string name="dash_all_archives">所有存档</string>
+    <string name="admin_verify_failed">校验失败</string>
+    <string name="admin_token_saved">已保存令牌（%1$s）</string>
+    <string name="admin_token_cleared">已清除令牌</string>
+    <string name="admin_load_failed">加载失败：%1$s</string>
+    <string name="admin_repo_list_failed">读取仓库列表失败：%1$s</string>
+    <string name="admin_rotation_unreadable">未能读取轮转配置，已跳过超期判定</string>
+    <string name="admin_accounts_failed">加载账号列表失败：%1$s</string>
+    <string name="admin_no_accounts">没有账号可检测</string>
+    <string name="admin_read_failed_suffix">%1$s [读取失败]</string>
+    <string name="admin_pause_requested">已请求暂停</string>
+    <string name="admin_retry_requested">已请求重试</string>
+    <string name="admin_workflow_triggered">已触发 %1$s</string>
+    <string name="admin_action_failed">操作失败：%1$s</string>
+    <string name="admin_requests_failed">加载申请失败：%1$s</string>
+    <string name="admin_account_empty">账号名为空，无法建档</string>
+    <string name="admin_approved">已批准并建档：%1$s</string>
+    <string name="admin_create_failed">建档失败：%1$s</string>
+    <string name="admin_request_rejected">已拒绝申请</string>
+    <string name="admin_creating_repo">正在创建仓库…</string>
+    <string name="admin_repo_created">仓库已创建，等待工作流就绪…</string>
+    <string name="admin_create_repo_failed">创建仓库失败：%1$s</string>
+    <string name="admin_workflow_not_ready">「%1$s」仓库已建好，但模板工作流还没就绪。记录已保存，下次进入本页会自动重试。</string>
+    <string name="admin_setup_triggered">已触发建档：%1$s</string>
+    <string name="admin_setup_failed">「%1$s」仓库已建好，但触发建档失败：%2$s</string>
+    <string name="admin_retry_setup_failed">「%1$s」自动重试建档失败：%2$s</string>
+    <string name="admin_no_token">无令牌</string>
+    <string name="admin_profile_updated">已更新资料</string>
+    <string name="admin_profile_commit">更新 %1$s 资料 [skip ci]</string>
+    <string name="admin_banner_uploaded">已上传 Banner</string>
+    <string name="admin_banner_commit">更新 %1$s banner [skip ci]</string>
+    <string name="admin_fix_failed">修复失败：%1$s</string>
+    <string name="admin_file_uploaded">已上传 %1$s</string>
+    <string name="admin_file_commit">更新 %1$s [skip ci]</string>
+    <!-- ===== 界面文案 ===== -->
+
+    <!-- AboutScreen -->
+    <string name="about_01">关于</string>
+    <string name="about_02">基于 Wayback Machine 的推特账号永久存档</string>
+    <string name="about_03">愿世间再无痛苦，唯爱永不独行</string>
+    <string name="about_04">本项目开源，遵循 AGPL-3.0 协议</string>
+    <string name="about_05">烛火熄灭之后，光还在。</string>
+    <string name="about_06">版本 1.0.0</string>
+    <string name="about_07">致谢</string>
+    <string name="back">返回</string>
+
+    <!-- AccountFeedScreen -->
+    <string name="empty">暂无内容</string>
+    <string name="feed_01">搜索关键词或日期…</string>
+    <string name="feed_02">新→旧</string>
+    <string name="feed_03">旧→新</string>
+    <string name="feed_04">选择日期浏览</string>
+    <string name="feed_05">📌 已置顶</string>
+    <string name="replies">回复</string>
+
+    <!-- AccountFilterSheet -->
+    <string name="acct_filter_01">清空</string>
+    <string name="acct_filter_02">筛选账号（可多选）</string>
+    <string name="search_account_hint">搜索账号…</string>
+
+    <!-- AccountReaderScreen -->
+    <string name="refresh">刷新</string>
+
+    <!-- AdminArchiveScreen -->
+    <string name="admin_archive_01">上传横幅图片</string>
+    <string name="admin_archive_02">体积回收由 GitHub 后台完成，可能几小时后才反映在接口上。</string>
+    <string name="admin_archive_03">修复头像</string>
+    <string name="admin_archive_04">修复账号头像</string>
+    <string name="admin_archive_05">全量重试</string>
+    <string name="admin_archive_06">压缩仓库历史</string>
+    <string name="admin_archive_07">压缩历史</string>
+    <string name="admin_archive_08">在 GitHub 中打开</string>
+    <string name="admin_archive_09">增量+重试</string>
+    <string name="admin_archive_10">增量更新</string>
+    <string name="admin_archive_11">失败</string>
+    <string name="admin_archive_12">工作流</string>
+    <string name="admin_archive_13">已取消</string>
+    <string name="admin_archive_14">成功</string>
+    <string name="admin_archive_15">打开</string>
+    <string name="admin_archive_16">操作</string>
+    <string name="admin_archive_17">暂停</string>
+    <string name="admin_archive_18">暂无运行记录</string>
+    <string name="admin_archive_19">最近运行</string>
+    <string name="admin_archive_20">查看存档内容 (Feed)</string>
+    <string name="admin_archive_21">查看存档内容 (Reader)</string>
+    <string name="admin_archive_22">用于该头像没抓到导致的破图；不修改任何 json。</string>
+    <string name="admin_archive_23">确定暂停？</string>
+    <string name="admin_archive_24">确定重试？</string>
+    <string name="admin_archive_25">编辑用户资料</string>
+    <string name="admin_archive_26">触发 全量重试</string>
+    <string name="admin_archive_27">触发 全量重试增量</string>
+    <string name="admin_archive_28">触发 增量更新</string>
+    <string name="admin_archive_29">运行中</string>
+    <string name="admin_archive_30">重建完整索引</string>
+    <string name="admin_archive_31">重建索引</string>
+    <string name="confirm">确定</string>
+    <string name="retry">重试</string>
+
+    <!-- AdminDeleteTweetsScreen -->
+    <string name="admin_del_01">删除推文</string>
+    <string name="admin_del_02">推文 ID（多个空格分隔）</string>
+    <string name="admin_del_03">触发该账号仓库的删除工作流，删除指定推文并重建索引。</string>
+    <string name="admin_del_04">账号仓库名（如 seeFvn）</string>
+    <string name="admin_del_05">账号目录名（可选，默认同仓库）</string>
+    <string name="delete">删除</string>
+
+    <!-- AdminDetailScreen -->
+    <string name="admin_detail_01">+ 建立新存档</string>
+    <string name="admin_detail_02">修复</string>
+    <string name="admin_detail_03">全部已设置 ✓</string>
+    <string name="admin_detail_04">全部正常 ✓</string>
+    <string name="admin_detail_05">出错</string>
+    <string name="admin_detail_06">只打印将要推送的清单，不会真正修改任何仓库。建议先跑这个确认无误。</string>
+    <string name="admin_detail_07">完整性检测结果</string>
+    <string name="admin_detail_08">实际推送</string>
+    <string name="admin_detail_09">已完成</string>
+    <string name="admin_detail_10">推送清晰头像 · 实际执行</string>
+    <string name="admin_detail_11">推送清晰头像 · 试运行</string>
+    <string name="admin_detail_12">搜索存档仓库…</string>
+    <string name="admin_detail_13">暂停运行</string>
+    <string name="admin_detail_14">未知</string>
+    <string name="admin_detail_15">点击即用主头像补上，不跳转、不改 json</string>
+    <string name="admin_detail_16">确定暂停这次运行？取消后 GitHub 需几秒生效，稍后刷新可见。</string>
+    <string name="admin_detail_17">确定触发「全量调度」？将触发所有仓库更新，耗时较长。</string>
+    <string name="admin_detail_18">确定触发「更新仓库列表」？将重新汇总 repos.json。</string>
+    <string name="admin_detail_19">确定触发「生成索引清单」？将为各仓库生成月度清单，供 App 离线增量更新使用。</string>
+    <string name="admin_detail_20">确定触发「统一调度」？将按指针轮转触发一批仓库更新。</string>
+    <string name="admin_detail_21">确定触发「聚合头像池」？将扫描所有仓库，把最清晰的头像收进共享池。</string>
+    <string name="admin_detail_22">确定触发「重建搜索索引」？将重建全站 search-index.json，耗时较长。</string>
+    <string name="admin_detail_23">确定重跑这次失败的运行？会新建一次运行，稍后刷新可见。</string>
+    <string name="admin_detail_24">编辑 build_search_index.yml</string>
+    <string name="admin_detail_25">编辑 dispatch.yml</string>
+    <string name="admin_detail_26">编辑 retry_all.yml</string>
+    <string name="admin_detail_27">编辑 setup.yml</string>
+    <string name="admin_detail_28">编辑 update.yml</string>
+    <string name="admin_detail_29">触发</string>
+    <string name="admin_detail_30">触发 全量调度</string>
+    <string name="admin_detail_31">触发 更新仓库列表</string>
+    <string name="admin_detail_32">触发 生成索引清单</string>
+    <string name="admin_detail_33">触发 统一调度</string>
+    <string name="admin_detail_34">触发 聚合头像池</string>
+    <string name="admin_detail_35">触发 重建搜索索引</string>
+    <string name="admin_detail_36">触发全量调度</string>
+    <string name="admin_detail_37">触发工作流</string>
+    <string name="admin_detail_38">触发调度</string>
+    <string name="admin_detail_39">试运行</string>
+    <string name="admin_detail_40">重新运行</string>
+    <string name="admin_detail_41">🔍 检测缺失 Banner / 置顶 / 头像</string>
+    <string name="admin_detail_42">🗑 删除推文</string>
+
+    <!-- AdminEditProfileScreen -->
+    <string name="admin_profile_01">位置</string>
+    <string name="admin_profile_02">可直接粘贴推文链接，会自动提取 ID</string>
+    <string name="admin_profile_03">名称</string>
+    <string name="admin_profile_04">简介</string>
+    <string name="admin_profile_05">置顶推文 ID</string>
+    <string name="admin_profile_06">链接</string>
+
+    <!-- AdminEditYmlScreen -->
+    <string name="admin_yml_01">上传</string>
+
+    <!-- AdminNewArchiveScreen -->
+    <string name="admin_new_01">上传 banner</string>
+    <string name="admin_new_02">刚建档的仓库（建档中→完成），点击进入处理</string>
+    <string name="admin_new_03">尚未检测</string>
+    <string name="admin_new_04">建档</string>
+    <string name="admin_new_05">建档中</string>
+    <string name="admin_new_06">建档完成但缺 banner 或置顶的仓库，点击去处理</string>
+    <string name="admin_new_07">建立新存档</string>
+    <string name="admin_new_08">开始建档</string>
+    <string name="admin_new_09">待完善存档</string>
+    <string name="admin_new_10">撤销</string>
+    <string name="admin_new_11">新仓库名 / 账号</string>
+    <string name="admin_new_12">新建的存档</string>
+    <string name="admin_new_13">检查中…</string>
+    <string name="admin_new_14">移除</string>
+    <string name="admin_new_15">移除记录</string>
+    <string name="admin_new_16">设置置顶</string>
+    <string name="admin_new_17">起始日期 YYYYMMDD（留空全量）</string>
+    <string name="admin_new_18">输入账号用户名作为仓库名，从模板创建新仓库并触发首次建档（setup）。建档完成后回来上传 banner、设置置顶，再手动触发增量更新。</string>
+    <string name="admin_new_19">🔄 重新检测</string>
+    <string name="done">完成</string>
+
+    <!-- AdminRequestsScreen -->
+    <string name="admin_req_01">匿名</string>
+    <string name="admin_req_02">存档申请</string>
+    <string name="admin_req_03">存档申请：</string>
+    <string name="admin_req_04">批准建档</string>
+    <string name="admin_req_05">批准申请</string>
+    <string name="admin_req_06">拒绝</string>
+    <string name="admin_req_07">拒绝申请</string>
+    <string name="admin_req_08">暂无待处理申请</string>
+    <string name="admin_req_09">确定拒绝并关闭这条申请？</string>
+
+    <!-- AdminScreen -->
+    <string name="admin_01">➕ 建立新存档</string>
+    <string name="admin_02">保存令牌</string>
+    <string name="admin_03">已连接</string>
+    <string name="admin_04">待处理存档申请 ›</string>
+    <string name="admin_05">未配置令牌</string>
+    <string name="admin_06">查看 ›</string>
+    <string name="admin_07">清除令牌</string>
+    <string name="admin_08">管理台</string>
+    <string name="admin_09">粘贴 PAT…</string>
+    <string name="admin_10">配置 GitHub 令牌 (PAT)</string>
+    <string name="admin_11">需要 repo + workflow 权限，用于触发工作流、编辑文件、删推、处理申请。</string>
+    <string name="admin_12">验证中…</string>
+
+    <!-- AppNav -->
+    <string name="nav_01">再按一次返回键退出</string>
+    <string name="nav_02">在底栏固定显示某个账号</string>
+    <string name="nav_03">导入失败</string>
+    <string name="nav_04">导入失败：文件格式不正确</string>
+    <string name="nav_05">导出失败</string>
+    <string name="tab_admin">管理</string>
+    <string name="tab_follow">关注</string>
+    <string name="tab_global">全站</string>
+    <string name="tab_list">列表</string>
+    <string name="tab_settings">设置</string>
+
+    <!-- BookmarkScreen -->
+    <string name="bookmark_01">书签</string>
+    <string name="bookmark_02">导入备份</string>
+    <string name="bookmark_03">导出备份</string>
+    <string name="bookmark_04">还没有收藏任何推文</string>
+
+    <!-- ConfirmDialog -->
+    <string name="cancel">取消</string>
+    <string name="misc_01">确认</string>
+
+    <!-- DefaultTabScreen -->
+    <string name="deftab_01">全站时间线</string>
+    <string name="deftab_02">已选</string>
+    <string name="deftab_03">选择打开应用时默认进入的页面</string>
+    <string name="deftab_04">默认启动页</string>
+
+    <!-- FollowSelectScreen -->
+    <string name="follow_01">关注标签页</string>
+    <string name="follow_02">关闭关注</string>
+    <string name="follow_03">选择一个账号固定为「关注」标签页，打开应用即可直达，无需搜索。</string>
+
+    <!-- GlobalDateTreeSheet -->
+    <string name="date_tree_01"> 日</string>
+    <string name="date_tree_02">下载</string>
+    <string name="date_tree_03">已下载</string>
+    <string name="date_tree_04">按日期浏览</string>
+    <string name="date_tree_05">整月</string>
+    <string name="date_tree_06">未下载的月份也能看到条数，点开会先下载。已下载的长按可删除。</string>
+    <string name="date_tree_07">清除筛选</string>
+
+    <!-- GlobalPostCard -->
+    <string name="loading">加载中…</string>
+    <string name="post_card_01">分享</string>
+    <string name="post_card_02">分享这条推文</string>
+    <string name="post_card_03">原推内容不可用</string>
+    <string name="post_card_04">复制</string>
+    <string name="post_card_05">存档定位链接（浏览器打开）</string>
+    <string name="post_card_06">定位短码（粘贴到搜索框）</string>
+    <string name="post_card_07">展开回复</string>
+    <string name="post_card_08">已收藏</string>
+    <string name="post_card_09">引用</string>
+    <string name="post_card_10">推文 ID</string>
+    <string name="post_card_11">推特原链接</string>
+    <string name="post_card_12">播放视频</string>
+    <string name="post_card_13">收藏</string>
+    <string name="post_card_14">收起回复</string>
+    <string name="post_card_15">收起引用</string>
+    <string name="post_card_16">暂无回复</string>
+    <string name="post_card_17">某账号</string>
+    <string name="post_card_18">查看引用</string>
+    <string name="post_card_19">通过系统分享…</string>
+
+    <!-- GlobalScreen -->
+    <string name="global_01">共 %%,d 条</string>
+    <string name="global_02">已加载的内容里没有找到 · 在全部月份中查找</string>
+    <string name="global_03">按日期</string>
+    <string name="global_04">搜索全站推文…</string>
+    <string name="global_05">正在加载全站索引…</string>
+    <string name="global_06">正在逐月查找…点此停止</string>
+    <string name="global_07">清除</string>
+    <string name="global_08">筛选账号</string>
+
+    <!-- ImagePreviewOverlay -->
+    <string name="close">关闭</string>
+    <string name="img_preview_01">保存失败</string>
+    <string name="img_preview_02">已保存到相册</string>
+    <string name="save">保存</string>
+
+    <!-- ImagesScreen -->
+    <string name="images">图片</string>
+    <string name="images_screen_01">全部</string>
+    <string name="images_screen_02">播放</string>
+    <string name="images_screen_03">暂无该类型媒体</string>
+    <string name="others">其他</string>
+    <string name="videos">视频</string>
+
+    <!-- ListScreen -->
+    <string name="list_01">基于 Wayback Machine 的永久存档</string>
+
+    <!-- ProfileDialog -->
+    <string name="profile_dlg_01">查看完整存档</string>
+    <string name="profile_dlg_02">浏览全部媒体</string>
+
+    <!-- RepoHealthScreen -->
+    <string name="health_01">project-starter · 新建存档使用的模板仓库</string>
+    <string name="health_02">仓库健康</string>
+    <string name="health_03">存档模板</string>
+    <string name="health_04">无更新记录</string>
+    <string name="health_05">正在读取组织仓库…</string>
+    <string name="health_06">私有</string>
+    <string name="health_07">私有仓库</string>
+    <string name="health_08">统计中…</string>
+    <string name="health_09">重新检查</string>
+
+    <!-- RequestScreen -->
+    <string name="request_01">备注（可选）</string>
+    <string name="request_02">应为 1–15 位字母、数字或下划线</string>
+    <string name="request_03">提交后我们会尽快处理。请填写想要存档的账号用户名。</string>
+    <string name="request_04">提交申请</string>
+    <string name="request_05">申请存档</string>
+    <string name="request_06">申请存档一个推特账号</string>
+    <string name="request_07">账号用户名（如 @example）</string>
+
+    <!-- SettingsScreen -->
+    <string name="settings_01">\\"关注\\" 标签页</string>
+    <string name="settings_02">主题管理</string>
+    <string name="settings_03">书签管理</string>
+    <string name="settings_04">将删除已下载的离线索引与图片缓存。书签、设置不受影响；下次浏览时会重新下载所需内容。</string>
+    <string name="settings_05">打开应用时进入的页面</string>
+    <string name="settings_06">收藏的推文 · 可导出备份</string>
+    <string name="settings_07">浅色 / 深色 / 动态配色</string>
+    <string name="settings_08">清理</string>
+    <string name="settings_09">清理缓存</string>
+    <string name="settings_10">版本 · 开源协议</string>
+    <string name="settings_11">申请存档某个账号</string>
+
+    <!-- SingleTweetDialog -->
+    <string name="tweet_dlg_01">加载失败</string>
+    <string name="tweet_dlg_02">这条推文已不在存档中</string>
+    <string name="tweets">推文</string>
+
+    <!-- SplashScreen -->
+    <string name="splash_01">互联网是现实的避难所。</string>
+    <string name="splash_02">而这里，是那个避难所的避难所。</string>
+
+    <!-- ThanksScreen -->
+    <string name="thanks_01">以及每一位默默支持这个项目的人。</string>
+    <string name="thanks_02">初次项目构建</string>
+    <string name="thanks_03">思路技术支持</string>
+    <string name="thanks_04">想法支持</string>
+    <string name="thanks_05">特别致谢</string>
+    <string name="thanks_06">这个项目能走到今天，离不开这些人的帮助。</string>
+
+    <!-- ThemeScreen -->
+    <string name="theme_01">仅支持 Android 12+</string>
+    <string name="theme_02">动态配色</string>
+    <string name="theme_03">图标 + 文字</string>
+    <string name="theme_04">外观模式</string>
+    <string name="theme_05">底栏样式</string>
+    <string name="theme_06">浅色</string>
+    <string name="theme_07">深色</string>
+    <string name="theme_08">纯文字</string>
+    <string name="theme_09">跟随系统</string>
+    <string name="theme_10">跟随系统壁纸取色</string>
+
+    <!-- VideoPlayerOverlay -->
+    <string name="video_player_01">开始下载视频…</string>
+
+    <!-- ===== 带参数的界面文案 ===== -->
+    <string name="nav_following">已关注：%1$s</string>
+    <string name="nav_exported">已导出 %1$s 条书签</string>
+    <string name="nav_imported">已导入 %1$s 条书签</string>
+    <string name="acct_filter_ok">确定 (%1$s)</string>
+    <string name="date_year">%1$s 年</string>
+    <string name="date_year_stat">%1$s 条 · %2$s</string>
+    <string name="date_month">%1$s 月</string>
+    <string name="date_month_stat">%1$s 条 · %2$s</string>
+    <string name="profile_stat">%1$s 推文 · %2$s 张图片</string>
+    <string name="feed_searching">搜索「%1$s」</string>
+    <string name="feed_found">找到 %1$s 条结果</string>
+    <string name="date_day">%1$s 日</string>
+    <string name="admin_archive_c1">确定触发「%1$s」的增量更新？</string>
+    <string name="admin_archive_c2">确定触发「%1$s」的全量重试？耗时较长。</string>
+    <string name="admin_archive_c3">确定触发「%1$s」的增量更新？完成后将自动接力全量重试（新建存档后用）。</string>
+    <string name="admin_archive_c4">确定重建「%1$s」的索引？仅跑 build-index，不抓取，几十秒完成。改完置顶/资料后用它快速生效。</string>
+    <string name="admin_del_confirm">将从「%1$s」删除推文 %2$s，不可恢复，确定？</string>
+    <string name="admin_detail_miss_avatar">头像缺失（%1$s）</string>
+    <string name="admin_detail_miss_banner">缺少 Banner（%1$s）</string>
+    <string name="admin_detail_miss_pinned">缺少 置顶推文（%1$s）</string>
+    <string name="admin_detail_checking">检测中… %1$s / %2$s</string>
+    <string name="admin_detail_all_repos">所有存档仓库 (%1$s/%2$s)</string>
+    <string name="admin_detail_repo_line">%1$s · 仓库 %2$s</string>
+    <string name="parse_failed">解析失败：%1$s</string>
+    <string name="admin_profile_title">编辑资料 · %1$s</string>
+    <string name="read_failed">读取失败：%1$s</string>
+    <string name="admin_new_removed">已移除 %1$s</string>
+    <string name="admin_new_remove_confirm">将「%1$s」从新建记录中移除？仓库本身不会被删除。</string>
+    <string name="admin_new_create_confirm">将创建仓库「%1$s」并触发首次建档。建档完成后不会自动增量，需回来上传 banner + 设置置顶，再手动触发增量更新。</string>
+    <string name="admin_new_taken">「%1$s」已存在，换一个名字</string>
+    <string name="admin_new_available">「%1$s」可用</string>
+    <string name="admin_new_checking">检测中 %1$s/%2$s</string>
+    <string name="admin_req_confirm">将为「%1$s」建档并关闭申请，确定？</string>
+    <string name="admin_pending">%1$s 待完善</string>
+    <string name="global_filtered">已筛选 %1$s 人</string>
+    <string name="global_by_date">按日期·%1$s</string>
+    <string name="global_downloaded">已下载 %1$s/%2$s 月</string>
+    <string name="global_month_missing">这条推文在 %1$s，尚未下载 · 点此下载该月</string>
+    <string name="images_title">%1$s · 媒体</string>
+    <string name="list_archived">已存档 %1$s 个账号</string>
+    <string name="health_total">共 %1$s 个存档</string>
+    <string name="health_private_total">共 %1$s 个非公开存档</string>
+    <string name="health_days_ago">%1$s 天前更新</string>
+    <string name="settings_cache">离线索引 %1$s · 图片 %2$s</string>
+
+    <!-- ===== 多行确认文案与时长 ===== -->
+    <string name="admin_squash_confirm">把「%1$s」的全部提交历史压成一次提交，回收 .git 里的旧版本对象。\n\n存档内容一字不改，但历史不可恢复。\n该仓库若有工作流正在运行会自动中止本次操作。\n</string>
+    <string name="admin_fix_avatar_confirm">把主头像复制一份，改名成列表页 / 全站时间线引用的头像文件名。\n\n</string>
+    <string name="admin_push_avatar_confirm">将把头像池里更清晰的版本推回各存档仓库，会产生真实提交。\n\n确认已先跑过试运行？</string>
+    <string name="dur_min_sec">%1$d分%2$d秒</string>
+    <string name="dur_sec">%1$d秒</string>
+    <string name="dur_running">已运行 %1$s</string>
+    <string name="dur_elapsed">耗时 %1$s</string>
+    <string name="health_rotation">共 %1$d 个存档 · 每天 %2$d 个 · 转一圈约 %3$d 天 · 超过 %4$d 天算异常</string>
+</resources>

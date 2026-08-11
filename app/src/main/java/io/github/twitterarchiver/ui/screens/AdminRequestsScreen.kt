@@ -39,6 +39,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.twitterarchiver.data.GitHubIssue
 import io.github.twitterarchiver.ui.components.ConfirmDialog
 import io.github.twitterarchiver.viewmodel.AdminViewModel
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
+import io.github.twitterarchiver.data.AppStrings
 
 /** 处理存档申请：列出用户提交的 Issue，可批准（建档）或拒绝（关闭） */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,10 +56,10 @@ fun AdminRequestsScreen(vm: AdminViewModel, onBack: () -> Unit) {
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         TopAppBar(
-            title = { Text("存档申请", fontSize = 17.sp) },
-            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } },
+            title = { Text(stringResource(R.string.admin_req_02), fontSize = 17.sp) },
+            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
             actions = {
-                Text("刷新", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
+                Text(stringResource(R.string.refresh), fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(end = 16.dp).clickable { vm.loadRequests() })
             },
             colors = TopAppBarDefaults.topAppBarColors(
@@ -67,18 +70,18 @@ fun AdminRequestsScreen(vm: AdminViewModel, onBack: () -> Unit) {
         when {
             state.requestsLoading -> Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
             state.requests.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Text("暂无待处理申请", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.admin_req_08), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             else -> LazyColumn(Modifier.fillMaxSize().padding(horizontal = 14.dp)) {
                 items(state.requests, key = { it.number }) { req ->
                     RequestCard(
                         req,
                         onApprove = { acct ->
-                            confirm = Triple("批准申请", "将为「$acct」建档并关闭申请，确定？"
+                            confirm = Triple(AppStrings[R.string.admin_req_05], AppStrings.get(R.string.admin_req_confirm, acct)
                             ) { vm.approveRequest(req.number, acct) }
                         },
                         onReject = {
-                            confirm = Triple("拒绝申请", "确定拒绝并关闭这条申请？"
+                            confirm = Triple(AppStrings[R.string.admin_req_07], AppStrings[R.string.admin_req_09]
                             ) { vm.rejectRequest(req.number) }
                         }
                     )
@@ -92,7 +95,7 @@ fun AdminRequestsScreen(vm: AdminViewModel, onBack: () -> Unit) {
 private fun RequestCard(req: GitHubIssue, onApprove: (String) -> Unit, onReject: () -> Unit) {
     // 从标题提取账号：标题格式「存档申请：<账号>」，再统一规范化（去 @ / URL / 空白）
     val account = io.github.twitterarchiver.util.AccountUtil.normalize(
-        req.title.substringAfter("存档申请：", req.title)
+        req.title.substringAfter(stringResource(R.string.admin_req_03), req.title)
     )
     Column(
         Modifier.fillMaxWidth().padding(vertical = 8.dp)
@@ -105,14 +108,14 @@ private fun RequestCard(req: GitHubIssue, onApprove: (String) -> Unit, onReject:
             Text(it, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp))
         }
-        Text("#${req.number} · ${req.user?.login ?: "匿名"} · ${req.createdAt.substringBefore("T")}",
+        Text("#${req.number} · ${req.user?.login ?: stringResource(R.string.admin_req_01)} · ${req.createdAt.substringBefore("T")}",
             fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp))
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
-            Text("拒绝", fontSize = 13.sp, color = MaterialTheme.colorScheme.error,
+            Text(stringResource(R.string.admin_req_06), fontSize = 13.sp, color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.clickable { onReject() }.padding(horizontal = 14.dp, vertical = 6.dp))
-            Text("批准建档", fontSize = 13.sp, fontWeight = FontWeight.Bold,
+            Text(stringResource(R.string.admin_req_04), fontSize = 13.sp, fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.clickable { onApprove(account) }.padding(horizontal = 14.dp, vertical = 6.dp))
         }

@@ -9,6 +9,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.OutputStream
+import io.github.twitterarchiver.R
+import io.github.twitterarchiver.data.AppStrings
 
 /** 保存图片到系统相册。minSdk 30，一律走分区存储，无需存储权限 */
 object ImageSaver {
@@ -33,7 +35,7 @@ object ImageSaver {
 
             try {
                 val out: OutputStream = resolver.openOutputStream(uri)
-                    ?: throw java.io.IOException("无法打开输出流")
+                    ?: throw java.io.IOException(AppStrings[R.string.io_open_output_failed])
                 out.use { bitmap.compress(Bitmap.CompressFormat.JPEG, 95, it) }
 
                 values.clear()

@@ -47,6 +47,9 @@ import kotlinx.coroutines.launch
 import io.github.twitterarchiver.ui.components.LifecyclePolling
 import io.github.twitterarchiver.viewmodel.AdminViewModel
 import kotlin.time.Duration.Companion.milliseconds
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
+import io.github.twitterarchiver.data.AppStrings
 
 /** 建立新存档 + 待完善列表（建档完成但缺 banner/置顶的仓库，可点击去处理） */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -106,7 +109,7 @@ fun AdminNewArchiveScreen(
         lastRemoveAt = System.currentTimeMillis()
         scope.launch {
             val r = snackbarHost.showSnackbar(
-                message = "已移除 $name", actionLabel = "撤销",
+                message = AppStrings.get(R.string.admin_new_removed, name), actionLabel = AppStrings[R.string.admin_new_10],
                 duration = androidx.compose.material3.SnackbarDuration.Short
             )
             if (r == androidx.compose.material3.SnackbarResult.ActionPerformed) vm.addNewlyCreated(name)
@@ -115,9 +118,9 @@ fun AdminNewArchiveScreen(
 
     pendingRemove?.let { name ->
         io.github.twitterarchiver.ui.components.ConfirmDialog(
-            title = "移除记录",
-            message = "将「$name」从新建记录中移除？仓库本身不会被删除。",
-            confirmText = "移除",
+            title = stringResource(R.string.admin_new_15),
+            message = stringResource(R.string.admin_new_remove_confirm, name),
+            confirmText = stringResource(R.string.admin_new_14),
             onConfirm = { pendingRemove = null; doRemove(name) },
             onDismiss = { pendingRemove = null }
         )
@@ -125,9 +128,9 @@ fun AdminNewArchiveScreen(
 
     if (showConfirm) {
         io.github.twitterarchiver.ui.components.ConfirmDialog(
-            title = "建立新存档",
-            message = "将创建仓库「${repoName.trim()}」并触发首次建档。建档完成后不会自动增量，需回来上传 banner + 设置置顶，再手动触发增量更新。",
-            confirmText = "建档",
+            title = stringResource(R.string.admin_new_07),
+            message = stringResource(R.string.admin_new_create_confirm, repoName.trim()),
+            confirmText = stringResource(R.string.admin_new_04),
             onConfirm = { vm.createArchive(repoName.trim(), since.trim()) },
             onDismiss = { showConfirm = false }
         )
@@ -136,8 +139,8 @@ fun AdminNewArchiveScreen(
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         TopAppBar(
-            title = { Text("建立新存档", fontSize = 16.sp) },
-            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } },
+            title = { Text(stringResource(R.string.admin_new_07), fontSize = 16.sp) },
+            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = MaterialTheme.colorScheme.background,
                 titleContentColor = MaterialTheme.colorScheme.onBackground,
@@ -157,16 +160,16 @@ fun AdminNewArchiveScreen(
         androidx.compose.foundation.lazy.LazyColumn(
             Modifier.fillMaxSize().padding(horizontal = 20.dp), state = listState) {
             item {
-                Text("输入账号用户名作为仓库名，从模板创建新仓库并触发首次建档（setup）。建档完成后回来上传 banner、设置置顶，再手动触发增量更新。",
+                Text(stringResource(R.string.admin_new_18),
                     fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 8.dp, bottom = 14.dp))
-                Field2("新仓库名 / 账号", repoName, isError = taken) { repoName = it }
+                Field2(stringResource(R.string.admin_new_11), repoName, isError = taken) { repoName = it }
                 if (typed.isNotBlank()) {
                     Text(
                         when {
-                            taken -> "「$typed」已存在，换一个名字"
-                            checking -> "检查中…"
-                            else -> "「$typed」可用"
+                            taken -> stringResource(R.string.admin_new_taken, typed)
+                            checking -> stringResource(R.string.admin_new_13)
+                            else -> stringResource(R.string.admin_new_available, typed)
                         },
                         fontSize = 11.sp,
                         color = if (taken) MaterialTheme.colorScheme.error
@@ -175,13 +178,13 @@ fun AdminNewArchiveScreen(
                     )
                 }
                 Spacer(Modifier.height(10.dp))
-                Field2("起始日期 YYYYMMDD（留空全量）", since) { since = it }
+                Field2(stringResource(R.string.admin_new_17), since) { since = it }
                 Spacer(Modifier.height(20.dp))
                 Button(
                     onClick = { if (typed.isNotBlank() && !taken) showConfirm = true },
                     enabled = typed.isNotBlank() && !taken,
                     modifier = Modifier.fillMaxWidth()
-                ) { Text("开始建档") }
+                ) { Text(stringResource(R.string.admin_new_08)) }
                 Spacer(Modifier.height(28.dp))
             }
 
@@ -191,9 +194,9 @@ fun AdminNewArchiveScreen(
                     androidx.compose.material3.HorizontalDivider(
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
                     Spacer(Modifier.height(14.dp))
-                    Text("新建的存档", fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                    Text(stringResource(R.string.admin_new_12), fontSize = 15.sp, fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground)
-                    Text("刚建档的仓库（建档中→完成），点击进入处理", fontSize = 10.sp,
+                    Text(stringResource(R.string.admin_new_02), fontSize = 10.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp, bottom = 10.dp))
                 }
@@ -218,46 +221,46 @@ fun AdminNewArchiveScreen(
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
                 Spacer(Modifier.height(14.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("待完善存档", fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                    Text(stringResource(R.string.admin_new_09), fontSize = 15.sp, fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.weight(1f))
                     if (state.checking) {
-                        Text("检测中 ${state.checkProgress}/${state.checkTotal}", fontSize = 11.sp,
+                        Text(stringResource(R.string.admin_new_checking, state.checkProgress, state.checkTotal), fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else {
-                        Text("🔄 重新检测", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
+                        Text(stringResource(R.string.admin_new_19), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.clickable { vm.runIntegrityCheck() })
                     }
                 }
                 Spacer(Modifier.height(4.dp))
-                Text("建档完成但缺 banner 或置顶的仓库，点击去处理", fontSize = 10.sp,
+                Text(stringResource(R.string.admin_new_06), fontSize = 10.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 10.dp))
             }
 
             item {
-                Text("缺少 Banner（${state.missingBanner.size}）", fontSize = 12.sp,
+                Text(stringResource(R.string.admin_detail_miss_banner, state.missingBanner.size), fontSize = 12.sp,
                     fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(top = 6.dp, bottom = 4.dp))
             }
             if (state.missingBanner.isEmpty()) item {
-                Text(if (state.hasCheckedOnce) "全部已设置 ✓" else "尚未检测",
+                Text(if (state.hasCheckedOnce) stringResource(R.string.admin_detail_03) else stringResource(R.string.admin_new_03),
                     fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             items(state.missingBanner, key = { "banner:" + it.repo + "/" + it.account }) { m ->
-                MissingRow(m.displayName, "上传 banner") { onOpenArchive(m.repo) }
+                MissingRow(m.displayName, stringResource(R.string.admin_new_01)) { onOpenArchive(m.repo) }
             }
 
             item {
-                Text("缺少 置顶推文（${state.missingPinned.size}）", fontSize = 12.sp,
+                Text(stringResource(R.string.admin_detail_miss_pinned, state.missingPinned.size), fontSize = 12.sp,
                     fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(top = 16.dp, bottom = 4.dp))
             }
             if (state.missingPinned.isEmpty()) item {
-                Text(if (state.hasCheckedOnce) "全部已设置 ✓" else "尚未检测",
+                Text(if (state.hasCheckedOnce) stringResource(R.string.admin_detail_03) else stringResource(R.string.admin_new_03),
                     fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             items(state.missingPinned, key = { "pinned:" + it.repo + "/" + it.account }) { m ->
-                MissingRow(m.displayName, "设置置顶") { onOpenArchive(m.repo) }
+                MissingRow(m.displayName, stringResource(R.string.admin_new_16)) { onOpenArchive(m.repo) }
             }
             item { Spacer(Modifier.height(30.dp)) }
         }
@@ -361,9 +364,9 @@ private fun NewlyCreatedRow(
     onRemove: () -> Unit
 ) {
     val (dotColor, label) = when (status) {
-        "running" -> androidx.compose.ui.graphics.Color(0xFFF5A623) to "建档中"
-        "success" -> androidx.compose.ui.graphics.Color(0xFF34C759) to "完成"
-        "failure" -> androidx.compose.ui.graphics.Color(0xFFFF3B30) to "失败"
+        "running" -> androidx.compose.ui.graphics.Color(0xFFF5A623) to stringResource(R.string.admin_new_05)
+        "success" -> androidx.compose.ui.graphics.Color(0xFF34C759) to stringResource(R.string.done)
+        "failure" -> androidx.compose.ui.graphics.Color(0xFFFF3B30) to stringResource(R.string.admin_archive_11)
         else -> MaterialTheme.colorScheme.onSurfaceVariant to ""
     }
     Row(
@@ -380,7 +383,7 @@ private fun NewlyCreatedRow(
             Text(label, fontSize = 11.sp, color = dotColor,
                 modifier = Modifier.padding(end = 10.dp))
         }
-        Text("移除", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        Text(stringResource(R.string.admin_new_14), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.clickable { onRemove() }.padding(horizontal = 6.dp, vertical = 2.dp))
     }
 }

@@ -32,6 +32,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.twitterarchiver.data.GlobalShard
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
 
 /**
  * 全站时间线的日期树：年 → 月 → 日。
@@ -67,14 +69,14 @@ fun GlobalDateTreeSheet(
             item {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    Text("按日期浏览", fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                    Text(stringResource(R.string.date_tree_04), fontSize = 15.sp, fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
                     if (activeDate != null) {
-                        Text("清除筛选", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
+                        Text(stringResource(R.string.date_tree_07), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.clickable { onClear() })
                     }
                 }
-                Text("未下载的月份也能看到条数，点开会先下载。已下载的长按可删除。",
+                Text(stringResource(R.string.date_tree_06),
                     fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
@@ -126,9 +128,9 @@ private fun YearNode(
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
-                Text("$year 年", fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                Text(stringResource(R.string.date_year, year), fontSize = 15.sp, fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface)
-                Text("${fmtCount(yearCount)} 条 · ${fmtBytes(yearBytes)}", fontSize = 10.sp,
+                Text(stringResource(R.string.date_year_stat, fmtCount(yearCount), fmtBytes(yearBytes)), fontSize = 10.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             DownloadAction(
@@ -176,9 +178,9 @@ private fun MonthNode(
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
-                Text("$month 月", fontSize = 14.sp, fontWeight = FontWeight.Medium,
+                Text(stringResource(R.string.date_month, month), fontSize = 14.sp, fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("${fmtCount(shard.count)} 条 · ${fmtBytes(shard.bytes)}", fontSize = 10.sp,
+                Text(stringResource(R.string.date_month_stat, fmtCount(shard.count), fmtBytes(shard.bytes)), fontSize = 10.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
             }
             DownloadAction(
@@ -196,7 +198,7 @@ private fun MonthNode(
                                 else Color.Transparent)
                     .padding(start = 42.dp, end = 16.dp, top = 7.dp, bottom = 7.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    Text("整月", fontSize = 13.sp, fontWeight = FontWeight.Medium,
+                    Text(stringResource(R.string.date_tree_05), fontSize = 13.sp, fontWeight = FontWeight.Medium,
                         color = if (monthActive) MaterialTheme.colorScheme.primary
                                 else MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f))
@@ -211,7 +213,7 @@ private fun MonthNode(
                                     else Color.Transparent)
                         .padding(start = 42.dp, end = 16.dp, top = 7.dp, bottom = 7.dp),
                         verticalAlignment = Alignment.CenterVertically) {
-                        Text(full.takeLast(2) + " 日", fontSize = 13.sp,
+                        Text(full.takeLast(2) + stringResource(R.string.date_tree_01), fontSize = 13.sp,
                             color = if (active) MaterialTheme.colorScheme.primary
                                     else MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.weight(1f))
@@ -243,12 +245,12 @@ private fun DownloadAction(
             Text("${(progress.coerceIn(0f, 1f) * 100).toInt()}%", fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.primary)
         }
-        done -> Text("已下载", fontSize = 11.sp,
+        done -> Text(stringResource(R.string.date_tree_03), fontSize = 11.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.combinedClickable(
                 onClick = { }, onLongClick = onDelete
             ).padding(horizontal = 8.dp, vertical = 4.dp))
-        else -> Text("下载", fontSize = 11.sp, fontWeight = FontWeight.Bold,
+        else -> Text(stringResource(R.string.date_tree_02), fontSize = 11.sp, fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.clickable { onDownload() }
                 .padding(horizontal = 8.dp, vertical = 4.dp))

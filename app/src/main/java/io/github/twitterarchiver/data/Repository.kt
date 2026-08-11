@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import io.github.twitterarchiver.R
 
 /** 数据仓库：统一入口，带简单内存缓存 */
 class Repository(private val api: GitHubApi = GitHubApi.shared) {
@@ -161,29 +162,29 @@ class Repository(private val api: GitHubApi = GitHubApi.shared) {
                     accts.firstOrNull { it.r == repo && it.a == account }?.av?.trim().orEmpty()
                 }
                 if (targetName.isBlank())
-                    return@withContext Result.failure(Exception("聚合数据里没有该账号的头像文件名"))
+                    return@withContext Result.failure(Exception(AppStrings[R.string.avatar_no_filename]))
 
                 val srcName = (
                     try { getRepos().firstOrNull { it.repoName == repo }?.avatar } catch (e: Exception) { null }
                 ).orEmpty().substringAfterLast('/').trim().ifBlank { "avatar.jpg" }
 
                 if (srcName == targetName)
-                    return@withContext Result.success("最新推文用的就是主头像，无需修复")
+                    return@withContext Result.success(AppStrings[R.string.avatar_same_as_main])
 
                 // 3. 已存在则跳过，不产生无谓 commit
                 val targetPath = "$base/avatar/$targetName"
                 if (api.getFileSha(pat, repo, targetPath) != null)
-                    return@withContext Result.success("头像已存在，无需修复：$targetName")
+                    return@withContext Result.success(AppStrings.get(R.string.avatar_exists, targetName))
 
                 // 4. 读源文件原始 base64，不解码以免二进制损坏
                 val srcPath = "$base/avatar/$srcName"
                 val (b64, _) = api.fetchFileBase64(pat, repo, srcPath)
-                    ?: return@withContext Result.failure(Exception("读不到主头像 $srcName"))
+                    ?: return@withContext Result.failure(Exception(AppStrings.get(R.string.avatar_src_unreadable, srcName)))
 
                 // 5. 以目标名新建
                 api.putNewFile(pat, repo, targetPath, b64,
-                    "补最新推文头像 $targetName [skip ci]")
-                    .map { "已复制 $srcName → $targetName" }
+                    AppStrings.get(R.string.avatar_commit_msg, targetName))
+                    .map { AppStrings.get(R.string.avatar_copied, srcName, targetName) }
             } catch (e: Exception) {
                 Result.failure(e)
             }

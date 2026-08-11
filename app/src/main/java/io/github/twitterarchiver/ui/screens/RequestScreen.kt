@@ -33,6 +33,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.twitterarchiver.viewmodel.RequestViewModel
 import io.github.twitterarchiver.util.AccountUtil
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
 
 /** 申请存档页（访客用受限 token 提交 Issue） */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,15 +55,15 @@ fun RequestScreen(
                 titleContentColor = MaterialTheme.colorScheme.onBackground,
                 navigationIconContentColor = MaterialTheme.colorScheme.onBackground
             ),
-            title = { Text("申请存档", fontSize = 16.sp) },
+            title = { Text(stringResource(R.string.request_05), fontSize = 16.sp) },
             navigationIcon = {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
+                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
             }
         )
         Column(Modifier.fillMaxSize().padding(20.dp)) {
-            Text("申请存档一个推特账号", fontSize = 15.sp, fontWeight = FontWeight.Bold,
+            Text(stringResource(R.string.request_06), fontSize = 15.sp, fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground)
-            Text("提交后我们会尽快处理。请填写想要存档的账号用户名。",
+            Text(stringResource(R.string.request_03),
                 fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp))
 
@@ -69,10 +71,10 @@ fun RequestScreen(
             val accountInvalid = account.isNotBlank() && !AccountUtil.isValidHandle(account)
             OutlinedTextField(
                 value = account, onValueChange = { account = it },
-                label = { Text("账号用户名（如 @example）") },
+                label = { Text(stringResource(R.string.request_07)) },
                 isError = accountInvalid,
                 supportingText = if (accountInvalid) {
-                    { Text("应为 1–15 位字母、数字或下划线") }
+                    { Text(stringResource(R.string.request_02)) }
                 } else null,
                 singleLine = true, modifier = Modifier.fillMaxWidth()
             )
@@ -80,7 +82,7 @@ fun RequestScreen(
             OutlinedTextField(
                 value = note,
                 onValueChange = { if (it.length <= RequestViewModel.NOTE_MAX) note = it },
-                label = { Text("备注（可选）") },
+                label = { Text(stringResource(R.string.request_01)) },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp)
             )
 
@@ -94,7 +96,7 @@ fun RequestScreen(
                     modifier = Modifier.size(18.dp),
                     strokeWidth = 2.dp,
                     color = MaterialTheme.colorScheme.onPrimary)
-                else Text("提交申请")
+                else Text(stringResource(R.string.request_04))
             }
 
             state.result?.let {

@@ -8,6 +8,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.URL
+import io.github.twitterarchiver.R
+import io.github.twitterarchiver.data.AppStrings
 
 /** 下载视频保存到系统相册。minSdk 30，一律走分区存储，无需存储权限 */
 object VideoSaver {
@@ -32,7 +34,7 @@ object VideoSaver {
 
             try {
                 val out = resolver.openOutputStream(uri)
-                    ?: throw java.io.IOException("无法打开输出流")
+                    ?: throw java.io.IOException(AppStrings[R.string.io_open_output_failed])
                 out.use { o ->
                     val conn = URL(url).openConnection().apply {
                         connectTimeout = 15_000

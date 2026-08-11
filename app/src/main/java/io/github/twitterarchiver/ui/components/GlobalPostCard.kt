@@ -47,6 +47,9 @@ import io.github.twitterarchiver.data.GlobalPost
 import io.github.twitterarchiver.data.NetworkState
 import io.github.twitterarchiver.data.QuotedTweet
 import io.github.twitterarchiver.data.ThreadItem
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
+import io.github.twitterarchiver.data.AppStrings
 
 /** 全站推文卡片（含引用原推 + 完整回复链） */
 @Composable
@@ -129,14 +132,14 @@ fun GlobalPostCard(
             // 引用原推（默认折叠，点击展开）
             if (post.hasQuoteOrRt) {
                 Text(
-                    if (quoteExpanded) "收起引用" else "查看引用",
+                    if (quoteExpanded) stringResource(R.string.post_card_15) else stringResource(R.string.post_card_18),
                     fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier.padding(top = 6.dp).clickable { quoteExpanded = !quoteExpanded }
                 )
                 AnimatedVisibility(visible = quoteExpanded) {
                     quoted?.let { QuotedCard(it, onImageClick) }
-                        ?: Text(if (loading) "加载中…" else "原推内容不可用",
+                        ?: Text(if (loading) stringResource(R.string.loading) else stringResource(R.string.post_card_03),
                             fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 4.dp))
                 }
@@ -145,7 +148,7 @@ fun GlobalPostCard(
             Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (post.replyCount > 0 || (loaded && thread.isNotEmpty())) {
                     Text(
-                        if (expanded) "收起回复" else "展开回复",
+                        if (expanded) stringResource(R.string.post_card_14) else stringResource(R.string.post_card_07),
                         fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.clickable { expanded = !expanded }
@@ -153,7 +156,7 @@ fun GlobalPostCard(
                 }
                 Spacer(Modifier.weight(1f))
                 Text(
-                    if (isBookmarked) "已收藏" else "收藏",
+                    if (isBookmarked) stringResource(R.string.post_card_08) else stringResource(R.string.post_card_13),
                     fontSize = 11.sp,
                     fontWeight = if (isBookmarked) FontWeight.Bold else FontWeight.Normal,
                     color = if (isBookmarked) MaterialTheme.colorScheme.primary
@@ -172,9 +175,9 @@ fun GlobalPostCard(
                         .padding(10.dp)
                 ) {
                     when {
-                        loading -> Text("加载中…", fontSize = 11.sp,
+                        loading -> Text(stringResource(R.string.loading), fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        thread.isEmpty() -> Text("暂无回复", fontSize = 11.sp,
+                        thread.isEmpty() -> Text(stringResource(R.string.post_card_16), fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         else -> thread.forEach { item -> ReplyCard(item, onImageClick) }
                     }
@@ -262,7 +265,7 @@ private fun VideoThumb(url: String, onClick: () -> Unit) {
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                Icons.Filled.PlayArrow, contentDescription = "播放视频",
+                Icons.Filled.PlayArrow, contentDescription = stringResource(R.string.post_card_12),
                 tint = Color.White, modifier = Modifier.size(32.dp)
             )
         }
@@ -318,7 +321,7 @@ private fun ReplyCard(item: ThreadItem, onImageClick: (List<String>, Int) -> Uni
         Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(item.authorName.ifBlank { "某账号" }, fontSize = 11.sp,
+                Text(item.authorName.ifBlank { stringResource(R.string.post_card_17) }, fontSize = 11.sp,
                     fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (!item.isOwner && item.authorUsername.isNotBlank()) {
@@ -329,7 +332,7 @@ private fun ReplyCard(item: ThreadItem, onImageClick: (List<String>, Int) -> Uni
                 }
                 if (item.isQuoted) {
                     Spacer(Modifier.width(5.dp))
-                    Text("引用", fontSize = 9.sp, color = MaterialTheme.colorScheme.primary,
+                    Text(stringResource(R.string.post_card_09), fontSize = 9.sp, color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
                             .clip(RoundedCornerShape(4.dp))
                             .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
@@ -379,27 +382,27 @@ private fun ShareSheet(
         Column(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)
         ) {
-            Text("分享这条推文", fontSize = 16.sp, fontWeight = FontWeight.Bold,
+            Text(stringResource(R.string.post_card_02), fontSize = 16.sp, fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(bottom = 12.dp))
 
             if (twitterUrl.isNotBlank()) {
-                ShareRow("推特原链接", twitterUrl) {
+                ShareRow(stringResource(R.string.post_card_11), twitterUrl) {
                     copy(twitterUrl)
                 }
             }
             if (tweetId.isNotBlank()) {
-                ShareRow("推文 ID", tweetId) {
+                ShareRow(stringResource(R.string.post_card_10), tweetId) {
                     copy(tweetId)
                 }
             }
             if (locateUrl.isNotBlank()) {
-                ShareRow("存档定位链接（浏览器打开）", locateUrl) {
+                ShareRow(stringResource(R.string.post_card_05), locateUrl) {
                     copy(locateUrl)
                 }
             }
             if (shortCode.isNotBlank()) {
-                ShareRow("定位短码（粘贴到搜索框）", shortCode) {
+                ShareRow(stringResource(R.string.post_card_06), shortCode) {
                     copy(shortCode)
                 }
             }
@@ -413,12 +416,12 @@ private fun ShareSheet(
                             putExtra(android.content.Intent.EXTRA_TEXT,
                                 twitterUrl.ifBlank { tweetId })
                         }
-                        ctx.startActivity(android.content.Intent.createChooser(share, "分享"))
+                        ctx.startActivity(android.content.Intent.createChooser(share, AppStrings[R.string.post_card_01]))
                         onDismiss()
                     }.padding(14.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text("通过系统分享…", fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                Text(stringResource(R.string.post_card_19), fontSize = 14.sp, fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary)
             }
         }
@@ -437,7 +440,7 @@ private fun ShareRow(label: String, value: String, onCopy: () -> Unit) {
             Text(value, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        Text("复制", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
+        Text(stringResource(R.string.post_card_04), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.clickable { onCopy() }.padding(8.dp))
     }
 }

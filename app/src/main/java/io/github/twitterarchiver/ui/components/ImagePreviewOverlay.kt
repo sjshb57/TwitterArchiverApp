@@ -48,6 +48,9 @@ import coil3.request.SuccessResult
 import coil3.request.allowHardware
 import io.github.twitterarchiver.util.ImageSaver
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
+import io.github.twitterarchiver.data.AppStrings
 
 /**
  * 图片预览（方案B：卡片式）。
@@ -148,7 +151,7 @@ fun ImagePreviewOverlay(
                 onClick = onDismiss,
                 modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(8.dp)
             ) {
-                Icon(Icons.Filled.Close, "关闭", tint = Color.White)
+                Icon(Icons.Filled.Close, stringResource(R.string.close), tint = Color.White)
             }
             if (urls.size > 1) {
                 Text(
@@ -171,7 +174,7 @@ fun ImagePreviewOverlay(
                             bmp != null && ImageSaver.saveBitmap(
                                 context, bmp, "TA_${System.currentTimeMillis()}.jpg")
                         } catch (e: Exception) { false }
-                        Toast.makeText(context, if (ok) "已保存到相册" else "保存失败",
+                        Toast.makeText(context, if (ok) AppStrings[R.string.img_preview_02] else AppStrings[R.string.img_preview_01],
                             Toast.LENGTH_SHORT).show()
                     }
                 },
@@ -181,7 +184,7 @@ fun ImagePreviewOverlay(
                     .padding(bottom = 60.dp, end = 24.dp)
                     .background(Color.Black.copy(alpha = 0.55f), CircleShape)
             ) {
-                Icon(Icons.Filled.Download, "保存", tint = Color.White)
+                Icon(Icons.Filled.Download, stringResource(R.string.save), tint = Color.White)
             }
         }
     }

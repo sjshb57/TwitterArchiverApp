@@ -25,6 +25,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.twitterarchiver.ui.theme.Accent
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
 
 /** 关于页：纪念语 + 版本 + 开源协议 */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,9 +39,9 @@ fun AboutScreen(onBack: () -> Unit, onOpenThanks: () -> Unit = {}) {
                 titleContentColor = MaterialTheme.colorScheme.onBackground,
                 navigationIconContentColor = MaterialTheme.colorScheme.onBackground
             ),
-            title = { Text("关于", fontSize = 16.sp) },
+            title = { Text(stringResource(R.string.about_01), fontSize = 16.sp) },
             navigationIcon = {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
+                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
             }
         )
         Column(
@@ -49,23 +51,23 @@ fun AboutScreen(onBack: () -> Unit, onOpenThanks: () -> Unit = {}) {
         ) {
             Text("TwitterArchiver", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onBackground)
-            Text("基于 Wayback Machine 的推特账号永久存档", fontSize = 11.sp,
+            Text(stringResource(R.string.about_02), fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 6.dp))
 
             Spacer(Modifier.height(40.dp))
-            Text("愿世间再无痛苦，唯爱永不独行", fontSize = 15.sp,
+            Text(stringResource(R.string.about_03), fontSize = 15.sp,
                 color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center, lineHeight = 26.sp)
-            Text("烛火熄灭之后，光还在。", fontSize = 12.sp, color = Accent,
+            Text(stringResource(R.string.about_05), fontSize = 12.sp, color = Accent,
                 modifier = Modifier.padding(top = 16.dp))
 
             Spacer(Modifier.height(48.dp))
-            Text("版本 1.0.0", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("本项目开源，遵循 AGPL-3.0 协议", fontSize = 11.sp,
+            Text(stringResource(R.string.about_06), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.about_04), fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp))
-            Text("致谢", fontSize = 11.sp, color = Accent,
+            Text(stringResource(R.string.about_07), fontSize = 11.sp, color = Accent,
                 modifier = Modifier.padding(top = 14.dp)
                     .clickable { onOpenThanks() }
                     .padding(horizontal = 12.dp, vertical = 4.dp))

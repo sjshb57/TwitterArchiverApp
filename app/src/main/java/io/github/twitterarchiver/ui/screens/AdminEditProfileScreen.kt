@@ -48,6 +48,9 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
+import io.github.twitterarchiver.data.AppStrings
 
 /** profile.json 序列化：2 空格缩进 + 中文原样，与原版格式一致 */
 @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
@@ -89,7 +92,7 @@ fun AdminEditProfileScreen(
                     location = obj["location"]?.jsonPrimitive?.contentOrNull ?: ""
                     link = obj["link"]?.jsonPrimitive?.contentOrNull ?: ""
                     pinned = obj["pinned"]?.jsonPrimitive?.contentOrNull ?: ""
-                } catch (e: Exception) { error = "解析失败：${e.message}" }
+                } catch (e: Exception) { error = AppStrings.get(R.string.parse_failed, e.message.orEmpty()) }
                 loading = false
             }
             .onFailure { error = it.message; loading = false }
@@ -102,10 +105,10 @@ fun AdminEditProfileScreen(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text("编辑资料 · $account", fontSize = 15.sp) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } },
+                title = { Text(stringResource(R.string.admin_profile_title, account), fontSize = 15.sp) },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
                 actions = {
-                    if (!loading && error == null) Text("保存", fontSize = 14.sp,
+                    if (!loading && error == null) Text(stringResource(R.string.save), fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(end = 16.dp)
                             .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), RoundedCornerShape(8.dp))
@@ -141,7 +144,7 @@ fun AdminEditProfileScreen(
         when {
             loading -> Box(Modifier.fillMaxSize().padding(innerPadding), Alignment.Center) { CircularProgressIndicator() }
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), Alignment.Center) {
-                Text("读取失败：$error", color = MaterialTheme.colorScheme.error)
+                Text(stringResource(R.string.read_failed, error.orEmpty()), color = MaterialTheme.colorScheme.error)
             }
             else -> Column(
                 Modifier.fillMaxSize()
@@ -149,22 +152,22 @@ fun AdminEditProfileScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp)
             ) {
-                Label("名称")
+                Label(stringResource(R.string.admin_profile_03))
                 Field(name, { name = it })
                 Spacer(Modifier.height(12.dp))
-                Label("简介")
+                Label(stringResource(R.string.admin_profile_04))
                 Field(bio, { bio = it }, multiline = true)
                 Spacer(Modifier.height(12.dp))
-                Label("位置")
+                Label(stringResource(R.string.admin_profile_01))
                 Field(location, { location = it })
                 Spacer(Modifier.height(12.dp))
-                Label("链接")
+                Label(stringResource(R.string.admin_profile_06))
                 Field(link, { link = it })
                 Spacer(Modifier.height(12.dp))
-                Label("置顶推文 ID")
+                Label(stringResource(R.string.admin_profile_05))
                 // 粘贴推文链接时自动只取末尾 ID，省去手动删前缀
                 Field(pinned, { pinned = TweetIdUtil.normalize(it) })
-                Text("可直接粘贴推文链接，会自动提取 ID",
+                Text(stringResource(R.string.admin_profile_02),
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp))

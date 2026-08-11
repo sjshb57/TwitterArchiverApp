@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.twitterarchiver.viewmodel.SettingsViewModel
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
 
 /** 默认启动页设置：选打开 App 时进入哪个 Tab */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,18 +38,18 @@ fun DefaultTabScreen(
     settingsVm: SettingsViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
     val current by settingsVm.defaultTab.collectAsStateWithLifecycle()
-    val options = listOf("列表" to 0, "全站时间线" to 1)
+    val options = listOf(stringResource(R.string.tab_list) to 0, stringResource(R.string.deftab_01) to 1)
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         TopAppBar(
-            title = { Text("默认启动页", fontSize = 16.sp) },
-            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } },
+            title = { Text(stringResource(R.string.deftab_04), fontSize = 16.sp) },
+            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = MaterialTheme.colorScheme.background,
                 titleContentColor = MaterialTheme.colorScheme.onBackground,
                 navigationIconContentColor = MaterialTheme.colorScheme.onBackground)
         )
-        Text("选择打开应用时默认进入的页面", fontSize = 11.sp,
+        Text(stringResource(R.string.deftab_03), fontSize = 11.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(16.dp))
         options.forEach { (label, idx) ->
@@ -59,7 +61,7 @@ fun DefaultTabScreen(
                 Text(label, fontSize = 14.sp, color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.weight(1f))
                 if (current == idx) {
-                    Icon(Icons.Filled.Check, "已选", tint = MaterialTheme.colorScheme.primary,
+                    Icon(Icons.Filled.Check, stringResource(R.string.deftab_02), tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp))
                 }
             }

@@ -17,6 +17,8 @@ import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import io.github.twitterarchiver.R
+import io.github.twitterarchiver.data.AppStrings
 
 private const val SEARCH_DEBOUNCE_MS = 200L
 
@@ -61,7 +63,7 @@ class ReaderViewModel(private val repo: Repository = Repository.shared) : ViewMo
             } catch (e: Exception) {
                 currentCoroutineContext().ensureActive()
                 if (forceRefresh) _state.value = _state.value.copy(loading = false)
-                else _state.value = ReaderState(loading = false, error = "加载失败：${e.message}")
+                else _state.value = ReaderState(loading = false, error = AppStrings.get(R.string.load_failed, e.message.orEmpty()))
             }
         }
     }

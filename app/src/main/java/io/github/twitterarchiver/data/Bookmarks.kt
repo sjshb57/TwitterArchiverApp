@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import io.github.twitterarchiver.R
 
 private val Context.bookmarkStore by preferencesDataStore("bookmarks")
 
@@ -71,7 +72,7 @@ class Bookmarks(private val context: Context) {
                 // 兼容直接是数组的旧格式
                 BookmarkBackup(bookmarks = json.decodeFromString(content))
             }
-            .getOrElse { throw IllegalArgumentException("备份文件格式无法识别", it) }
+            .getOrElse { throw IllegalArgumentException(AppStrings[R.string.backup_format_unknown], it) }
         var added = 0
         update { list ->
             val existing = list.map { it.tweetId }.toSet()

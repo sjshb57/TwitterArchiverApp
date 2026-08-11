@@ -23,6 +23,8 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import io.github.twitterarchiver.util.MediaUtil
+import io.github.twitterarchiver.R
+import io.github.twitterarchiver.data.AppStrings
 
 data class GlobalState(
     val loading: Boolean = true,
@@ -128,7 +130,10 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
                 currentCoroutineContext().ensureActive()
                 _state.value = _state.value.copy(
                     loadingFull = false,
-                    indexError = "索引清单加载失败：${e::class.simpleName} ${e.message ?: ""}"
+                    indexError = AppStrings.get(
+                        R.string.index_manifest_failed,
+                        "${e::class.java.simpleName} ${e.message.orEmpty()}".trim()
+                    )
                 )
             }
         }
@@ -209,7 +214,10 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
             currentCoroutineContext().ensureActive()
             _state.value = _state.value.copy(
                 monthProgress = _state.value.monthProgress - shard.month,
-                indexError = "${shard.month} 下载失败：${e::class.simpleName} ${e.message ?: ""}"
+                indexError = AppStrings.get(
+                    R.string.shard_download_failed, shard.month,
+                    "${e::class.java.simpleName} ${e.message.orEmpty()}".trim()
+                )
             )
         }
     }
@@ -353,7 +361,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
                 val acct = allAccounts.getOrNull(cr.acctIndex)
                 chain.add(io.github.twitterarchiver.data.ThreadItem(
                     tweetId = cr.tweetId,
-                    authorName = acct?.n ?: "某账号",
+                    authorName = acct?.n ?: AppStrings[R.string.unknown_account],
                     authorUsername = acct?.u ?: "",
                     authorAvatarUrl = if (acct != null && acct.av.isNotBlank())
                         "${io.github.twitterarchiver.data.Config.snapshotsBase(acct.r, acct.a)}/avatar/${acct.av}" else "",

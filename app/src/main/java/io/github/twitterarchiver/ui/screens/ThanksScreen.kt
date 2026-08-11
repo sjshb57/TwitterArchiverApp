@@ -28,15 +28,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.twitterarchiver.ui.theme.Accent
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
 
 /** 致谢页：特别致谢 + 致谢名单（按 A-Z） */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ThanksScreen(onBack: () -> Unit) {
     val special = listOf(
-        "X@Cheese_Ghostfox" to "初次项目构建",
-        "X@damniwokeup" to "想法支持",
-        "X@Wilf_Lin" to "思路技术支持"
+        "X@Cheese_Ghostfox" to stringResource(R.string.thanks_02),
+        "X@damniwokeup" to stringResource(R.string.thanks_04),
+        "X@Wilf_Lin" to stringResource(R.string.thanks_03)
     )
     val others = listOf(
         "X@0502railgun1949",
@@ -55,9 +57,9 @@ fun ThanksScreen(onBack: () -> Unit) {
                 titleContentColor = MaterialTheme.colorScheme.onBackground,
                 navigationIconContentColor = MaterialTheme.colorScheme.onBackground
             ),
-            title = { Text("致谢", fontSize = 16.sp) },
+            title = { Text(stringResource(R.string.about_07), fontSize = 16.sp) },
             navigationIcon = {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
+                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
             }
         )
         Column(
@@ -66,13 +68,13 @@ fun ThanksScreen(onBack: () -> Unit) {
         ) {
             Spacer(Modifier.height(12.dp))
             Text(
-                "这个项目能走到今天，离不开这些人的帮助。",
+                stringResource(R.string.thanks_06),
                 fontSize = 12.sp, lineHeight = 20.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(Modifier.height(32.dp))
-            SectionTitle("特别致谢")
+            SectionTitle(stringResource(R.string.thanks_05))
             special.forEach { (name, role) ->
                 Row(
                     Modifier.fillMaxWidth().padding(vertical = 9.dp),
@@ -91,7 +93,7 @@ fun ThanksScreen(onBack: () -> Unit) {
             HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
             Spacer(Modifier.height(28.dp))
 
-            SectionTitle("致谢")
+            SectionTitle(stringResource(R.string.about_07))
             others.forEach { name ->
                 Text(
                     name, fontSize = 14.sp,
@@ -102,7 +104,7 @@ fun ThanksScreen(onBack: () -> Unit) {
 
             Spacer(Modifier.height(40.dp))
             Text(
-                "以及每一位默默支持这个项目的人。",
+                stringResource(R.string.thanks_01),
                 fontSize = 11.sp, textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.fillMaxWidth()

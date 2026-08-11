@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import io.github.twitterarchiver.R
+import io.github.twitterarchiver.data.AppStrings
 
 data class HomeState(
     val loading: Boolean = true,
@@ -42,7 +44,7 @@ class HomeViewModel(private val repo: Repository = Repository.shared) : ViewMode
                 currentCoroutineContext().ensureActive()
                 _state.value = _state.value.copy(
                     loading = false,
-                    error = "加载失败：${e.message}"
+                    error = AppStrings.get(R.string.load_failed, e.message.orEmpty())
                 )
             }
         }

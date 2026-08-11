@@ -36,6 +36,8 @@ import io.github.twitterarchiver.ui.theme.Accent
 import io.github.twitterarchiver.viewmodel.HomeViewModel
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
 
 /** Tab 1：账号列表（顶部 logo+统计 + 搜索 + 带头像和简介的列表） */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -77,8 +79,8 @@ fun ListScreen(
             }
             val total = state.repos.size
             Text(
-                if (statStyle == 0) "已存档 $total 个账号"
-                else "基于 Wayback Machine 的永久存档",
+                if (statStyle == 0) stringResource(R.string.list_archived, total)
+                else stringResource(R.string.list_01),
                 fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
@@ -91,7 +93,7 @@ fun ListScreen(
         io.github.twitterarchiver.ui.components.SearchField(
             value = state.query,
             onValueChange = vm::search,
-            placeholder = "搜索账号…"
+            placeholder = stringResource(R.string.search_account_hint)
         )
 
         Spacer(Modifier.height(10.dp))

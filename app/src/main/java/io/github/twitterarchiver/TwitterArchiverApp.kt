@@ -11,14 +11,15 @@ import coil3.request.crossfade
 import coil3.video.VideoFrameDecoder
 import okio.Path.Companion.toOkioPath
 import io.github.twitterarchiver.data.HttpClients
-import io.github.twitterarchiver.data.ThemeMirror
+import io.github.twitterarchiver.data.AppStrings
 
 /** 配置 Coil 全局图片缓存（内存 + 磁盘缓存到 app 私有目录 Android/data） */
 class TwitterArchiverApp : Application(), SingletonImageLoader.Factory {
 
     override fun onCreate() {
         super.onCreate()
-        ThemeMirror.applyNightMode(this)
+        // 放在 Application 而不是 Activity：数据层可能在 Activity 创建之前就被访问
+        AppStrings.init(this)
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader {

@@ -35,6 +35,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
+import io.github.twitterarchiver.data.AppStrings
 
 /** Tab：设置（无 emoji，扁平分组） */
 @Composable
@@ -51,29 +54,29 @@ fun SettingsScreen(
         Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState())
     ) {
         Text(
-            "设置", fontSize = 17.sp, fontWeight = FontWeight.ExtraBold,
+            stringResource(R.string.tab_settings), fontSize = 17.sp, fontWeight = FontWeight.ExtraBold,
             color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(16.dp)
         )
 
         SettingGroup {
-            SettingRow("主题管理", "浅色 / 深色 / 动态配色", onClick = onOpenTheme)
+            SettingRow(stringResource(R.string.settings_02), stringResource(R.string.settings_07), onClick = onOpenTheme)
             Divider()
-            SettingRow("\"关注\" 标签页", followSummary, onClick = onOpenFollow)
+            SettingRow(stringResource(R.string.settings_01), followSummary, onClick = onOpenFollow)
             Divider()
-            SettingRow("默认启动页", "打开应用时进入的页面", onClick = onOpenDefaultTab)
+            SettingRow(stringResource(R.string.deftab_04), stringResource(R.string.settings_05), onClick = onOpenDefaultTab)
         }
 
         SettingGroup {
-            SettingRow("书签管理", "收藏的推文 · 可导出备份", onClick = onOpenBookmarks)
+            SettingRow(stringResource(R.string.settings_03), stringResource(R.string.settings_06), onClick = onOpenBookmarks)
             Divider()
-            SettingRow("申请存档", "申请存档某个账号", onClick = onOpenRequest)
+            SettingRow(stringResource(R.string.request_05), stringResource(R.string.settings_11), onClick = onOpenRequest)
         }
 
         SettingGroup {
             CacheRow()
             Divider()
-            SettingRow("关于", "版本 · 开源协议", onClick = onOpenAbout)
+            SettingRow(stringResource(R.string.about_01), stringResource(R.string.settings_10), onClick = onOpenAbout)
         }
     }
 }
@@ -84,7 +87,7 @@ fun SettingsScreen(
 private fun CacheRow() {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
-    var sizeText by remember { mutableStateOf("统计中…") }
+    var sizeText by remember { mutableStateOf(AppStrings[R.string.health_08]) }
     var confirm by remember { mutableStateOf(false) }
     var refreshKey by remember { mutableIntStateOf(0) }
 
@@ -92,17 +95,17 @@ private fun CacheRow() {
         sizeText = withContext(Dispatchers.IO) {
             val index = AppDirs.root?.let { dirSize(File(it, "index_cache")) } ?: 0L
             val image = ctx.imageLoader.diskCache?.size ?: 0L
-            "离线索引 ${fmtSize(index)} · 图片 ${fmtSize(image)}"
+            AppStrings.get(R.string.settings_cache, fmtSize(index), fmtSize(image))
         }
     }
 
-    SettingRow("清理缓存", sizeText, onClick = { confirm = true })
+    SettingRow(stringResource(R.string.settings_09), sizeText, onClick = { confirm = true })
 
     if (confirm) {
         ConfirmDialog(
-            title = "清理缓存",
-            message = "将删除已下载的离线索引与图片缓存。书签、设置不受影响；下次浏览时会重新下载所需内容。",
-            confirmText = "清理",
+            title = stringResource(R.string.settings_09),
+            message = stringResource(R.string.settings_04),
+            confirmText = stringResource(R.string.settings_08),
             danger = true,
             onConfirm = {
                 confirm = false

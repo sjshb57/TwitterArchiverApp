@@ -38,6 +38,8 @@ import io.github.twitterarchiver.viewmodel.AdminViewModel
 import io.github.twitterarchiver.viewmodel.DashRepo
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
 
 /** 管理台：4 仪表盘入口。点击进各自详情页（AdminDetailScreen）。 */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -75,9 +77,9 @@ fun AdminScreen(
             Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("管理台", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold,
+            Text(stringResource(R.string.admin_08), fontSize = 28.sp, fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onBackground)
-            Text(if (state.hasPat) "已连接" else "未配置令牌", fontSize = 10.sp,
+            Text(if (state.hasPat) stringResource(R.string.admin_03) else stringResource(R.string.admin_05), fontSize = 10.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 3.dp))
         }
@@ -101,7 +103,7 @@ fun AdminScreen(
                         .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f))
                         .clickable { onNewArchive() }.padding(16.dp)
                 ) {
-                    Text("➕ 建立新存档", fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                    Text(stringResource(R.string.admin_01), fontSize = 14.sp, fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.tertiary)
                 }
                 if (missingCount > 0) {
@@ -110,7 +112,7 @@ fun AdminScreen(
                             .clip(CircleShape).background(MaterialTheme.colorScheme.error)
                             .padding(horizontal = 7.dp, vertical = 2.dp)
                     ) {
-                        Text("$missingCount 待完善", fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                        Text(stringResource(R.string.admin_pending, missingCount), fontSize = 10.sp, fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onError)
                     }
                 }
@@ -123,7 +125,7 @@ fun AdminScreen(
                         .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
                         .clickable { onOpenRequests() }.padding(16.dp)
                 ) {
-                    Text("待处理存档申请 ›", fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                    Text(stringResource(R.string.admin_04), fontSize = 14.sp, fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary)
                 }
                 if (requestCount > 0) {
@@ -138,7 +140,7 @@ fun AdminScreen(
                 }
             }
             Spacer(Modifier.height(12.dp))
-            Text("清除令牌", fontSize = 12.sp, color = MaterialTheme.colorScheme.error,
+            Text(stringResource(R.string.admin_07), fontSize = 12.sp, color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(start = 20.dp).clickable { vm.clearPat() })
         }
     }
@@ -162,7 +164,7 @@ private fun DashCard(dash: DashRepo, onClick: () -> Unit) {
             .padding(16.dp)
     ) {
         Column(Modifier.align(Alignment.TopStart)) {
-            Text(dash.title, fontSize = 16.sp, fontWeight = FontWeight.Bold,
+            Text(stringResource(dash.titleRes), fontSize = 16.sp, fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground)
             if (dash.repo.isNotBlank()) {
                 Text(dash.repo, fontSize = 10.sp,
@@ -170,7 +172,7 @@ private fun DashCard(dash: DashRepo, onClick: () -> Unit) {
                     modifier = Modifier.padding(top = 2.dp))
             }
         }
-        Text("查看 ›", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
+        Text(stringResource(R.string.admin_06), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.align(Alignment.BottomEnd))
     }
 }
@@ -179,9 +181,9 @@ private fun DashCard(dash: DashRepo, onClick: () -> Unit) {
 private fun PatSetup(verifying: Boolean, onSave: (String) -> Unit) {
     var pat by remember { mutableStateOf("") }
     Column(Modifier.fillMaxWidth().padding(20.dp)) {
-        Text("配置 GitHub 令牌 (PAT)", fontSize = 14.sp, fontWeight = FontWeight.Bold,
+        Text(stringResource(R.string.admin_10), fontSize = 14.sp, fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground)
-        Text("需要 repo + workflow 权限，用于触发工作流、编辑文件、删推、处理申请。",
+        Text(stringResource(R.string.admin_11),
             fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp, bottom = 12.dp))
         Box(
@@ -199,7 +201,7 @@ private fun PatSetup(verifying: Boolean, onSave: (String) -> Unit) {
                 cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary),
                 modifier = Modifier.fillMaxWidth()
             ) { inner ->
-                if (pat.isEmpty()) Text("粘贴 PAT…", fontSize = 13.sp,
+                if (pat.isEmpty()) Text(stringResource(R.string.admin_09), fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 inner()
             }
@@ -209,6 +211,6 @@ private fun PatSetup(verifying: Boolean, onSave: (String) -> Unit) {
             onClick = { if (pat.isNotBlank()) onSave(pat.trim()) },
             enabled = !verifying,
             modifier = Modifier.fillMaxWidth()
-        ) { Text(if (verifying) "验证中…" else "保存令牌") }
+        ) { Text(if (verifying) stringResource(R.string.admin_12) else stringResource(R.string.admin_02)) }
     }
 }

@@ -199,15 +199,19 @@ app/src/main/java/io/github/twitterarchiver/
 │   ├── Settings.kt        DataStore 偏好
 │   ├── SecureStore.kt     PAT 加密存储
 │   ├── AppDirs.kt         应用目录注入
-│   └── NetworkState.kt    全局网络状态
-├── viewmodel/       10 个 ViewModel，按页面划分
+│   ├── NetworkState.kt    全局网络状态
+│   ├── HttpClients.kt     Ktor 与 Coil 共用的 OkHttp
+│   ├── GitHubError.kt     接口错误转成给用户看的说法
+│   ├── RepoHealth.kt      仓库健康（更新时间、体积）
+│   └── ThemeMirror.kt     主题设置的同步镜像，供启动时取用
+├── viewmodel/       按页面划分
 ├── ui/
 │   ├── AppNav.kt          栈式导航与路由
 │   ├── AppScaffold.kt     底部 Tab 骨架
-│   ├── screens/           22 个页面
-│   ├── components/        13 个复用组件
+│   ├── screens/           各功能页面
+│   ├── components/        复用组件
 │   └── theme/             配色与主题
-└── util/            日期、账号名、媒体保存
+└── util/            日期、账号名、媒体保存、搜索
 ```
 
 ---
@@ -238,7 +242,7 @@ https://twitterarchiver.github.io/<仓库>/accounts/<账号>/wayback_snapshots/
 - [x] **离线可读** —— `index.json` 已按月落盘并做哈希比对增量更新，全站索引分片同样有本地副本，冷启动断网也能先出内容
 - [ ] **那年今日** —— 存档跨度数年，展示同一天各账号在往年发过什么
 - [ ] **关注多个账号** —— 现在只能设一个主页账号
-- [ ] **账号统计** —— 推文数、图片数、时间跨度、最活跃月份
+- [ ] **账号统计** —— 推文数、图片数已在资料卡展示；时间跨度、最活跃月份待做
 - [ ] **正文字号调节**
 - [ ] **搜索历史**
 

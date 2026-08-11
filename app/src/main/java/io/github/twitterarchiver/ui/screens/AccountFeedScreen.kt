@@ -73,6 +73,8 @@ import io.github.twitterarchiver.viewmodel.ReaderViewModel
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 import io.github.twitterarchiver.util.MediaUtil
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
 
 /**
  * 原生个人推文页（照搬 reader.html 的结构与交互）：
@@ -233,8 +235,8 @@ fun AccountFeedScreen(
                         )
                     }
                     Row(Modifier.fillMaxWidth()) {
-                        TabBtn("推文", tab == 0, Modifier.weight(1f)) { tab = 0 }
-                        TabBtn("回复", tab == 1, Modifier.weight(1f)) { tab = 1 }
+                        TabBtn(stringResource(R.string.tweets), tab == 0, Modifier.weight(1f)) { tab = 0 }
+                        TabBtn(stringResource(R.string.replies), tab == 1, Modifier.weight(1f)) { tab = 1 }
                     }
                     HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
                     // 当前浏览状态 + 时间排序（对齐 reader.html 的「选择日期浏览 / ↑ 旧→新」那一行）
@@ -244,9 +246,9 @@ fun AccountFeedScreen(
                     ) {
                         Text(
                             when {
-                                state.searchQuery.isNotBlank() -> "搜索「${state.searchQuery.trim()}」"
+                                state.searchQuery.isNotBlank() -> stringResource(R.string.feed_searching, state.searchQuery.trim())
                                 state.activeDay != null -> state.activeDay!!
-                                else -> "选择日期浏览"
+                                else -> stringResource(R.string.feed_04)
                             },
                             fontSize = 14.sp, fontWeight = FontWeight.Bold,
                             maxLines = 1, overflow = TextOverflow.Ellipsis,
@@ -262,7 +264,7 @@ fun AccountFeedScreen(
                             Text(if (state.ascending) "↑" else "↓", fontSize = 13.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(Modifier.width(5.dp))
-                            Text(if (state.ascending) "旧→新" else "新→旧", fontSize = 13.sp,
+                            Text(if (state.ascending) stringResource(R.string.feed_03) else stringResource(R.string.feed_02), fontSize = 13.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
@@ -277,14 +279,14 @@ fun AccountFeedScreen(
                 }
                 feed.isEmpty() -> item {
                     Box(Modifier.fillMaxWidth().padding(40.dp), Alignment.Center) {
-                        Text("暂无内容", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.empty), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 // 搜索时改用紧凑结果条，理由同全站页：命中几百条完整推文卡没法翻
                 state.searchQuery.isNotBlank() -> {
                     item {
                         Text(
-                            "找到 ${feed.size} 条结果",
+                            stringResource(R.string.feed_found, feed.size),
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.fillMaxWidth()
@@ -310,7 +312,7 @@ fun AccountFeedScreen(
                 else -> items(feed, key = { it.tweetId }) { t ->
                     val isPin = tab == 0 && (t.tweetId == pinnedId || t.isPinned)
                     if (isPin) {
-                        Text("📌 已置顶", fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                        Text(stringResource(R.string.feed_05), fontSize = 12.sp, fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(start = 14.dp, top = 8.dp))
                     }
@@ -422,7 +424,7 @@ private fun SearchInner(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 modifier = Modifier.fillMaxWidth()
             ) { inner ->
-                if (value.isEmpty()) Text("搜索关键词或日期…", fontSize = 14.sp,
+                if (value.isEmpty()) Text(stringResource(R.string.feed_01), fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 inner()
             }
@@ -433,7 +435,7 @@ private fun SearchInner(
             Box(Modifier.size(22.dp).clip(CircleShape).clickable { onClear() },
                 Alignment.Center) {
                 Icon(
-                    Icons.Filled.Close, contentDescription = "清空",
+                    Icons.Filled.Close, contentDescription = stringResource(R.string.acct_filter_01),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(16.dp)
                 )
@@ -608,10 +610,10 @@ private fun DateTreeSheet(
             item {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    Text("按日期浏览", fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                    Text(stringResource(R.string.date_tree_04), fontSize = 15.sp, fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
                     if (activeDay != null) {
-                        Text("清除筛选", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
+                        Text(stringResource(R.string.date_tree_07), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.clickable { onClear() })
                     }
                 }
@@ -627,7 +629,7 @@ private fun DateTreeSheet(
                             Text(if (yearOpen) "▼" else "▶", fontSize = 10.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(Modifier.width(8.dp))
-                            Text("$year 年", fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                            Text(stringResource(R.string.date_year, year), fontSize = 15.sp, fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface)
                         }
                         AnimatedVisibility(visible = yearOpen) {
@@ -659,7 +661,7 @@ private fun MonthNode(
             Text(if (open) "▼" else "▶", fontSize = 9.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.width(8.dp))
-            Text("$month 月", fontSize = 14.sp, fontWeight = FontWeight.Medium,
+            Text(stringResource(R.string.date_month, month), fontSize = 14.sp, fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         AnimatedVisibility(visible = open) {
@@ -671,7 +673,7 @@ private fun MonthNode(
                         .background(if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent)
                         .padding(start = 42.dp, end = 16.dp, top = 7.dp, bottom = 7.dp),
                         verticalAlignment = Alignment.CenterVertically) {
-                        Text("$day 日", fontSize = 14.sp,
+                        Text(stringResource(R.string.date_day, day), fontSize = 14.sp,
                             color = if (active) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurface,
                             fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,

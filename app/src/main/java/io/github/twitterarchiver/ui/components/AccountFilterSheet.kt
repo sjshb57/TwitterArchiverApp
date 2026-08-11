@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.twitterarchiver.data.Config
 import io.github.twitterarchiver.data.IndexAccount
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
 
 /** 全站账号筛选面板：多选账号（勾选多个人 → 全站只看这些人）*/
 @OptIn(ExperimentalMaterial3Api::class)
@@ -62,13 +64,13 @@ fun AccountFilterSheet(
                 Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("筛选账号（可多选）", fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                Text(stringResource(R.string.acct_filter_02), fontSize = 15.sp, fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
                 if (selected.isNotEmpty()) {
-                    Text("清空", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
+                    Text(stringResource(R.string.acct_filter_01), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.clickable { selected.clear() }.padding(end = 12.dp))
                 }
-                Text("确定 (${selected.size})", fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                Text(stringResource(R.string.acct_filter_ok, selected.size), fontSize = 13.sp, fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.clickable {
                         val chosen = accounts.filter { (it.r to it.a) in selected }.toSet()
@@ -76,7 +78,7 @@ fun AccountFilterSheet(
                     })
             }
 
-            SearchField(value = query, onValueChange = { query = it }, placeholder = "搜索账号…")
+            SearchField(value = query, onValueChange = { query = it }, placeholder = stringResource(R.string.search_account_hint))
             Spacer(Modifier.height(8.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
 

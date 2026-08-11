@@ -52,6 +52,9 @@ import io.github.twitterarchiver.viewmodel.AdminViewModel
 import androidx.core.net.toUri
 import kotlin.time.Duration.Companion.milliseconds
 import io.github.twitterarchiver.ui.components.LifecyclePolling
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
+import io.github.twitterarchiver.data.AppStrings
 
 /** 单个存档仓库管理：工作流状态 + 触发更新/重试 + 编辑资料入口 */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -97,16 +100,16 @@ fun AdminArchiveScreen(
     }
 
     pending?.let { (title, msg, action) ->
-        ConfirmDialog(title = title, message = msg, confirmText = "确定",
+        ConfirmDialog(title = title, message = msg, confirmText = stringResource(R.string.confirm),
             onConfirm = action, onDismiss = { pending = null })
     }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         TopAppBar(
             title = { Text(repo, fontSize = 17.sp) },
-            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } },
+            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
             actions = {
-                Text("刷新", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
+                Text(stringResource(R.string.refresh), fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(end = 16.dp).clickable { vm.loadRuns(repo) })
             },
             colors = TopAppBarDefaults.topAppBarColors(
@@ -117,51 +120,49 @@ fun AdminArchiveScreen(
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 14.dp)) {
             item {
                 Spacer(Modifier.height(8.dp))
-                Text("操作", fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                Text(stringResource(R.string.admin_archive_16), fontSize = 13.sp, fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(vertical = 6.dp))
                 // 一、查看
-                Act("查看存档内容 (Reader)", navigates = true) { onOpenReader(repo, account) }
-                Act("查看存档内容 (Feed)", navigates = true) { onOpenFeed(repo, account) }
-                Act("在 GitHub 中打开", navigates = true) {
+                Act(stringResource(R.string.admin_archive_21), navigates = true) { onOpenReader(repo, account) }
+                Act(stringResource(R.string.admin_archive_20), navigates = true) { onOpenFeed(repo, account) }
+                Act(stringResource(R.string.admin_archive_08), navigates = true) {
                     ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
                         "https://github.com/TwitterArchiver/$repo".toUri()))
                 }
                 ActGroupDivider()
                 // 二、抓取更新
-                Act("触发 增量更新") { pending = Triple("增量更新", "确定触发「$repo」的增量更新？") { vm.triggerWorkflow(repo, "update.yml") } }
-                Act("触发 全量重试") { pending = Triple("全量重试", "确定触发「$repo」的全量重试？耗时较长。") { vm.triggerWorkflow(repo, "retry_all.yml") } }
-                Act("触发 全量重试增量") { pending = Triple("增量+重试", "确定触发「$repo」的增量更新？完成后将自动接力全量重试（新建存档后用）。") { vm.triggerWorkflow(repo, "update.yml", mapOf("from_setup" to "true")) } }
+                Act(AppStrings[R.string.admin_archive_28]) { pending = Triple(AppStrings[R.string.admin_archive_10], AppStrings.get(R.string.admin_archive_c1, repo)) { vm.triggerWorkflow(repo, "update.yml") } }
+                Act(AppStrings[R.string.admin_archive_26]) { pending = Triple(AppStrings[R.string.admin_archive_05], AppStrings.get(R.string.admin_archive_c2, repo)) { vm.triggerWorkflow(repo, "retry_all.yml") } }
+                Act(AppStrings[R.string.admin_archive_27]) { pending = Triple(AppStrings[R.string.admin_archive_09], AppStrings.get(R.string.admin_archive_c3, repo)) { vm.triggerWorkflow(repo, "update.yml", mapOf("from_setup" to "true")) } }
                 ActGroupDivider()
                 // 三、资料维护
-                Act("重建完整索引") { pending = Triple("重建索引", "确定重建「$repo」的索引？仅跑 build-index，不抓取，几十秒完成。改完置顶/资料后用它快速生效。") { vm.triggerWorkflow(repo, "update.yml", mapOf("only_index" to "true")) }
+                Act(AppStrings[R.string.admin_archive_30]) { pending = Triple(AppStrings[R.string.admin_archive_31], AppStrings.get(R.string.admin_archive_c4, repo)) { vm.triggerWorkflow(repo, "update.yml", mapOf("only_index" to "true")) }
                 }
-                Act("编辑用户资料", navigates = true) { onEditProfile(repo, account) }
-                Act("上传横幅图片", navigates = true) { bannerPicker.launch("image/*") }
-                Act("压缩仓库历史", danger = true) {
-                    pending = Triple("压缩历史",
-                        "把「$repo」的全部提交历史压成一次提交，回收 .git 里的旧版本对象。\n\n" +
-                                "存档内容一字不改，但历史不可恢复。\n" +
-                                "该仓库若有工作流正在运行会自动中止本次操作。\n" +
-                                "体积回收由 GitHub 后台完成，可能几小时后才反映在接口上。") {
+                Act(stringResource(R.string.admin_archive_25), navigates = true) { onEditProfile(repo, account) }
+                Act(stringResource(R.string.admin_archive_01), navigates = true) { bannerPicker.launch("image/*") }
+                Act(stringResource(R.string.admin_archive_06), danger = true) {
+                    pending = Triple(AppStrings[R.string.admin_archive_07],
+                        AppStrings.get(R.string.admin_squash_confirm, repo) +
+                                AppStrings[R.string.admin_archive_02]) {
                         vm.triggerWorkflow("Dispatcher", "squash_history.yml",
                             mapOf("target_repo" to repo, "confirm" to repo))
                     }
                 }
-                Act("修复账号头像") {
-                    pending = Triple("修复头像",
-                        "把主头像复制一份，改名成列表页 / 全站时间线引用的头像文件名。\n\n" +
-                        "用于该头像没抓到导致的破图；不修改任何 json。") {
+                Act(stringResource(R.string.admin_archive_04)) {
+                    pending = Triple(AppStrings[R.string.admin_archive_03],
+                        AppStrings[R.string.admin_fix_avatar_confirm] +
+                        AppStrings[R.string.admin_archive_22]) {
                         vm.fixLatestAvatar(repo, account)
                     }
                 }
                 Spacer(Modifier.height(12.dp))
-                Text("最近运行", fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                Text(stringResource(R.string.admin_archive_19), fontSize = 13.sp, fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(vertical = 6.dp))
             }
             if (loading) {
                 item { Box(Modifier.fillMaxWidth().padding(20.dp), Alignment.Center) { CircularProgressIndicator(Modifier.size(24.dp)) } }
             } else if (runs.isEmpty()) {
-                item { Text("暂无运行记录", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(12.dp)) }
+                item { Text(stringResource(R.string.admin_archive_18), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(12.dp)) }
             } else {
                 items(runs, key = { it.id }) { run -> ArchiveRunRow(run, repo, vm) }
             }
@@ -229,7 +230,7 @@ private fun ArchiveRunRow(run: WorkflowRun, repo: String, vm: AdminViewModel) {
     }
     var confirm by remember { mutableStateOf<Pair<String, () -> Unit>?>(null) }
     confirm?.let { (msg, action) ->
-        ConfirmDialog(title = "确认", message = msg, onConfirm = action, onDismiss = { confirm = null })
+        ConfirmDialog(title = stringResource(R.string.misc_01), message = msg, onConfirm = action, onDismiss = { confirm = null })
     }
     Row(Modifier.fillMaxWidth().padding(vertical = 6.dp)
         .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.04f), RoundedCornerShape(10.dp))
@@ -237,14 +238,14 @@ private fun ArchiveRunRow(run: WorkflowRun, repo: String, vm: AdminViewModel) {
         Box(Modifier.size(10.dp).clip(CircleShape).background(color))
         Spacer(Modifier.size(10.dp))
         Column(Modifier.weight(1f)) {
-            Text(run.name ?: "工作流", fontSize = 13.sp, fontWeight = FontWeight.Medium,
+            Text(run.name ?: stringResource(R.string.admin_archive_12), fontSize = 13.sp, fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onBackground)
             // 状态中文 + 耗时（对齐 home 仪表盘格式）
             val label = when {
-                running -> "运行中"
-                run.conclusion == "success" -> "成功"
-                failed -> "失败"
-                run.conclusion == "cancelled" -> "已取消"
+                running -> stringResource(R.string.admin_archive_29)
+                run.conclusion == "success" -> stringResource(R.string.admin_archive_14)
+                failed -> stringResource(R.string.admin_archive_11)
+                run.conclusion == "cancelled" -> stringResource(R.string.admin_archive_13)
                 else -> run.status ?: "?"
             }
             Text("#${run.runNumber} · $label · ${runDurationText(run)}",
@@ -257,11 +258,11 @@ private fun ArchiveRunRow(run: WorkflowRun, repo: String, vm: AdminViewModel) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
             }
         }
-        if (running) Text("暂停", fontSize = 12.sp, color = MaterialTheme.colorScheme.error,
-            modifier = Modifier.clickable { confirm = "确定暂停？" to { vm.cancelRun(repo, run.id) } }.padding(6.dp))
-        if (failed) Text("重试", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.clickable { confirm = "确定重试？" to { vm.rerunRun(repo, run.id) } }.padding(6.dp))
-        Text("打开", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
+        if (running) Text(stringResource(R.string.admin_archive_17), fontSize = 12.sp, color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.clickable { confirm = AppStrings[R.string.admin_archive_23] to { vm.cancelRun(repo, run.id) } }.padding(6.dp))
+        if (failed) Text(stringResource(R.string.retry), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.clickable { confirm = AppStrings[R.string.admin_archive_24] to { vm.rerunRun(repo, run.id) } }.padding(6.dp))
+        Text(stringResource(R.string.admin_archive_15), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Medium,
             modifier = Modifier.clickable {
                 run.htmlUrl?.let {
@@ -295,6 +296,8 @@ private fun runDurationText(run: WorkflowRun): String {
     val end = if (running) now else parseIso(run.updatedAt).takeIf { it > 0 } ?: now
     val sec = ((end - start) / 1000).coerceAtLeast(0)
     val m = sec / 60; val s2 = sec % 60
-    val dur = if (m > 0) "${m}分${s2}秒" else "${s2}秒"
-    return if (running) "已运行 $dur" else "耗时 $dur"
+    val dur = if (m > 0) AppStrings.get(R.string.dur_min_sec, m, s2)
+    else AppStrings.get(R.string.dur_sec, s2)
+    return if (running) AppStrings.get(R.string.dur_running, dur)
+    else AppStrings.get(R.string.dur_elapsed, dur)
 }

@@ -35,6 +35,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.twitterarchiver.viewmodel.AdminViewModel
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
 
 /** 编辑 yml：读取仓库文件 → 编辑 → 上传覆盖 */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -67,11 +69,11 @@ fun AdminEditYmlScreen(
                 title = { Text(path.substringAfterLast('/'), fontSize = 15.sp) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back))
                     }
                 },
                 actions = {
-                    if (!loading) Text("上传", fontSize = 14.sp,
+                    if (!loading) Text(stringResource(R.string.admin_yml_01), fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(end = 16.dp)
                             .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
@@ -90,7 +92,7 @@ fun AdminEditYmlScreen(
         when {
             loading -> Box(Modifier.fillMaxSize().padding(innerPadding), Alignment.Center) { CircularProgressIndicator() }
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), Alignment.Center) {
-                Text("读取失败：$error", color = MaterialTheme.colorScheme.error)
+                Text(stringResource(R.string.read_failed, error.orEmpty()), color = MaterialTheme.colorScheme.error)
             }
             else -> {
                 BasicTextField(

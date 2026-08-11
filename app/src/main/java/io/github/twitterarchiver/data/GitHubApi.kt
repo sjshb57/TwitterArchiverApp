@@ -32,6 +32,7 @@ import kotlinx.serialization.json.put
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import io.github.twitterarchiver.util.MediaUtil
+import io.github.twitterarchiver.R
 
 /** 统一的网络层：读公开数据 + 带 PAT 的写操作 */
 class GitHubApi {
@@ -431,8 +432,8 @@ class GitHubApi {
         currentCoroutineContext().ensureActive()
         val networkIssue = e is java.io.IOException
         Result.failure(
-            if (networkIssue) java.io.IOException("网络不可用，无法校验令牌")
-            else Exception("校验令牌失败：${e.message ?: e::class.java.simpleName}")
+            if (networkIssue) java.io.IOException(AppStrings[R.string.token_verify_offline])
+            else Exception(AppStrings.get(R.string.token_verify_failed, e.message ?: e::class.java.simpleName))
         )
     }
 
@@ -711,20 +712,20 @@ class GitHubApi {
     ): String = when (status.value) {
         422 if body.contains("Unexpected inputs", ignoreCase = true) -> {
             val names = inputs.keys.joinToString("、")
-            "该仓库的 $workflow 是旧版本，不接受参数「$names」。" +
-                    "请先把仓库里的 $workflow 更新到模板最新版再试。"
+            AppStrings.get(R.string.wf_err_outdated, workflow, names)
         }
         422 if body.contains("Required input", ignoreCase = true) ->
-            "$workflow 需要必填参数但本次没有提供，请检查该仓库的工作流定义。"
+            AppStrings.get(R.string.wf_err_missing_input, workflow)
         422 ->
-            "$workflow 拒绝了这次触发（422）。多半是工作流文件与 App 传的参数对不上" +
-                GitHubError.reasonOf(body).let { if (it.isBlank()) "" else "：$it" }
+            AppStrings.get(R.string.wf_err_rejected, workflow) +
+                GitHubError.reasonOf(body)
+                    .let { if (it.isBlank()) "" else AppStrings.get(R.string.err_reason_suffix, it) }
         404 ->
-            "找不到 $workflow，可能该仓库还没有这个工作流文件，或令牌无权访问该仓库。"
+            AppStrings.get(R.string.wf_err_not_found, workflow)
         403 ->
-            "没有权限触发 $workflow。请确认令牌具备该仓库的 Actions 写权限。"
+            AppStrings.get(R.string.wf_err_forbidden, workflow)
         401 ->
-            "令牌无效或已过期，请在设置里重新填写。"
+            AppStrings[R.string.wf_err_unauthorized]
         else -> GitHubError.describe(status.value, body, null, null)
     }
 
@@ -768,8 +769,8 @@ class GitHubApi {
     ): Result<Unit> {
         return try {
             val bodyObj = buildJsonObject {
-                put("title", "存档申请：$requestedAccount")
-                put("body", "申请存档账号：@$requestedAccount\n\n备注：$note")
+                put("title", AppStrings.get(R.string.request_issue_title, requestedAccount))
+                put("body", AppStrings.get(R.string.request_issue_body, requestedAccount, note))
             }
             val resp = client.post(Config.apiRequestIssues()) {
                 header("Authorization", "Bearer $token")

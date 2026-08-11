@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import io.github.twitterarchiver.data.ArchiveRepo
 import io.github.twitterarchiver.data.Profile
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
 
 /**
  * 样式2：点头像弹出的简介卡片。
@@ -75,7 +77,7 @@ fun ProfileDialog(
                     label = "images"
                 )
                 Text(
-                    "$animTweets 推文 · $animImages 张图片",
+                    stringResource(R.string.profile_stat, animTweets, animImages),
                     fontSize = 12.sp, fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(top = 12.dp)
@@ -83,11 +85,11 @@ fun ProfileDialog(
 
                 Spacer(Modifier.height(16.dp))
                 Button(onClick = onOpenReader, modifier = Modifier.fillMaxWidth()) {
-                    Text("查看完整存档", fontSize = 13.sp)
+                    Text(stringResource(R.string.profile_dlg_01), fontSize = 13.sp)
                 }
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(onClick = onOpenImages, modifier = Modifier.fillMaxWidth()) {
-                    Text("浏览全部媒体", fontSize = 13.sp)
+                    Text(stringResource(R.string.profile_dlg_02), fontSize = 13.sp)
                 }
             }
         }

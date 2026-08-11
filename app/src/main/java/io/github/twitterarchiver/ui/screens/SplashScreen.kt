@@ -32,6 +32,8 @@ import androidx.compose.ui.unit.sp
 import io.github.twitterarchiver.ui.theme.Accent
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
 
 /**
  * 启动页：纪念语句逐行淡入 + 整体缓缓上移的滚动动效。
@@ -76,7 +78,7 @@ fun SplashScreen(onFinish: () -> Unit) {
             Spacer(Modifier.height(36.dp))
 
             Text(
-                "互联网是现实的避难所。",
+                stringResource(R.string.splash_01),
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center,
@@ -84,7 +86,7 @@ fun SplashScreen(onFinish: () -> Unit) {
                 modifier = Modifier.alpha(if (stage >= 2) 1f else 0f)
             )
             Text(
-                "而这里，是那个避难所的避难所。",
+                stringResource(R.string.splash_02),
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center,
@@ -95,7 +97,7 @@ fun SplashScreen(onFinish: () -> Unit) {
             Spacer(Modifier.height(32.dp))
 
             Text(
-                "愿世间再无痛苦，唯爱永不独行",
+                stringResource(R.string.about_03),
                 fontSize = 13.sp,
                 fontStyle = FontStyle.Italic,
                 color = Accent,

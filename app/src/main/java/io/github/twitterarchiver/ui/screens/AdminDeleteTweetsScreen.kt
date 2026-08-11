@@ -33,6 +33,8 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.twitterarchiver.viewmodel.AdminViewModel
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
 
 /** 删除推文：输入账号仓库 + 推文ID，触发该仓库的删除工作流 */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,9 +46,9 @@ fun AdminDeleteTweetsScreen(vm: AdminViewModel, onBack: () -> Unit) {
     var showConfirm by remember { mutableStateOf(false) }
     if (showConfirm) {
         io.github.twitterarchiver.ui.components.ConfirmDialog(
-            title = "删除推文",
-            message = "将从「${repo.trim()}」删除推文 ${ids.trim()}，不可恢复，确定？",
-            confirmText = "删除", danger = true,
+            title = stringResource(R.string.admin_del_01),
+            message = stringResource(R.string.admin_del_confirm, repo.trim(), ids.trim()),
+            confirmText = stringResource(R.string.delete), danger = true,
             onConfirm = {
                 vm.triggerWorkflow("home", "delete_tweets.yml",
                     mapOf("target_repo" to repo.trim(), "tweet_ids" to ids.trim(), "account" to account.trim()))
@@ -58,28 +60,28 @@ fun AdminDeleteTweetsScreen(vm: AdminViewModel, onBack: () -> Unit) {
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         TopAppBar(
-            title = { Text("删除推文", fontSize = 16.sp) },
-            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } },
+            title = { Text(stringResource(R.string.admin_del_01), fontSize = 16.sp) },
+            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = MaterialTheme.colorScheme.background,
                 titleContentColor = MaterialTheme.colorScheme.onBackground,
                 navigationIconContentColor = MaterialTheme.colorScheme.onBackground)
         )
         Column(Modifier.padding(20.dp)) {
-            Text("触发该账号仓库的删除工作流，删除指定推文并重建索引。",
+            Text(stringResource(R.string.admin_del_03),
                 fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 14.dp))
-            Field("账号仓库名（如 seeFvn）", repo) { repo = it }
+            Field(stringResource(R.string.admin_del_04), repo) { repo = it }
             Spacer(Modifier.height(10.dp))
-            Field("推文 ID（多个空格分隔）", ids) { ids = it }
+            Field(stringResource(R.string.admin_del_02), ids) { ids = it }
             Spacer(Modifier.height(10.dp))
-            Field("账号目录名（可选，默认同仓库）", account) { account = it }
+            Field(stringResource(R.string.admin_del_05), account) { account = it }
             Spacer(Modifier.height(20.dp))
             Button(
                 onClick = { if (repo.isNotBlank() && ids.isNotBlank()) showConfirm = true },
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                 modifier = Modifier.fillMaxWidth()
-            ) { Text("删除推文") }
+            ) { Text(stringResource(R.string.admin_del_01)) }
         }
     }
 }

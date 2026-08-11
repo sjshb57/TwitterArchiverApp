@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import io.github.twitterarchiver.R
+import io.github.twitterarchiver.data.AppStrings
 
 /** 媒体类型 */
 enum class MediaType { IMAGE, VIDEO, OTHER }
@@ -55,7 +57,7 @@ class ImagesViewModel(private val repo: Repository = Repository.shared) : ViewMo
                     all = items.distinctBy { it.tweetId to it.url })
             } catch (e: Exception) {
                 currentCoroutineContext().ensureActive()
-                _state.value = ImagesState(loading = false, error = "加载失败：${e.message}")
+                _state.value = ImagesState(loading = false, error = AppStrings.get(R.string.load_failed, e.message.orEmpty()))
             }
         }
     }

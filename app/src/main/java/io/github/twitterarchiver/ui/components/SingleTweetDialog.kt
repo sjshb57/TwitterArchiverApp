@@ -38,6 +38,9 @@ import io.github.twitterarchiver.data.GlobalPost
 import io.github.twitterarchiver.data.IndexAccount
 import io.github.twitterarchiver.data.Repository
 import io.github.twitterarchiver.viewmodel.GlobalTimelineViewModel
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
+import io.github.twitterarchiver.data.AppStrings
 
 /**
  * 单条推文卡片浮层：只显示一条推文，渲染方式与个推页完全一致
@@ -69,7 +72,7 @@ fun SingleTweetDialog(
             val tweets = repository.getTweets(repo, account)
             val t = tweets.firstOrNull { it.tweetId == tweetId }
             if (t == null) {
-                error = "这条推文已不在存档中"
+                error = AppStrings[R.string.tweet_dlg_02]
             } else {
                 val idxAccount = IndexAccount(
                     r = repo, a = account,
@@ -91,7 +94,7 @@ fun SingleTweetDialog(
                 )
             }
         } catch (e: Exception) {
-            error = "加载失败"
+            error = AppStrings[R.string.tweet_dlg_01]
         }
         loading = false
     }
@@ -112,13 +115,13 @@ fun SingleTweetDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "推文", fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                        stringResource(R.string.tweets), fontSize = 13.sp, fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(onClick = onDismiss) {
                         Icon(
-                            Icons.Filled.Close, "关闭",
+                            Icons.Filled.Close, stringResource(R.string.close),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }

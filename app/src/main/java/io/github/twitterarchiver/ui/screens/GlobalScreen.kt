@@ -40,6 +40,8 @@ import io.github.twitterarchiver.ui.components.GlobalPostCard
 import io.github.twitterarchiver.viewmodel.GlobalTimelineViewModel
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
 
 /** Tab 2：全站时间线（用 search-index.json，分页 + 搜索） */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -99,8 +101,8 @@ fun GlobalScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                if (state.filterAccounts.isEmpty()) "全站时间线"
-                else "已筛选 ${state.filterAccounts.size} 人",
+                if (state.filterAccounts.isEmpty()) stringResource(R.string.deftab_01)
+                else stringResource(R.string.global_filtered, state.filterAccounts.size),
                 fontSize = 28.sp, fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.combinedClickable(
@@ -122,25 +124,25 @@ fun GlobalScreen(
                 // 有搜索/筛选时才切成当前结果数
                 val shown = if (browsing && state.globalTotal > 0) state.globalTotal else state.totalCount
                 if (shown > 0) {
-                    Text("共 %,d 条".format(shown), fontSize = 10.sp,
+                    Text(stringResource(R.string.global_01).format(shown), fontSize = 10.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(" · ", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Text(if (state.activeDate != null) "按日期·${state.activeDate}" else "按日期",
+                Text(if (state.activeDate != null) stringResource(R.string.global_by_date, state.activeDate.orEmpty()) else stringResource(R.string.global_03),
                     fontSize = 10.sp, color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.clickable { showDates = true })
                 if (state.activeDate != null) {
                     Text(" · ", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("清除", fontSize = 10.sp, color = MaterialTheme.colorScheme.primary,
+                    Text(stringResource(R.string.global_07), fontSize = 10.sp, color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.clickable { vm.clearDate() })
                 }
                 Text(" · ", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("筛选账号", fontSize = 10.sp,
+                Text(stringResource(R.string.global_08), fontSize = 10.sp,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.clickable { showFilter = true })
                 if (state.filterAccounts.isNotEmpty()) {
                     Text(" · ", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("清除", fontSize = 10.sp, color = MaterialTheme.colorScheme.primary,
+                    Text(stringResource(R.string.global_07), fontSize = 10.sp, color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.clickable { vm.filterByAccounts(emptySet()) })
                 }
             }
@@ -150,7 +152,7 @@ fun GlobalScreen(
         io.github.twitterarchiver.ui.components.SearchField(
             value = queryInput,
             onValueChange = { queryInput = it; vm.search(it) },
-            placeholder = "搜索全站推文…"
+            placeholder = stringResource(R.string.global_04)
         )
 
         Spacer(Modifier.height(10.dp))
@@ -160,7 +162,7 @@ fun GlobalScreen(
             state.loading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     CircularProgressIndicator()
-                    Text("正在加载全站索引…", fontSize = 11.sp,
+                    Text(stringResource(R.string.global_05), fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 12.dp))
                 }
@@ -174,7 +176,7 @@ fun GlobalScreen(
                         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    "找到 ${state.searchTotal} 条结果",
+                                    stringResource(R.string.feed_found, state.searchTotal),
                                     fontSize = 13.sp,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
@@ -183,7 +185,7 @@ fun GlobalScreen(
                                 )
                                 if (state.downloadedMonths.size < state.shards.size) {
                                     Text(
-                                        "已下载 ${state.downloadedMonths.size}/${state.shards.size} 月",
+                                        stringResource(R.string.global_downloaded, state.downloadedMonths.size, state.shards.size),
                                         fontSize = 11.sp,
                                         maxLines = 1,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
@@ -194,21 +196,21 @@ fun GlobalScreen(
                             val tCode = tCodeOf(state.query)
                             when {
                                 state.fullSearchRunning -> Text(
-                                    "正在逐月查找…点此停止",
+                                    stringResource(R.string.global_06),
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.padding(top = 4.dp)
                                         .clickable { vm.cancelFullSearch() }
                                 )
                                 missing != null -> Text(
-                                    "这条推文在 $missing，尚未下载 · 点此下载该月",
+                                    stringResource(R.string.global_month_missing, missing),
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.padding(top = 4.dp)
                                         .clickable { vm.downloadMonth(missing) }
                                 )
                                 state.searchTotal == 0 && tCode != null -> Text(
-                                    "已加载的内容里没有找到 · 在全部月份中查找",
+                                    stringResource(R.string.global_02),
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.padding(top = 4.dp)

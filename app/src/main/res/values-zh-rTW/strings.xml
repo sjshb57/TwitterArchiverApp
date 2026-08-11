@@ -1,0 +1,488 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ===== GitHub API 錯誤 ===== -->
+    <string name="err_token_invalid">令牌無效或已過期，請重新填寫</string>
+    <string name="err_rate_limited_in">請求過於頻繁，請 %1$s後再試</string>
+    <string name="err_rate_limited">請求過於頻繁，請稍後再試</string>
+    <string name="err_quota_reset_in">已達 GitHub API 呼叫上限，約 %1$s後恢復</string>
+    <string name="err_quota_exhausted">已達 GitHub API 呼叫上限，請稍後再試</string>
+    <string name="err_forbidden">沒有權限執行此操作，請確認令牌勾選了 repo 與 workflow</string>
+    <string name="err_not_found">目標不存在或令牌無權存取</string>
+    <string name="err_conflict">倉庫狀態衝突，請稍後重試</string>
+    <string name="err_rejected">請求被拒絕</string>
+    <string name="err_server">GitHub 服務異常（%1$d），請稍後重試</string>
+    <string name="err_generic">請求失敗（%1$d）</string>
+    <string name="err_reason_suffix">：%1$s</string>
+    <string name="dur_seconds">%1$d 秒</string>
+    <string name="dur_minutes">%1$d 分鐘</string>
+
+    <!-- ===== 工作流觸發失敗 ===== -->
+    <string name="wf_err_outdated">該倉庫的 %1$s 是舊版本，不接受引數「%2$s」。\n請先把倉庫裡的 %1$s 更新到模板最新版再試。</string>
+    <string name="wf_err_missing_input">%1$s 需要必填引數但本次沒有提供，請檢查該倉庫的工作流定義。</string>
+    <string name="wf_err_rejected">%1$s 拒絕了這次觸發（422）。多半是工作流檔案與 App 傳的引數對不上</string>
+    <string name="wf_err_not_found">找不到 %1$s，可能該倉庫還沒有這個工作流檔案，或令牌無權存取該倉庫。</string>
+    <string name="wf_err_forbidden">沒有權限觸發 %1$s。請確認令牌具備該倉庫的 Actions 寫權限。</string>
+    <string name="wf_err_unauthorized">令牌無效或已過期，請在設定裡重新填寫。</string>
+
+    <!-- ===== 令牌校驗 ===== -->
+    <string name="token_verify_offline">網路不可用，無法校驗令牌</string>
+    <string name="token_verify_failed">校驗令牌失敗：%1$s</string>
+
+    <!-- ===== 存檔申請 ===== -->
+    <string name="request_issue_title">存檔申請：%1$s</string>
+    <string name="request_issue_body">申請存檔賬號：@%1$s\n\n備註：%2$s</string>
+    <string name="request_invalid_handle">賬號名不合法：應為 1–15 位字母、數字或下劃線</string>
+    <string name="request_too_frequent">提交太頻繁，請 %1$d 秒後再試</string>
+    <string name="request_success">申請已提交，感謝！我們會盡快處理。</string>
+    <string name="request_failed">提交失敗：%1$s</string>
+
+    <!-- ===== 頭像修復 ===== -->
+    <string name="avatar_no_filename">聚合資料裡沒有該賬號的頭像檔名</string>
+    <string name="avatar_same_as_main">最新推文用的就是主頭像，無需修復</string>
+    <string name="avatar_exists">頭像已存在，無需修復：%1$s</string>
+    <string name="avatar_src_unreadable">讀不到主頭像 %1$s</string>
+    <string name="avatar_commit_msg">補最新推文頭像 %1$s [skip ci]</string>
+    <string name="avatar_copied">已複製 %1$s → %2$s</string>
+
+    <!-- ===== 倉庫健康排序 ===== -->
+    <string name="health_sort_stale">更新</string>
+    <string name="health_sort_size">體積</string>
+
+    <!-- ===== 通用 ===== -->
+    <string name="backup_format_unknown">備份檔案格式無法識別</string>
+    <string name="io_open_output_failed">無法開啟輸出流</string>
+    <string name="load_failed">載入失敗：%1$s</string>
+    <string name="index_manifest_failed">索引清單載入失敗：%1$s</string>
+    <string name="shard_download_failed">%1$s 下載失敗：%2$s</string>
+    <string name="unknown_account">某賬號</string>
+
+    <!-- ===== 管理臺 ===== -->
+    <string name="dash_home">Home 聚合</string>
+    <string name="dash_dispatcher">排程中心</string>
+    <string name="dash_health">倉庫健康</string>
+    <string name="dash_starter">存檔模板</string>
+    <string name="dash_all_archives">所有存檔</string>
+    <string name="admin_verify_failed">校驗失敗</string>
+    <string name="admin_token_saved">已儲存令牌（%1$s）</string>
+    <string name="admin_token_cleared">已清除令牌</string>
+    <string name="admin_load_failed">載入失敗：%1$s</string>
+    <string name="admin_repo_list_failed">讀取倉庫列表失敗：%1$s</string>
+    <string name="admin_rotation_unreadable">未能讀取輪轉配置，已跳過超期判定</string>
+    <string name="admin_accounts_failed">載入賬號列表失敗：%1$s</string>
+    <string name="admin_no_accounts">沒有賬號可檢測</string>
+    <string name="admin_read_failed_suffix">%1$s [讀取失敗]</string>
+    <string name="admin_pause_requested">已請求暫停</string>
+    <string name="admin_retry_requested">已請求重試</string>
+    <string name="admin_workflow_triggered">已觸發 %1$s</string>
+    <string name="admin_action_failed">操作失敗：%1$s</string>
+    <string name="admin_requests_failed">載入申請失敗：%1$s</string>
+    <string name="admin_account_empty">賬號名為空，無法建檔</string>
+    <string name="admin_approved">已批准並建檔：%1$s</string>
+    <string name="admin_create_failed">建檔失敗：%1$s</string>
+    <string name="admin_request_rejected">已拒絕申請</string>
+    <string name="admin_creating_repo">正在建立倉庫…</string>
+    <string name="admin_repo_created">倉庫已建立，等待工作流就緒…</string>
+    <string name="admin_create_repo_failed">建立倉庫失敗：%1$s</string>
+    <string name="admin_workflow_not_ready">「%1$s」倉庫已建好，但模板工作流還沒就緒。記錄已儲存，下次進入本頁會自動重試。</string>
+    <string name="admin_setup_triggered">已觸發建檔：%1$s</string>
+    <string name="admin_setup_failed">「%1$s」倉庫已建好，但觸發建檔失敗：%2$s</string>
+    <string name="admin_retry_setup_failed">「%1$s」自動重試建檔失敗：%2$s</string>
+    <string name="admin_no_token">無令牌</string>
+    <string name="admin_profile_updated">已更新資料</string>
+    <string name="admin_profile_commit">更新 %1$s 資料 [skip ci]</string>
+    <string name="admin_banner_uploaded">已上傳 Banner</string>
+    <string name="admin_banner_commit">更新 %1$s banner [skip ci]</string>
+    <string name="admin_fix_failed">修復失敗：%1$s</string>
+    <string name="admin_file_uploaded">已上傳 %1$s</string>
+    <string name="admin_file_commit">更新 %1$s [skip ci]</string>
+    <!-- ===== 介面文案 ===== -->
+
+    <!-- AboutScreen -->
+    <string name="about_01">關於</string>
+    <string name="about_02">基於 Wayback Machine 的推特賬號永久存檔</string>
+    <string name="about_03">願世間再無痛苦，唯愛永不獨行</string>
+    <string name="about_04">本專案開源，遵循 AGPL-3.0 協議</string>
+    <string name="about_05">燭火熄滅之後，光還在。</string>
+    <string name="about_06">版本 1.0.0</string>
+    <string name="about_07">致謝</string>
+    <string name="back">返回</string>
+
+    <!-- AccountFeedScreen -->
+    <string name="empty">暫無內容</string>
+    <string name="feed_01">搜尋關鍵詞或日期…</string>
+    <string name="feed_02">新→舊</string>
+    <string name="feed_03">舊→新</string>
+    <string name="feed_04">選擇日期瀏覽</string>
+    <string name="feed_05">📌 已置頂</string>
+    <string name="replies">回覆</string>
+
+    <!-- AccountFilterSheet -->
+    <string name="acct_filter_01">清空</string>
+    <string name="acct_filter_02">篩選賬號（可多選）</string>
+    <string name="search_account_hint">搜尋賬號…</string>
+
+    <!-- AccountReaderScreen -->
+    <string name="refresh">重新整理</string>
+
+    <!-- AdminArchiveScreen -->
+    <string name="admin_archive_01">上傳橫幅圖片</string>
+    <string name="admin_archive_02">體積回收由 GitHub 後臺完成，可能幾小時後才反映在介面上。</string>
+    <string name="admin_archive_03">修復頭像</string>
+    <string name="admin_archive_04">修復賬號頭像</string>
+    <string name="admin_archive_05">全量重試</string>
+    <string name="admin_archive_06">壓縮倉庫歷史</string>
+    <string name="admin_archive_07">壓縮歷史</string>
+    <string name="admin_archive_08">在 GitHub 中開啟</string>
+    <string name="admin_archive_09">增量+重試</string>
+    <string name="admin_archive_10">增量更新</string>
+    <string name="admin_archive_11">失敗</string>
+    <string name="admin_archive_12">工作流</string>
+    <string name="admin_archive_13">已取消</string>
+    <string name="admin_archive_14">成功</string>
+    <string name="admin_archive_15">開啟</string>
+    <string name="admin_archive_16">操作</string>
+    <string name="admin_archive_17">暫停</string>
+    <string name="admin_archive_18">暫無執行記錄</string>
+    <string name="admin_archive_19">最近執行</string>
+    <string name="admin_archive_20">檢視存檔內容 (Feed)</string>
+    <string name="admin_archive_21">檢視存檔內容 (Reader)</string>
+    <string name="admin_archive_22">用於該頭像沒抓到導致的破圖；不修改任何 json。</string>
+    <string name="admin_archive_23">確定暫停？</string>
+    <string name="admin_archive_24">確定重試？</string>
+    <string name="admin_archive_25">編輯使用者資料</string>
+    <string name="admin_archive_26">觸發 全量重試</string>
+    <string name="admin_archive_27">觸發 全量重試增量</string>
+    <string name="admin_archive_28">觸發 增量更新</string>
+    <string name="admin_archive_29">執行中</string>
+    <string name="admin_archive_30">重建完整索引</string>
+    <string name="admin_archive_31">重建索引</string>
+    <string name="confirm">確定</string>
+    <string name="retry">重試</string>
+
+    <!-- AdminDeleteTweetsScreen -->
+    <string name="admin_del_01">刪除推文</string>
+    <string name="admin_del_02">推文 ID（多個空格分隔）</string>
+    <string name="admin_del_03">觸發該賬號倉庫的刪除工作流，刪除指定推文並重建索引。</string>
+    <string name="admin_del_04">賬號倉庫名（如 seeFvn）</string>
+    <string name="admin_del_05">賬號目錄名（可選，預設同倉庫）</string>
+    <string name="delete">刪除</string>
+
+    <!-- AdminDetailScreen -->
+    <string name="admin_detail_01">+ 建立新存檔</string>
+    <string name="admin_detail_02">修復</string>
+    <string name="admin_detail_03">全部已設定 ✓</string>
+    <string name="admin_detail_04">全部正常 ✓</string>
+    <string name="admin_detail_05">出錯</string>
+    <string name="admin_detail_06">只列印將要推送的清單，不會真正修改任何倉庫。建議先跑這個確認無誤。</string>
+    <string name="admin_detail_07">完整性檢測結果</string>
+    <string name="admin_detail_08">實際推送</string>
+    <string name="admin_detail_09">已完成</string>
+    <string name="admin_detail_10">推送清晰頭像 · 實際執行</string>
+    <string name="admin_detail_11">推送清晰頭像 · 試執行</string>
+    <string name="admin_detail_12">搜尋存檔倉庫…</string>
+    <string name="admin_detail_13">暫停執行</string>
+    <string name="admin_detail_14">未知</string>
+    <string name="admin_detail_15">點選即用主頭像補上，不跳轉、不改 json</string>
+    <string name="admin_detail_16">確定暫停這次執行？取消後 GitHub 需幾秒生效，稍後重新整理可見。</string>
+    <string name="admin_detail_17">確定觸發「全量排程」？將觸發所有倉庫更新，耗時較長。</string>
+    <string name="admin_detail_18">確定觸發「更新倉庫列表」？將重新彙總 repos.json。</string>
+    <string name="admin_detail_19">確定觸發「生成索引清單」？將為各倉庫生成月度清單，供 App 離線增量更新使用。</string>
+    <string name="admin_detail_20">確定觸發「統一排程」？將按指標輪轉觸發一批倉庫更新。</string>
+    <string name="admin_detail_21">確定觸發「聚合頭像池」？將掃描所有倉庫，把最清晰的頭像收進共享池。</string>
+    <string name="admin_detail_22">確定觸發「重建搜尋索引」？將重建全站 search-index.json，耗時較長。</string>
+    <string name="admin_detail_23">確定重跑這次失敗的執行？會新建一次執行，稍後重新整理可見。</string>
+    <string name="admin_detail_24">編輯 build_search_index.yml</string>
+    <string name="admin_detail_25">編輯 dispatch.yml</string>
+    <string name="admin_detail_26">編輯 retry_all.yml</string>
+    <string name="admin_detail_27">編輯 setup.yml</string>
+    <string name="admin_detail_28">編輯 update.yml</string>
+    <string name="admin_detail_29">觸發</string>
+    <string name="admin_detail_30">觸發 全量排程</string>
+    <string name="admin_detail_31">觸發 更新倉庫列表</string>
+    <string name="admin_detail_32">觸發 生成索引清單</string>
+    <string name="admin_detail_33">觸發 統一排程</string>
+    <string name="admin_detail_34">觸發 聚合頭像池</string>
+    <string name="admin_detail_35">觸發 重建搜尋索引</string>
+    <string name="admin_detail_36">觸發全量排程</string>
+    <string name="admin_detail_37">觸發工作流</string>
+    <string name="admin_detail_38">觸發排程</string>
+    <string name="admin_detail_39">試執行</string>
+    <string name="admin_detail_40">重新執行</string>
+    <string name="admin_detail_41">🔍 檢測缺失 Banner / 置頂 / 頭像</string>
+    <string name="admin_detail_42">🗑 刪除推文</string>
+
+    <!-- AdminEditProfileScreen -->
+    <string name="admin_profile_01">位置</string>
+    <string name="admin_profile_02">可直接貼上推文連結，會自動提取 ID</string>
+    <string name="admin_profile_03">名稱</string>
+    <string name="admin_profile_04">簡介</string>
+    <string name="admin_profile_05">置頂推文 ID</string>
+    <string name="admin_profile_06">連結</string>
+
+    <!-- AdminEditYmlScreen -->
+    <string name="admin_yml_01">上傳</string>
+
+    <!-- AdminNewArchiveScreen -->
+    <string name="admin_new_01">上傳 banner</string>
+    <string name="admin_new_02">剛建檔的倉庫（建檔中→完成），點選進入處理</string>
+    <string name="admin_new_03">尚未檢測</string>
+    <string name="admin_new_04">建檔</string>
+    <string name="admin_new_05">建檔中</string>
+    <string name="admin_new_06">建檔完成但缺 banner 或置頂的倉庫，點選去處理</string>
+    <string name="admin_new_07">建立新存檔</string>
+    <string name="admin_new_08">開始建檔</string>
+    <string name="admin_new_09">待完善存檔</string>
+    <string name="admin_new_10">撤銷</string>
+    <string name="admin_new_11">新倉庫名 / 賬號</string>
+    <string name="admin_new_12">新建的存檔</string>
+    <string name="admin_new_13">檢查中…</string>
+    <string name="admin_new_14">移除</string>
+    <string name="admin_new_15">移除記錄</string>
+    <string name="admin_new_16">設定置頂</string>
+    <string name="admin_new_17">起始日期 YYYYMMDD（留空全量）</string>
+    <string name="admin_new_18">輸入賬號使用者名稱作為倉庫名，從模板建立新倉庫並觸發首次建檔（setup）。建檔完成後回來上傳 banner、設定置頂，再手動觸發增量更新。</string>
+    <string name="admin_new_19">🔄 重新檢測</string>
+    <string name="done">完成</string>
+
+    <!-- AdminRequestsScreen -->
+    <string name="admin_req_01">匿名</string>
+    <string name="admin_req_02">存檔申請</string>
+    <string name="admin_req_03">存檔申請：</string>
+    <string name="admin_req_04">批准建檔</string>
+    <string name="admin_req_05">批准申請</string>
+    <string name="admin_req_06">拒絕</string>
+    <string name="admin_req_07">拒絕申請</string>
+    <string name="admin_req_08">暫無待處理申請</string>
+    <string name="admin_req_09">確定拒絕並關閉這條申請？</string>
+
+    <!-- AdminScreen -->
+    <string name="admin_01">➕ 建立新存檔</string>
+    <string name="admin_02">儲存令牌</string>
+    <string name="admin_03">已連線</string>
+    <string name="admin_04">待處理存檔申請 ›</string>
+    <string name="admin_05">未配置令牌</string>
+    <string name="admin_06">檢視 ›</string>
+    <string name="admin_07">清除令牌</string>
+    <string name="admin_08">管理臺</string>
+    <string name="admin_09">貼上 PAT…</string>
+    <string name="admin_10">配置 GitHub 令牌 (PAT)</string>
+    <string name="admin_11">需要 repo + workflow 權限，用於觸發工作流、編輯檔案、刪推、處理申請。</string>
+    <string name="admin_12">驗證中…</string>
+
+    <!-- AppNav -->
+    <string name="nav_01">再按一次返回鍵退出</string>
+    <string name="nav_02">在底欄固定顯示某個賬號</string>
+    <string name="nav_03">匯入失敗</string>
+    <string name="nav_04">匯入失敗：檔案格式不正確</string>
+    <string name="nav_05">匯出失敗</string>
+    <string name="tab_admin">管理</string>
+    <string name="tab_follow">關注</string>
+    <string name="tab_global">全站</string>
+    <string name="tab_list">列表</string>
+    <string name="tab_settings">設定</string>
+
+    <!-- BookmarkScreen -->
+    <string name="bookmark_01">書籤</string>
+    <string name="bookmark_02">匯入備份</string>
+    <string name="bookmark_03">匯出備份</string>
+    <string name="bookmark_04">還沒有收藏任何推文</string>
+
+    <!-- ConfirmDialog -->
+    <string name="cancel">取消</string>
+    <string name="misc_01">確認</string>
+
+    <!-- DefaultTabScreen -->
+    <string name="deftab_01">全站時間線</string>
+    <string name="deftab_02">已選</string>
+    <string name="deftab_03">選擇開啟應用時預設進入的頁面</string>
+    <string name="deftab_04">預設啟動頁</string>
+
+    <!-- FollowSelectScreen -->
+    <string name="follow_01">關注標籤頁</string>
+    <string name="follow_02">關閉關注</string>
+    <string name="follow_03">選擇一個賬號固定為「關注」標籤頁，開啟應用即可直達，無需搜尋。</string>
+
+    <!-- GlobalDateTreeSheet -->
+    <string name="date_tree_01"> 日</string>
+    <string name="date_tree_02">下載</string>
+    <string name="date_tree_03">已下載</string>
+    <string name="date_tree_04">按日期瀏覽</string>
+    <string name="date_tree_05">整月</string>
+    <string name="date_tree_06">未下載的月份也能看到條數，點開會先下載。已下載的長按可刪除。</string>
+    <string name="date_tree_07">清除篩選</string>
+
+    <!-- GlobalPostCard -->
+    <string name="loading">載入中…</string>
+    <string name="post_card_01">分享</string>
+    <string name="post_card_02">分享這條推文</string>
+    <string name="post_card_03">原推內容不可用</string>
+    <string name="post_card_04">複製</string>
+    <string name="post_card_05">存檔定位連結（瀏覽器開啟）</string>
+    <string name="post_card_06">定位短碼（貼上到搜尋框）</string>
+    <string name="post_card_07">展開回復</string>
+    <string name="post_card_08">已收藏</string>
+    <string name="post_card_09">引用</string>
+    <string name="post_card_10">推文 ID</string>
+    <string name="post_card_11">推特原連結</string>
+    <string name="post_card_12">播放影片</string>
+    <string name="post_card_13">收藏</string>
+    <string name="post_card_14">收起回覆</string>
+    <string name="post_card_15">收起引用</string>
+    <string name="post_card_16">暫無回覆</string>
+    <string name="post_card_17">某賬號</string>
+    <string name="post_card_18">檢視引用</string>
+    <string name="post_card_19">透過系統分享…</string>
+
+    <!-- GlobalScreen -->
+    <string name="global_01">共 %%,d 條</string>
+    <string name="global_02">已載入的內容裡沒有找到 · 在全部月份中查詢</string>
+    <string name="global_03">按日期</string>
+    <string name="global_04">搜尋全站推文…</string>
+    <string name="global_05">正在載入全站索引…</string>
+    <string name="global_06">正在逐月查詢…點此停止</string>
+    <string name="global_07">清除</string>
+    <string name="global_08">篩選賬號</string>
+
+    <!-- ImagePreviewOverlay -->
+    <string name="close">關閉</string>
+    <string name="img_preview_01">儲存失敗</string>
+    <string name="img_preview_02">已儲存到相簿</string>
+    <string name="save">儲存</string>
+
+    <!-- ImagesScreen -->
+    <string name="images">圖片</string>
+    <string name="images_screen_01">全部</string>
+    <string name="images_screen_02">播放</string>
+    <string name="images_screen_03">暫無該型別媒體</string>
+    <string name="others">其他</string>
+    <string name="videos">影片</string>
+
+    <!-- ListScreen -->
+    <string name="list_01">基於 Wayback Machine 的永久存檔</string>
+
+    <!-- ProfileDialog -->
+    <string name="profile_dlg_01">檢視完整存檔</string>
+    <string name="profile_dlg_02">瀏覽全部媒體</string>
+
+    <!-- RepoHealthScreen -->
+    <string name="health_01">project-starter · 新建存檔使用的模板倉庫</string>
+    <string name="health_02">倉庫健康</string>
+    <string name="health_03">存檔模板</string>
+    <string name="health_04">無更新記錄</string>
+    <string name="health_05">正在讀取組織倉庫…</string>
+    <string name="health_06">私有</string>
+    <string name="health_07">私有倉庫</string>
+    <string name="health_08">統計中…</string>
+    <string name="health_09">重新檢查</string>
+
+    <!-- RequestScreen -->
+    <string name="request_01">備註（可選）</string>
+    <string name="request_02">應為 1–15 位字母、數字或下劃線</string>
+    <string name="request_03">提交後我們會盡快處理。請填寫想要存檔的賬號使用者名稱。</string>
+    <string name="request_04">提交申請</string>
+    <string name="request_05">申請存檔</string>
+    <string name="request_06">申請存檔一個推特賬號</string>
+    <string name="request_07">賬號使用者名稱（如 @example）</string>
+
+    <!-- SettingsScreen -->
+    <string name="settings_01">\\"關注\\" 標籤頁</string>
+    <string name="settings_02">主題管理</string>
+    <string name="settings_03">書籤管理</string>
+    <string name="settings_04">將刪除已下載的離線索引與圖片快取。書籤、設定不受影響；下次瀏覽時會重新下載所需內容。</string>
+    <string name="settings_05">開啟應用時進入的頁面</string>
+    <string name="settings_06">收藏的推文 · 可匯出備份</string>
+    <string name="settings_07">淺色 / 深色 / 動態配色</string>
+    <string name="settings_08">清理</string>
+    <string name="settings_09">清理快取</string>
+    <string name="settings_10">版本 · 開源協議</string>
+    <string name="settings_11">申請存檔某個賬號</string>
+
+    <!-- SingleTweetDialog -->
+    <string name="tweet_dlg_01">載入失敗</string>
+    <string name="tweet_dlg_02">這條推文已不在存檔中</string>
+    <string name="tweets">推文</string>
+
+    <!-- SplashScreen -->
+    <string name="splash_01">網際網路是現實的避難所。</string>
+    <string name="splash_02">而這裡，是那個避難所的避難所。</string>
+
+    <!-- ThanksScreen -->
+    <string name="thanks_01">以及每一位默默支援這個專案的人。</string>
+    <string name="thanks_02">初次專案構建</string>
+    <string name="thanks_03">思路技術支援</string>
+    <string name="thanks_04">想法支援</string>
+    <string name="thanks_05">特別緻謝</string>
+    <string name="thanks_06">這個專案能走到今天，離不開這些人的幫助。</string>
+
+    <!-- ThemeScreen -->
+    <string name="theme_01">僅支援 Android 12+</string>
+    <string name="theme_02">動態配色</string>
+    <string name="theme_03">圖示 + 文字</string>
+    <string name="theme_04">外觀模式</string>
+    <string name="theme_05">底欄樣式</string>
+    <string name="theme_06">淺色</string>
+    <string name="theme_07">深色</string>
+    <string name="theme_08">純文字</string>
+    <string name="theme_09">跟隨系統</string>
+    <string name="theme_10">跟隨系統桌布取色</string>
+
+    <!-- VideoPlayerOverlay -->
+    <string name="video_player_01">開始下載影片…</string>
+
+    <!-- ===== 帶引數的介面文案 ===== -->
+    <string name="nav_following">已關注：%1$s</string>
+    <string name="nav_exported">已匯出 %1$s 條書籤</string>
+    <string name="nav_imported">已匯入 %1$s 條書籤</string>
+    <string name="acct_filter_ok">確定 (%1$s)</string>
+    <string name="date_year">%1$s 年</string>
+    <string name="date_year_stat">%1$s 條 · %2$s</string>
+    <string name="date_month">%1$s 月</string>
+    <string name="date_month_stat">%1$s 條 · %2$s</string>
+    <string name="profile_stat">%1$s 推文 · %2$s 張圖片</string>
+    <string name="feed_searching">搜尋「%1$s」</string>
+    <string name="feed_found">找到 %1$s 條結果</string>
+    <string name="date_day">%1$s 日</string>
+    <string name="admin_archive_c1">確定觸發「%1$s」的增量更新？</string>
+    <string name="admin_archive_c2">確定觸發「%1$s」的全量重試？耗時較長。</string>
+    <string name="admin_archive_c3">確定觸發「%1$s」的增量更新？完成後將自動接力全量重試（新建存檔後用）。</string>
+    <string name="admin_archive_c4">確定重建「%1$s」的索引？僅跑 build-index，不抓取，幾十秒完成。改完置頂/資料後用它快速生效。</string>
+    <string name="admin_del_confirm">將從「%1$s」刪除推文 %2$s，不可恢復，確定？</string>
+    <string name="admin_detail_miss_avatar">頭像缺失（%1$s）</string>
+    <string name="admin_detail_miss_banner">缺少 Banner（%1$s）</string>
+    <string name="admin_detail_miss_pinned">缺少 置頂推文（%1$s）</string>
+    <string name="admin_detail_checking">檢測中… %1$s / %2$s</string>
+    <string name="admin_detail_all_repos">所有存檔倉庫 (%1$s/%2$s)</string>
+    <string name="admin_detail_repo_line">%1$s · 倉庫 %2$s</string>
+    <string name="parse_failed">解析失敗：%1$s</string>
+    <string name="admin_profile_title">編輯資料 · %1$s</string>
+    <string name="read_failed">讀取失敗：%1$s</string>
+    <string name="admin_new_removed">已移除 %1$s</string>
+    <string name="admin_new_remove_confirm">將「%1$s」從新建記錄中移除？倉庫本身不會被刪除。</string>
+    <string name="admin_new_create_confirm">將建立倉庫「%1$s」並觸發首次建檔。建檔完成後不會自動增量，需回來上傳 banner + 設定置頂，再手動觸發增量更新。</string>
+    <string name="admin_new_taken">「%1$s」已存在，換一個名字</string>
+    <string name="admin_new_available">「%1$s」可用</string>
+    <string name="admin_new_checking">檢測中 %1$s/%2$s</string>
+    <string name="admin_req_confirm">將為「%1$s」建檔並關閉申請，確定？</string>
+    <string name="admin_pending">%1$s 待完善</string>
+    <string name="global_filtered">已篩選 %1$s 人</string>
+    <string name="global_by_date">按日期·%1$s</string>
+    <string name="global_downloaded">已下載 %1$s/%2$s 月</string>
+    <string name="global_month_missing">這條推文在 %1$s，尚未下載 · 點此下載該月</string>
+    <string name="images_title">%1$s · 媒體</string>
+    <string name="list_archived">已存檔 %1$s 個賬號</string>
+    <string name="health_total">共 %1$s 個存檔</string>
+    <string name="health_private_total">共 %1$s 個非公開存檔</string>
+    <string name="health_days_ago">%1$s 天前更新</string>
+    <string name="settings_cache">離線索引 %1$s · 圖片 %2$s</string>
+
+    <!-- ===== 多行確認文案與時長 ===== -->
+    <string name="admin_squash_confirm">把「%1$s」的全部提交歷史壓成一次提交，回收 .git 裡的舊版本物件。\n\n存檔內容一字不改，但歷史不可恢復。\n該倉庫若有工作流正在執行會自動中止本次操作。\n</string>
+    <string name="admin_fix_avatar_confirm">把主頭像複製一份，改名成列表頁 / 全站時間線引用的頭像檔名。\n\n</string>
+    <string name="admin_push_avatar_confirm">將把頭像池裡更清晰的版本推回各存檔倉庫，會產生真實提交。\n\n確認已先跑過試執行？</string>
+    <string name="dur_min_sec">%1$d分%2$d秒</string>
+    <string name="dur_sec">%1$d秒</string>
+    <string name="dur_running">已執行 %1$s</string>
+    <string name="dur_elapsed">耗時 %1$s</string>
+    <string name="health_rotation">共 %1$d 個存檔 · 每天 %2$d 個 · 轉一圈約 %3$d 天 · 超過 %4$d 天算異常</string>
+</resources>

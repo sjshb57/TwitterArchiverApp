@@ -29,6 +29,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.twitterarchiver.data.ThemeMode
+import androidx.compose.ui.res.stringResource
+import io.github.twitterarchiver.R
 
 /** 主题管理二级页 */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,22 +51,22 @@ fun ThemeScreen(
                 titleContentColor = MaterialTheme.colorScheme.onBackground,
                 navigationIconContentColor = MaterialTheme.colorScheme.onBackground
             ),
-            title = { Text("主题管理", fontSize = 16.sp) },
+            title = { Text(stringResource(R.string.settings_02), fontSize = 16.sp) },
             navigationIcon = {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
+                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
             }
         )
 
-        SectionTitle("外观模式")
+        SectionTitle(stringResource(R.string.theme_04))
         Group {
-            ThemeOption("浅色", current == ThemeMode.LIGHT) { onSetTheme(ThemeMode.LIGHT) }
+            ThemeOption(stringResource(R.string.theme_06), current == ThemeMode.LIGHT) { onSetTheme(ThemeMode.LIGHT) }
             Div()
-            ThemeOption("深色", current == ThemeMode.DARK) { onSetTheme(ThemeMode.DARK) }
+            ThemeOption(stringResource(R.string.theme_07), current == ThemeMode.DARK) { onSetTheme(ThemeMode.DARK) }
             Div()
-            ThemeOption("跟随系统", current == ThemeMode.SYSTEM) { onSetTheme(ThemeMode.SYSTEM) }
+            ThemeOption(stringResource(R.string.theme_09), current == ThemeMode.SYSTEM) { onSetTheme(ThemeMode.SYSTEM) }
         }
 
-        SectionTitle("动态配色")
+        SectionTitle(stringResource(R.string.theme_02))
         Group {
             val supported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
             Row(
@@ -76,7 +78,7 @@ fun ThemeScreen(
                         color = if (supported) MaterialTheme.colorScheme.onSurface
                         else MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
-                        if (supported) "跟随系统壁纸取色" else "仅支持 Android 12+",
+                        if (supported) stringResource(R.string.theme_10) else stringResource(R.string.theme_01),
                         fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 1.dp)
                     )
@@ -86,11 +88,11 @@ fun ThemeScreen(
             }
         }
 
-        SectionTitle("底栏样式")
+        SectionTitle(stringResource(R.string.theme_05))
         Group {
-            ThemeOption("纯文字", barStyle == "text") { onSetBarStyle("text") }
+            ThemeOption(stringResource(R.string.theme_08), barStyle == "text") { onSetBarStyle("text") }
             Div()
-            ThemeOption("图标 + 文字", barStyle == "icon_text") { onSetBarStyle("icon_text") }
+            ThemeOption(stringResource(R.string.theme_03), barStyle == "icon_text") { onSetBarStyle("icon_text") }
         }
     }
 }
@@ -112,7 +114,7 @@ fun ThemeScreen(
 ) {
     Text(label, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.weight(1f))
-    if (selected) Icon(Icons.Filled.Check, "已选", tint = MaterialTheme.colorScheme.primary)
+    if (selected) Icon(Icons.Filled.Check, stringResource(R.string.deftab_02), tint = MaterialTheme.colorScheme.primary)
 }
 
 @Composable private fun Div() = HorizontalDivider(

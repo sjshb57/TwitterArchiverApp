@@ -2,6 +2,7 @@ package io.github.twitterarchiver.data
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import io.github.twitterarchiver.R
 
 /** /orgs/{org}/repos 返回的仓库条目，只取健康检查用得上的字段 */
 @Serializable
@@ -31,9 +32,9 @@ data class RepoHealth(
     }
 }
 
-enum class HealthSort(val label: String) {
-    STALE("更新"),
-    SIZE("体积")
+enum class HealthSort(@androidx.annotation.StringRes val labelRes: Int) {
+    STALE(R.string.health_sort_stale),
+    SIZE(R.string.health_sort_size)
 }
 
 /** 从 Dispatcher 的 dispatch.yml 解析出的轮转配置 */
