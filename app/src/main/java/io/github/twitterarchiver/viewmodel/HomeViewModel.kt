@@ -12,6 +12,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import io.github.twitterarchiver.R
 import io.github.twitterarchiver.data.AppStrings
+import kotlinx.coroutines.flow.update
 
 data class HomeState(
     val loading: Boolean = true,
@@ -31,30 +32,30 @@ class HomeViewModel(private val repo: Repository = Repository.shared) : ViewMode
 
     fun load(forceRefresh: Boolean = false) {
         viewModelScope.launch {
-            _state.value = _state.value.copy(loading = true, error = null)
+            _state.update { it.copy(loading = true, error = null) }
             try {
                 val list = repo.getRepos(forceRefresh)
                     .sortedByDescending { it.account.equals("AnIncandescence", ignoreCase = true) }
-                _state.value = _state.value.copy(
+                _state.update { it.copy(
                     loading = false,
                     repos = list,
-                    filtered = applyFilter(list, _state.value.query)
-                )
+                    filtered = applyFilter(list, it.query)
+                ) }
             } catch (e: Exception) {
                 currentCoroutineContext().ensureActive()
-                _state.value = _state.value.copy(
+                _state.update { it.copy(
                     loading = false,
                     error = AppStrings.get(R.string.load_failed, e.message.orEmpty())
-                )
+                ) }
             }
         }
     }
 
     fun search(q: String) {
-        _state.value = _state.value.copy(
+        _state.update { it.copy(
             query = q,
-            filtered = applyFilter(_state.value.repos, q)
-        )
+            filtered = applyFilter(it.repos, q)
+        ) }
     }
 
     private fun applyFilter(list: List<ArchiveRepo>, q: String): List<ArchiveRepo> {

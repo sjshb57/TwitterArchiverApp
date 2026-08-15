@@ -13,6 +13,8 @@ import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 private val Context.dataStore by preferencesDataStore("secure_store")
 
@@ -82,6 +84,7 @@ class SecureStore(private val context: Context) {
             )
             String(cipher.doFinal(encrypted), Charsets.UTF_8)
         } catch (e: Exception) {
+            currentCoroutineContext().ensureActive()
             val permanent = e is android.security.keystore.KeyPermanentlyInvalidatedException ||
                 e is java.security.UnrecoverableKeyException ||
                 e is javax.crypto.AEADBadTagException

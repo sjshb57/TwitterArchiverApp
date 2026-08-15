@@ -10,6 +10,8 @@ import kotlinx.coroutines.withContext
 import java.net.URL
 import io.github.twitterarchiver.R
 import io.github.twitterarchiver.data.AppStrings
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 /** 下载视频保存到系统相册。minSdk 30，一律走分区存储，无需存储权限 */
 object VideoSaver {
@@ -29,6 +31,7 @@ object VideoSaver {
             val uri = try {
                 resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
             } catch (e: Exception) {
+                currentCoroutineContext().ensureActive()
                 null
             } ?: return@withContext false
 

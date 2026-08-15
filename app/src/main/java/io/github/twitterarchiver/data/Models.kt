@@ -52,6 +52,19 @@ data class Tweet(
     @SerialName("is_virtual") val isVirtual: Boolean = false
 ) {
     val hasFile: Boolean get() = file.isNotBlank()
+
+    /**
+     * 排序用的毫秒时间戳。
+     *
+     * 不能按 timestamp 字符串排：少数历史记录用的是推特原始格式
+     * （Wed Sep 09 13:44:34 +0000 2020），和 ISO 格式混在一起时
+     * 字符串比较会把它们整片排到错误的位置。
+     *
+     * 用 get() 而不是构造时算：Tweet 是 @Serializable，加构造参数会被当成
+     * JSON 字段；而单账号量级（几千到几万）比全站索引小两个数量级，
+     * 这点开销可以接受。
+     */
+    val epochMs: Long get() = io.github.twitterarchiver.util.DateUtil.epochMillis(timestamp)
 }
 
 /** 账号 profile.json */

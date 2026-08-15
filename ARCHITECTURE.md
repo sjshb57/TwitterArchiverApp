@@ -170,24 +170,31 @@ UI 层不直接访问 `GitHubApi`，ViewModel 层不引用 Compose API，`util` 
 
 ### 4.2 data 包
 
-| 文件                     | 职责                                                                                                                           |
-|------------------------|------------------------------------------------------------------------------------------------------------------------------|
-| `Config.kt`            | 全部 URL 与身份常量的唯一定义处。包含组织名、申请仓库、模板仓库及各类 URL 构造函数                                                                               |
-| `GitHubApi.kt`         | 网络层，基于 Ktor + OkHttp。前半部分为 Pages 读取接口，后半部分为需 PAT 的 GitHub API 写操作。`index.json` 采用 `android.util.JsonReader` 流式解析，避免大文件导致内存溢出 |
-| `Repository.kt`        | 仓储层。含三级内存缓存（`reposCache` 单例与 `tweetsCache`、`profileCache` 两个 Map）、磁盘兜底读取，并转发管理操作                                             |
-| `Models.kt`            | 全部 `@Serializable` 数据类：`ArchiveRepo`、`Tweet`、`Profile`、`GitHubIssue`、`WorkflowRun`、`IndexManifest` 等                         |
-| `SearchIndex.kt`       | 全站索引模型。`GlobalPost` 负责解析紧凑数组，并按扩展名将媒体列表分流为图片与视频两组 URL                                                                        |
-| `GlobalIndexStore.kt`  | 全站索引分片的本地副本。含 `GlobalIndexMeta`、`GlobalShard` 模型与按年增删的磁盘操作，详见 5.5                                                            |
-| `OfflineIndexStore.kt` | 离线缓存实现。按月切分、哈希比对、HTTP Range 增量更新，详见 5.1                                                                                      |
-| `Bookmarks.kt`         | 书签存储（DataStore）及 JSON 导入导出                                                                                                   |
-| `Settings.kt`          | 偏好设置（DataStore）：主题模式、默认 Tab、关注账号                                                                                             |
-| `SecureStore.kt`       | PAT 加密存储。使用 Android Keystore 生成的 AES-GCM 密钥加密后写入 DataStore；密钥不出 Keystore，密文换机后无法解密，需重新登录                                     |
-| `AppDirs.kt`           | 持有应用 `filesDir`。因 ViewModel 中 `Repository` 以默认参数构造无法获取 Context，故由 MainActivity 启动时注入                                         |
-| `NetworkState.kt`      | 全局网络状态与图片加载失败记录。见 5.3                                                                                                        |
+| 文件                     | 职责                                                                                                                                                                                          |
+|------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Config.kt`            | 全部 URL 与身份常量的唯一定义处。包含组织名、申请仓库、模板仓库及各类 URL 构造函数                                                                                                                                              |
+| `GitHubApi.kt`         | 网络层，基于 Ktor + OkHttp。前半部分为 Pages 读取接口，后半部分为需 PAT 的 GitHub API 写操作。全站索引（`search-index/*.json`）采用 `android.util.JsonReader` 流式解析，避免几十万条一次性建对象；单账号 `index.json` 走 kotlinx.serialization 直接反序列化 |
+| `Repository.kt`        | 仓储层。含三级内存缓存（`reposCache` 单例与 `tweetsCache`、`profileCache` 两个 Map）、磁盘兜底读取，并转发管理操作                                                                                                            |
+| `Models.kt`            | 全部 `@Serializable` 数据类：`ArchiveRepo`、`Tweet`、`Profile`、`GitHubIssue`、`WorkflowRun`、`IndexManifest` 等                                                                                        |
+| `SearchIndex.kt`       | 全站索引模型。`GlobalPost` 负责解析紧凑数组，并按扩展名将媒体列表分流为图片与视频两组 URL                                                                                                                                       |
+| `GlobalIndexStore.kt`  | 全站索引分片的本地副本。含 `GlobalIndexMeta`、`GlobalShard` 模型与按年增删的磁盘操作，详见 5.5                                                                                                                           |
+| `OfflineIndexStore.kt` | 离线缓存实现。按月切分、哈希比对、HTTP Range 增量更新，详见 5.1                                                                                                                                                     |
+| `Bookmarks.kt`         | 书签存储（DataStore）及 JSON 导入导出                                                                                                                                                                  |
+| `Settings.kt`          | 偏好设置（DataStore）：主题模式、默认 Tab、关注账号                                                                                                                                                            |
+| `SecureStore.kt`       | PAT 加密存储。使用 Android Keystore 生成的 AES-GCM 密钥加密后写入 DataStore；密钥不出 Keystore，密文换机后无法解密，需重新登录                                                                                                    |
+| `AppDirs.kt`           | 持有应用 `filesDir`。因 ViewModel 中 `Repository` 以默认参数构造无法获取 Context，故由 MainActivity 启动时注入                                                                                                        |
+| `NetworkState.kt`      | 全局网络状态与图片加载失败记录。见 5.3                                                                                                                                                                       |
+| `HttpClients.kt`       | Ktor 与 Coil 共用的 OkHttp 实例。目标域名高度重合，共享连接池省掉重复的 TCP/TLS 握手；图片另有 15s 总时长上限                                                                                                                     |
+| `GitHubError.kt`       | 接口错误分级。`classify()` 是纯逻辑（可单测），`describe()` 负责取文案；区分主限流、二级限流与真正的权限问题                                                                                                                         |
+| `AppStrings.kt`        | 应用级字符串取值入口。数据层与普通 ViewModel 拿不到 Context，`stringResource` 又只能在 Composable 里用，故由 Application 注入                                                                                               |
+| `ThemeMirror.kt`       | 主题设置的同步镜像（SharedPreferences）。窗口背景须在 `setContent` 之前定好，而 DataStore 只能挂起读取                                                                                                                    |
+| `RepoHealth.kt`        | 仓库健康模型：更新时间、体积、轮转周期与超期判定                                                                                                                                                                    |
 
 ### 4.3 viewmodel 包
 
-各 ViewModel 均继承 `AndroidViewModel`，以 `StateFlow<XxxState>` 暴露状态，UI 层只读状态并调用其方法。
+各 ViewModel 以 `StateFlow<XxxState>` 暴露状态，UI 层只读状态并调用其方法。
+
+其中 `AdminViewModel` / `BookmarkViewModel` / `SettingsViewModel` 继承 `AndroidViewModel`（需要 Context 取资源或读写存储），其余继承普通 `ViewModel`。拿不到 Context 的地方统一走 `AppStrings` 取文案。
 
 | 文件                           | 职责                                                                                |
 |------------------------------|-----------------------------------------------------------------------------------|
@@ -255,15 +262,16 @@ UI 层不直接访问 `GitHubApi`，ViewModel 层不引用 Compose API，`util` 
 
 ### 4.7 util 包
 
-| 文件               | 职责                                                |
-|------------------|---------------------------------------------------|
-| `DateUtil.kt`    | UTC 时间戳转本地时区显示                                    |
-| `ImageSaver.kt`  | 保存图片至系统相册（MediaStore；Android 10 以下需存储权限，见 6 已知约束） |
-| `VideoSaver.kt`  | 保存视频至系统相册                                         |
-| `AccountUtil.kt` | 账号名规范化，容错 `@name`、`x.com/name`、全角空格等输入形式          |
-| `TweetIdUtil.kt` | 推文 ID 规范化，从完整推文链接中提取数字 ID                         |
-| `MediaUtil.kt`   | 将相对路径拼接为完整 URL                                    |
-| `LinkUtil.kt`    | 正文内 URL 的识别与短链展示形式                                |
+| 文件               | 职责                                              |
+|------------------|-------------------------------------------------|
+| `DateUtil.kt`    | UTC 时间戳转本地时区显示                                  |
+| `ImageSaver.kt`  | 保存图片至系统相册（MediaStore）。minSdk 30 一律走分区存储，无需存储权限  |
+| `VideoSaver.kt`  | 保存视频至系统相册                                       |
+| `AccountUtil.kt` | 账号名规范化，容错 `@name`、`x.com/name`、全角空格等输入形式        |
+| `TweetIdUtil.kt` | 推文 ID 规范化，从完整推文链接中提取数字 ID                       |
+| `MediaUtil.kt`   | 相对路径清洗（`sanitizeRelPath` 逐段过滤 `..`）与完整 URL 拼接   |
+| `LinkUtil.kt`    | 正文内 URL 的识别与短链展示形式                              |
+| `SearchUtil.kt`  | 搜索辅助：雪花 ID 反推月份、`?t=` 短码提取、ASCII 判断（决定要不要折叠大小写） |
 
 ---
 
@@ -368,7 +376,6 @@ if (BuildConfig.IS_ADMIN) { /* 渲染管理 Tab */ }
 | GitHub Pages 的 ETag 随部署变化                             | `If-Range` 导致非必要全量下载 | 改用内容哈希校验                             |
 | Contents API 列目录静默截断至 1000 条                          | 大目录下误判文件不存在          | 改用 Git Trees API                     |
 | 一个仓库可能对应多个账号                                          | 按仓库名做缓存键会串数据         | 磁盘缓存、离线索引目录、头像检测均以 `repo/account` 为键 |
-| Android 10 以下写入 MediaStore 需 `WRITE_EXTERNAL_STORAGE` | API 26–28 保存到相册失败    | 暂未支持，仅影响旧设备的保存功能                     |
 
 ---
 

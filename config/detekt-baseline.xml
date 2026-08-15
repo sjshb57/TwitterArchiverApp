@@ -8,5 +8,23 @@
     <ID>EmptyCatchBlock:GitHubApi.kt$GitHubApi${ }</ID>
     <ID>EmptyCatchBlock:Repository.kt$Repository${ }</ID>
     <ID>EmptyCatchBlock:SettingsScreen.kt${ }</ID>
+    <ID>SwallowedException:AdminArchiveScreen.kt$e: Exception</ID>
+    <ID>SwallowedException:AdminDetailScreen.kt$e: Exception</ID>
+    <ID>SwallowedException:AdminViewModel.kt$AdminViewModel$e: Exception</ID>
+    <ID>SwallowedException:AppNav.kt$e: Exception</ID>
+    <ID>SwallowedException:BookmarkViewModel.kt$BookmarkViewModel$e: Exception</ID>
+    <ID>SwallowedException:Bookmarks.kt$Bookmarks$e: Exception</ID>
+    <ID>SwallowedException:DateUtil.kt$DateUtil$e: Exception</ID>
+    <ID>SwallowedException:GitHubApi.kt$GitHubApi$e: Exception</ID>
+    <ID>SwallowedException:GlobalTimelineViewModel.kt$GlobalTimelineViewModel$e: Exception</ID>
+    <ID>SwallowedException:ImagePreviewOverlay.kt$e: Exception</ID>
+    <ID>SwallowedException:ImageSaver.kt$ImageSaver$e: Exception</ID>
+    <ID>SwallowedException:OfflineIndexStore.kt$OfflineIndexStore$e: Exception</ID>
+    <ID>SwallowedException:ProfileStatsViewModel.kt$ProfileStatsViewModel$e: Exception</ID>
+    <ID>SwallowedException:Repository.kt$Repository$e2: Exception</ID>
+    <ID>SwallowedException:Repository.kt$Repository$e: Exception</ID>
+    <ID>SwallowedException:SettingsScreen.kt$e: Exception</ID>
+    <ID>SwallowedException:SingleTweetDialog.kt$e: Exception</ID>
+    <ID>SwallowedException:VideoSaver.kt$VideoSaver$e: Exception</ID>
   </CurrentIssues>
 </SmellBaseline>

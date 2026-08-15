@@ -25,6 +25,8 @@ import kotlinx.coroutines.ensureActive
 import io.github.twitterarchiver.util.MediaUtil
 import io.github.twitterarchiver.R
 import io.github.twitterarchiver.data.AppStrings
+import kotlinx.coroutines.flow.update
+import io.github.twitterarchiver.data.Repository
 
 data class GlobalState(
     val loading: Boolean = true,
@@ -112,19 +114,19 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
     private fun loadFull() {
         if (fullLoaded) return
         viewModelScope.launch {
-            _state.value = _state.value.copy(loadingFull = true)
+            _state.update { it.copy(loadingFull = true) }
             try {
                 val m = api.fetchGlobalMeta()
                 meta = m
                 allAccounts = m.accounts.distinctBy { it.r to it.a }
                 fullLoaded = true
-                _state.value = _state.value.copy(
+                _state.update { it.copy(
                     loadingFull = false,
                     globalTotal = m.total,
                     shards = m.shards,
                     downloadedMonths = GlobalIndexStore.downloadedMonths(),
                     indexError = null
-                )
+                ) }
                 // 上次已下载到本地的月份直接合入，无需联网
                 val local = GlobalIndexStore.downloadedMonths()
                 m.shards.filter { it.month in local }
@@ -132,13 +134,13 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
                 monthLock.withLock { rebuildFromLoaded() }
             } catch (e: Exception) {
                 currentCoroutineContext().ensureActive()
-                _state.value = _state.value.copy(
+                _state.update { it.copy(
                     loadingFull = false,
                     indexError = AppStrings.get(
                         R.string.index_manifest_failed,
                         "${e::class.java.simpleName} ${e.message.orEmpty()}".trim()
                     )
-                )
+                ) }
             }
         }
     }
@@ -167,7 +169,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
                 loadedMonths = loadedMonths - month
                 monthPosts.remove(month)
                 rebuildFromLoaded()
-                _state.value = _state.value.copy(downloadedMonths = GlobalIndexStore.downloadedMonths())
+                _state.update { it.copy(downloadedMonths = GlobalIndexStore.downloadedMonths()) }
             }
         }
     }
@@ -179,7 +181,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
                 loadedMonths = loadedMonths.filterNot { it.startsWith(year) }.toSet()
                 monthPosts.keys.filter { it.startsWith(year) }.forEach { monthPosts.remove(it) }
                 rebuildFromLoaded()
-                _state.value = _state.value.copy(downloadedMonths = GlobalIndexStore.downloadedMonths())
+                _state.update { it.copy(downloadedMonths = GlobalIndexStore.downloadedMonths()) }
             }
         }
     }
@@ -191,8 +193,8 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
     ) = monthLock.withLock {
         if (shard.month in loadedMonths) return@withLock
         val m = meta ?: return@withLock
-        if (!silent) _state.value = _state.value.copy(
-            monthProgress = _state.value.monthProgress + (shard.month to 0f))
+        if (!silent) _state.update { it.copy(
+            monthProgress = it.monthProgress + (shard.month to 0f)) }
         try {
             var lastPct = -1
             val posts = api.fetchGlobalShard(shard, m.accounts) { done ->
@@ -201,28 +203,28 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
                     val pct = (p * 100).toInt()
                     if (pct != lastPct) {
                         lastPct = pct
-                        _state.value = _state.value.copy(
-                            monthProgress = _state.value.monthProgress + (shard.month to p))
+                        _state.update { it.copy(
+                            monthProgress = it.monthProgress + (shard.month to p)) }
                     }
                 }
             }
             monthPosts[shard.month] = posts
             loadedMonths = loadedMonths + shard.month
             if (rebuild) rebuildFromLoaded()
-            _state.value = _state.value.copy(
-                monthProgress = _state.value.monthProgress - shard.month,
+            _state.update { it.copy(
+                monthProgress = it.monthProgress - shard.month,
                 downloadedMonths = GlobalIndexStore.downloadedMonths(),
                 indexError = null
-            )
+            ) }
         } catch (e: Exception) {
             currentCoroutineContext().ensureActive()
-            _state.value = _state.value.copy(
-                monthProgress = _state.value.monthProgress - shard.month,
+            _state.update { it.copy(
+                monthProgress = it.monthProgress - shard.month,
                 indexError = AppStrings.get(
                     R.string.shard_download_failed, shard.month,
                     "${e::class.java.simpleName} ${e.message.orEmpty()}".trim()
                 )
-            )
+            ) }
         }
     }
 
@@ -247,7 +249,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
             }
             m
         }
-        _state.value = _state.value.copy(dayCounts = counts)
+        _state.update { it.copy(dayCounts = counts) }
         if (_state.value.query.isBlank() && currentFilters.isEmpty() && activeDate == null) {
             filtered = merged
             emitPage()
@@ -263,8 +265,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
     }
 
     // 账号 index.json 缓存（repo/account -> tweets），避免重复拉取。
-    private val accountIndexCache =
-        java.util.concurrent.ConcurrentHashMap<String, List<io.github.twitterarchiver.data.Tweet>>()
 
     /**
      * 加载某主推文的完整对话：引用原推 + 回复链。
@@ -276,10 +276,12 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         val ownerUname = post.account.u.removePrefix("@").lowercase()
 
         // 1. 拉账号 index.json（缓存）
-        val cacheKey = "$repo/$account"
-        val tweets = accountIndexCache[cacheKey] ?: try {
-            api.fetchTweets(repo, account).also { accountIndexCache[cacheKey] = it }
-        } catch (e: Exception) { emptyList() }
+        val tweets = try {
+            Repository.shared.getTweets(repo, account)
+        } catch (e: Exception) {
+            currentCoroutineContext().ensureActive()
+            emptyList()
+        }
 
         val idIndex = tweets.associateBy { it.tweetId }
         fun avatarUrl(av: String) = if (av.isBlank()) "" else
@@ -345,7 +347,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
             }
         }
         val ownerReplies = (replyMap[post.tweetId] ?: emptyList())
-            .sortedBy { it.timestamp }
+            .sortedBy { it.epochMs }
         val chain = ArrayList<io.github.twitterarchiver.data.ThreadItem>()
         val seen = HashSet<String>()
         seen.add(post.tweetId)
@@ -380,7 +382,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         }
 
         // 按时间排序整个链
-        val sorted = chain.sortedBy { it.time }
+        val sorted = chain.sortedBy { it.epochMs }
         return quoted to sorted
     }
 
@@ -388,7 +390,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
     private fun loadFullAsInitial() {
         viewModelScope.launch {
             recentLoaded = true
-            _state.value = _state.value.copy(loading = false)
+            _state.update { it.copy(loading = false) }
             loadFull()
         }
     }
@@ -418,7 +420,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
     }
 
     fun clearIndexError() {
-        _state.value = _state.value.copy(indexError = null)
+        _state.update { it.copy(indexError = null) }
     }
 
     fun search(q: String) = applyFilter(q)
@@ -462,14 +464,14 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
                 SearchUtil.monthFromTweetId(q.trim())
                     ?.takeIf { it !in loadedMonths && shardMonths.contains(it) }
             } else null
-            _state.value = _state.value.copy(
+            _state.update { it.copy(
                 query = q,
                 filterAccounts = currentFilters,
                 accounts = allAccounts,
                 activeDate = activeDate,
                 searchTotal = if (q.isBlank()) 0 else result.size,
                 searchMissingMonth = missing
-            )
+            ) }
             emitPage()
         }
     }
@@ -516,12 +518,12 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         val day = post.displayDate
         lastNarrow = null
         activeDate = day.takeIf { it.isNotBlank() }
-        _state.value = _state.value.copy(
+        _state.update { it.copy(
             query = "",
             searchTotal = 0,
             searchMissingMonth = null,
             jumpTarget = post.tweetId
-        )
+        ) }
         applyFilter("")
     }
 
@@ -536,21 +538,22 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
             val months = _state.value.shards.map { it.month }
                 .filter { it !in loadedMonths }
                 .sortedDescending()
-            _state.value = _state.value.copy(fullSearchRunning = true)
+            _state.update { it.copy(fullSearchRunning = true) }
             for (m in months) {
                 if (!isActive) break
                 val shard = meta?.shards?.find { it.month == m } ?: continue
-                loadShard(shard)
-                if (allPosts.any { it.tweetId.endsWith(code) }) break
+                loadShard(shard, rebuild = false)
+                if (monthPosts[m]?.any { p -> p.tweetId.endsWith(code) } == true) break
             }
-            _state.value = _state.value.copy(fullSearchRunning = false)
+            monthLock.withLock { rebuildFromLoaded() }
+            _state.update { it.copy(fullSearchRunning = false) }
             applyFilter(_state.value.query)
         }
     }
 
     fun cancelFullSearch() {
         fullSearchJob?.cancel()
-        _state.value = _state.value.copy(fullSearchRunning = false)
+        _state.update { it.copy(fullSearchRunning = false) }
     }
 
     private var fullSearchJob: Job? = null
@@ -558,7 +561,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
     /** 列表滚动到目标后调用，避免返回时又跳一次 */
     fun clearJumpTarget() {
         if (_state.value.jumpTarget != null) {
-            _state.value = _state.value.copy(jumpTarget = null)
+            _state.update { it.copy(jumpTarget = null) }
         }
     }
 
@@ -570,7 +573,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
 
     private fun emitPage() {
         val end = ((page + 1) * pageSize).coerceAtMost(filtered.size)
-        _state.value = _state.value.copy(
+        _state.update { it.copy(
             loading = false,
             visible = filtered.take(end),
             totalCount = filtered.size,
@@ -578,6 +581,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
             error = null,
             accounts = allAccounts,
             filterAccounts = currentFilters
-        )
+        ) }
     }
 }

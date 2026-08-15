@@ -134,7 +134,7 @@ fun AccountFeedScreen(
         val filtered = base.filter { t ->
             t.hasFile && !t.isVirtual && if (tab == 0) !t.isReply else t.isReply
         }.let { list ->
-            if (state.ascending) list.sortedBy { it.timestamp } else list.sortedByDescending { it.timestamp }
+            if (state.ascending) list.sortedBy { it.epochMs } else list.sortedByDescending { it.epochMs }
         }
         if (tab == 0) {
             // 置顶判断：profile.pinned 匹配 或 推文自身 is_pinned=true（兼容两种数据）

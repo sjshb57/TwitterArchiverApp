@@ -3,6 +3,8 @@ package io.github.twitterarchiver.data
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.security.MessageDigest
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * 离线索引存储：把每个账号的 index.json 按月切成本地小文件，
@@ -37,7 +39,15 @@ class OfflineIndexStore(private val api: GitHubApi) {
      * 返回 null 表示离线层完全无法提供（未初始化/彻底失败且无本地数据），
      * 由调用方退回旧的直连路径。
      */
-    suspend fun load(repo: String, account: String, force: Boolean = false): List<Tweet>? {
+    /** 每个账号一把锁：splitAndSave 会先清空目录再写，读写并发会拿到半截文件 */
+    private val locks = java.util.concurrent.ConcurrentHashMap<String, Mutex>()
+
+    suspend fun load(repo: String, account: String, force: Boolean = false): List<Tweet>? =
+        locks.getOrPut("$repo/$account") { Mutex() }.withLock {
+            loadLocked(repo, account, force)
+        }
+
+    private suspend fun loadLocked(repo: String, account: String, force: Boolean): List<Tweet>? {
         val dir = dirFor(repo, account) ?: return null
         return try {
             if (force) fullRefresh(dir, repo, account) ?: readLocal(dir)
@@ -144,14 +154,19 @@ class OfflineIndexStore(private val api: GitHubApi) {
             return null
         }
         dir.mkdirs()
-        // 清掉旧月份文件再写新的，避免残留
-        dir.listFiles()?.forEach { if (it.name.endsWith(".json") && it.name != "_state.json") it.delete() }
+        val staging = File(dir, ".staging").apply { deleteRecursively(); mkdirs() }
         val hashes = HashMap<String, String>()
         for ((month, range) in spans) {
             val seg = raw.copyOfRange(range.first, range.last + 1)
-            File(dir, "$month.json").writeBytes(seg)
+            File(staging, "$month.json").writeBytes(seg)
             hashes[month] = sha16(seg)
         }
+        dir.listFiles()?.forEach {
+            if (it.name.endsWith(".json") && it.name != "_state.json") it.delete()
+        }
+        staging.listFiles()?.forEach { it.renameTo(File(dir, it.name)) }
+        staging.deleteRecursively()
+
         writeState(dir, LocalIndexState(months = hashes))
         return readLocal(dir)
     }

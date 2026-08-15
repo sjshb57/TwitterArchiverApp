@@ -19,6 +19,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import io.github.twitterarchiver.R
 import io.github.twitterarchiver.data.AppStrings
+import kotlinx.coroutines.flow.update
 
 private const val SEARCH_DEBOUNCE_MS = 200L
 
@@ -62,7 +63,7 @@ class ReaderViewModel(private val repo: Repository = Repository.shared) : ViewMo
                 )
             } catch (e: Exception) {
                 currentCoroutineContext().ensureActive()
-                if (forceRefresh) _state.value = _state.value.copy(loading = false)
+                if (forceRefresh) _state.update { it.copy(loading = false) }
                 else _state.value = ReaderState(loading = false, error = AppStrings.get(R.string.load_failed, e.message.orEmpty()))
             }
         }
@@ -88,16 +89,16 @@ class ReaderViewModel(private val repo: Repository = Repository.shared) : ViewMo
         val s = _state.value
         if (q.isBlank()) {
             selectDay(s.activeDay)
-            _state.value = _state.value.copy(searchQuery = "")
+            _state.update { it.copy(searchQuery = "") }
             return
         }
         searchJob = viewModelScope.launch {
             delay(SEARCH_DEBOUNCE_MS.milliseconds)
             val hit = withContext(Dispatchers.Default) { matchQuery(s.allTweets, q) }
-            _state.value = _state.value.copy(
+            _state.update { it.copy(
                 searchQuery = q,
                 visibleTweets = sortTweets(hit, s.ascending)
-            )
+            ) }
         }
     }
 
@@ -134,6 +135,6 @@ class ReaderViewModel(private val repo: Repository = Repository.shared) : ViewMo
     }
 
     private fun sortTweets(list: List<Tweet>, asc: Boolean): List<Tweet> =
-        if (asc) list.sortedBy { it.timestamp }
-        else list.sortedByDescending { it.timestamp }
+        if (asc) list.sortedBy { it.epochMs }
+        else list.sortedByDescending { it.epochMs }
 }

@@ -5,6 +5,10 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import io.github.twitterarchiver.R
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 
 /** 数据仓库：统一入口，带简单内存缓存 */
 class Repository(private val api: GitHubApi = GitHubApi.shared) {
@@ -51,6 +55,7 @@ class Repository(private val api: GitHubApi = GitHubApi.shared) {
                     }
                 }
             } catch (e: Exception) {
+                currentCoroutineContext().ensureActive()
                 metaFile("repos.json")?.takeIf { it.isFile }?.let { f ->
                     try { diskJson.decodeFromString<List<ArchiveRepo>>(f.readText()) }
                     catch (e2: Exception) { null }
@@ -68,11 +73,26 @@ class Repository(private val api: GitHubApi = GitHubApi.shared) {
     ): List<Tweet> = withContext(Dispatchers.IO) {
         val key = "$repo/$account"
         if (!forceRefresh) tweetsCache[key]?.let { return@withContext it }
-        val list = (offline.load(repo, account, forceRefresh) ?: api.fetchTweets(repo, account))
-            .distinctBy { it.tweetId }
+
+        val deferred = inFlight.compute(key) { _, running ->
+            if (running != null && !forceRefresh) running
+            else scope.async {
+                try {
+                    (offline.load(repo, account, forceRefresh) ?: api.fetchTweets(repo, account))
+                        .distinctBy { it.tweetId }
+                } finally {
+                    inFlight.remove(key)
+                }
+            }
+        }!!
+        val list = deferred.await()
         tweetsCache[key] = list
         list
     }
+
+    /** 进行中的账号加载。SupervisorJob：一个账号失败不牵连其它 */
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val inFlight = java.util.concurrent.ConcurrentHashMap<String, Deferred<List<Tweet>>>()
 
     suspend fun getProfile(repo: String, account: String, forceRefresh: Boolean = false): Profile =
         withContext(Dispatchers.IO) {
@@ -186,6 +206,7 @@ class Repository(private val api: GitHubApi = GitHubApi.shared) {
                     AppStrings.get(R.string.avatar_commit_msg, targetName))
                     .map { AppStrings.get(R.string.avatar_copied, srcName, targetName) }
             } catch (e: Exception) {
+                currentCoroutineContext().ensureActive()
                 Result.failure(e)
             }
         }

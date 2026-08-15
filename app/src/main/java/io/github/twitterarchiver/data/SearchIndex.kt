@@ -94,7 +94,10 @@ data class ThreadItem(
     val time: String,
     val isOwner: Boolean,
     val isQuoted: Boolean
-)
+) {
+    /** 同 Tweet.epochMs：回复链里也可能混入老格式时间戳 */
+    val epochMs: Long get() = io.github.twitterarchiver.util.DateUtil.epochMillis(time)
+}
 
 /** 主推文的引用原推（转推/引用显示用） */
 data class QuotedTweet(

@@ -49,7 +49,9 @@ exceptions:
   InstanceOfCheckForException:
     active: false
   SwallowedException:
-    active: false
+    active: true
+    ignoredExceptionTypes:
+      - CancellationException
   TooGenericExceptionThrown:
     active: false
 
