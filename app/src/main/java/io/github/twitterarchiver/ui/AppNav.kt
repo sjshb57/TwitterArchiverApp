@@ -260,13 +260,6 @@ fun AppNav(
                     }
                 )
             }
-            // 全站图片预览
-            imagePreview?.let { (urls, idx) ->
-                io.github.twitterarchiver.ui.components.ImagePreviewOverlay(
-                    urls = urls, startIndex = idx,
-                    onDismiss = { imagePreview = null }
-                )
-            }
         }
         is Screen.Reader -> AccountReaderScreen(
             repo = s.repo, account = s.account, displayName = s.name,
@@ -355,13 +348,6 @@ fun AppNav(
                     onBookmark = { bmVm.remove(b.tweetId); previewBookmark = null }
                 )
             }
-            // 卡片内点图 → 全屏预览
-            imagePreview?.let { (urls, idx) ->
-                io.github.twitterarchiver.ui.components.ImagePreviewOverlay(
-                    urls = urls, startIndex = idx,
-                    onDismiss = { imagePreview = null }
-                )
-            }
         }
         is Screen.Request -> {
             val reqVm: RequestViewModel = viewModel()
@@ -434,6 +420,16 @@ fun AppNav(
         is Screen.AdminRequests -> AdminRequestsScreen(
             vm = adminVm,
             onBack = { navBack() }
+        )
+    }
+
+    // 放在 when 外面渲染一次：多个分支都会写 imagePreview，
+    // 只在其中几个分支里渲染的话，别的分支点图没反应，
+    // 而且状态已经非空，返回时浮层会突然盖在上一页
+    imagePreview?.let { (urls, idx) ->
+        io.github.twitterarchiver.ui.components.ImagePreviewOverlay(
+            urls = urls, startIndex = idx,
+            onDismiss = { imagePreview = null }
         )
     }
 }

@@ -335,7 +335,7 @@
     <string name="post_card_19">通过系统分享…</string>
 
     <!-- GlobalScreen -->
-    <string name="global_01">共 %%,d 条</string>
+    <string name="global_01">共 %1$,d 条</string>
     <string name="global_02">已加载的内容里没有找到 · 在全部月份中查找</string>
     <string name="global_03">按日期</string>
     <string name="global_04">搜索全站推文…</string>
@@ -386,7 +386,7 @@
     <string name="request_07">账号用户名（如 @example）</string>
 
     <!-- SettingsScreen -->
-    <string name="settings_01">\\"关注\\" 标签页</string>
+    <string name="settings_01">「关注」标签页</string>
     <string name="settings_02">主题管理</string>
     <string name="settings_03">书签管理</string>
     <string name="settings_04">将删除已下载的离线索引与图片缓存。书签、设置不受影响；下次浏览时会重新下载所需内容。</string>

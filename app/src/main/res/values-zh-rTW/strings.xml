@@ -335,7 +335,7 @@
     <string name="post_card_19">透過系統分享…</string>
 
     <!-- GlobalScreen -->
-    <string name="global_01">共 %%,d 條</string>
+    <string name="global_01">共 %1$,d 條</string>
     <string name="global_02">已載入的內容裡沒有找到 · 在全部月份中查詢</string>
     <string name="global_03">按日期</string>
     <string name="global_04">搜尋全站推文…</string>
@@ -386,7 +386,7 @@
     <string name="request_07">賬號使用者名稱（如 @example）</string>
 
     <!-- SettingsScreen -->
-    <string name="settings_01">\\"關注\\" 標籤頁</string>
+    <string name="settings_01">「關注」標籤頁</string>
     <string name="settings_02">主題管理</string>
     <string name="settings_03">書籤管理</string>
     <string name="settings_04">將刪除已下載的離線索引與圖片快取。書籤、設定不受影響；下次瀏覽時會重新下載所需內容。</string>

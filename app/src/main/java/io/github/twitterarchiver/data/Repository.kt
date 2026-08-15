@@ -68,8 +68,8 @@ class Repository(private val api: GitHubApi = GitHubApi.shared) {
     ): List<Tweet> = withContext(Dispatchers.IO) {
         val key = "$repo/$account"
         if (!forceRefresh) tweetsCache[key]?.let { return@withContext it }
-        // 离线增量层（本地按月缓存 + 清单比对 + Range 补差）；不可用时退直连
-        val list = offline.load(repo, account, forceRefresh) ?: api.fetchTweets(repo, account)
+        val list = (offline.load(repo, account, forceRefresh) ?: api.fetchTweets(repo, account))
+            .distinctBy { it.tweetId }
         tweetsCache[key] = list
         list
     }

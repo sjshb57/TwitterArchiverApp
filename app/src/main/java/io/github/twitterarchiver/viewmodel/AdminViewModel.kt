@@ -562,11 +562,14 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
             _state.value = _state.value.copy(busy = true)
             repo.generateRepo(pat, account)
                 .onSuccess {
-                    kotlinx.coroutines.delay(6000.milliseconds)
-                    repo.dispatchWorkflow(pat, account, "setup.yml", mapOf("since" to ""))
-                    repo.closeIssue(pat, number)
-                    addNewlyCreated(account)   // 加入新建记录
-                    _state.value = _state.value.copy(busy = false, message = str(R.string.admin_approved, account))
+                    addNewlyCreated(account)
+                    markPendingSetup(account, "")
+                    val ok = dispatchSetup(pat, account, "", fromUser = true)
+                    if (ok) {
+                        repo.closeIssue(pat, number)
+                        _state.value = _state.value.copy(
+                            busy = false, message = str(R.string.admin_approved, account))
+                    }
                     loadRequests()
                 }
                 .onFailure { _state.value = _state.value.copy(busy = false, message = str(R.string.admin_create_failed, it.message.orEmpty())) }
@@ -617,14 +620,19 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         return false
     }
 
-    private suspend fun dispatchSetup(pat: String, name: String, since: String, fromUser: Boolean) {
+    /** 返回是否真的触发成功，调用方据此决定后续动作（比如关不关 Issue） */
+    private suspend fun dispatchSetup(
+        pat: String, name: String, since: String, fromUser: Boolean
+    ): Boolean {
         if (!awaitSetupReady(pat, name)) {
             _state.value = _state.value.copy(busy = false,
                 message = str(R.string.admin_workflow_not_ready, name))
-            return
+            return false
         }
+        var ok = false
         repo.dispatchWorkflow(pat, name, "setup.yml", mapOf("since" to since))
             .onSuccess {
+                ok = true
                 clearPendingSetup(name)
                 _state.value = _state.value.copy(busy = false, message = str(R.string.admin_setup_triggered, name))
             }
@@ -633,6 +641,7 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                     message = if (fromUser) str(R.string.admin_setup_failed, name, it.message.orEmpty())
                               else str(R.string.admin_retry_setup_failed, name, it.message.orEmpty()))
             }
+        return ok
     }
 
     /**
@@ -679,7 +688,9 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
             val r = repo.putFileContentRaw(it, repoName,
                 "accounts/$account/wayback_snapshots/avatar/1500x500.jpg",
                 base64NoWrap, sha, str(R.string.admin_banner_commit, account))
-            markBannerDone(repoName)   // 传成功 → 从待完善移除，即时更新角标
+            // 必须看结果：失败时若照样移除，角标就消失了，
+            // 除非重跑一次完整性检测否则再也找不回来
+            r.onSuccess { markBannerDone(repoName) }
             r
         }
 

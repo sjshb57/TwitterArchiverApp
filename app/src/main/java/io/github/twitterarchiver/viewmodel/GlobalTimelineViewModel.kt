@@ -82,8 +82,12 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
 
     init { load() }
 
-    fun load() {
-        if (recentLoaded) return
+    /**
+     * [force] 为 true 时忽略"已加载过"的短路，用于下拉刷新——
+     * 不加这个参数的话下拉刷新是空操作：转圈几百毫秒然后收起，数据一条没变。
+     */
+    fun load(force: Boolean = false) {
+        if (recentLoaded && !force) return
         viewModelScope.launch {
             _state.value = GlobalState(loading = true)
             try {

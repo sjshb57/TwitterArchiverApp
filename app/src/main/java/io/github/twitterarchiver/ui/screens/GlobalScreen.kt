@@ -39,7 +39,6 @@ import io.github.twitterarchiver.data.GlobalPost
 import io.github.twitterarchiver.ui.components.GlobalPostCard
 import io.github.twitterarchiver.viewmodel.GlobalTimelineViewModel
 import kotlinx.coroutines.launch
-import kotlin.time.Duration.Companion.milliseconds
 import androidx.compose.ui.res.stringResource
 import io.github.twitterarchiver.R
 
@@ -85,13 +84,15 @@ fun GlobalScreen(
 
     var refreshing by remember { mutableStateOf(false) }
     val refreshScope = androidx.compose.runtime.rememberCoroutineScope()
+    LaunchedEffect(state.loading, state.loadingFull) {
+        if (refreshing && !state.loading && !state.loadingFull) refreshing = false
+    }
     androidx.compose.material3.pulltorefresh.PullToRefreshBox(
         isRefreshing = refreshing,
         onRefresh = {
             refreshing = true
             io.github.twitterarchiver.data.NetworkState.clearFailed()
-            vm.load()
-            refreshScope.launch { kotlinx.coroutines.delay(800.milliseconds); refreshing = false }
+            vm.load(force = true)
         },
         modifier = Modifier.fillMaxSize().statusBarsPadding()
     ) {
@@ -124,7 +125,7 @@ fun GlobalScreen(
                 // 有搜索/筛选时才切成当前结果数
                 val shown = if (browsing && state.globalTotal > 0) state.globalTotal else state.totalCount
                 if (shown > 0) {
-                    Text(stringResource(R.string.global_01).format(shown), fontSize = 10.sp,
+                    Text(stringResource(R.string.global_01, shown), fontSize = 10.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(" · ", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
