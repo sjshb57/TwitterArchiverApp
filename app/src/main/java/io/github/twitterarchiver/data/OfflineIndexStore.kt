@@ -1,8 +1,11 @@
 package io.github.twitterarchiver.data
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromStream
 import java.io.File
 import java.security.MessageDigest
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -10,17 +13,6 @@ import kotlinx.coroutines.sync.withLock
  * 离线索引存储：把每个账号的 index.json 按月切成本地小文件，
  * 依据 home/manifest/{repo}.json（月度哈希 + 字节区间）做增量更新——
  * 只有发生变化的月份才通过 HTTP Range 重新下载对应字节段。
- *
- * 服务端不真正分片；分片只存在于本地：
- *   files/index_cache/{repo}/{account}/
- *     _state.json    已缓存月份 -> 清单哈希
- *     2026-07.json   该月记录的原始字节片段（不含外层 [ ]，与服务端字节一致）
- *
- * 安全性依赖内容哈希而非 ETag：Range 取回的字节段先对清单哈希，
- * 一致才落盘；不一致（清单已过期、offset 失效）退回全量下载。
- * GitHub Pages 的 ETag 按部署时间生成，Pages 重新部署就会变，不可依赖。
- *
- * 任何一步失败都逐级兜底：增量失败 → 全量下载 → 本地旧数据 → null（调用方直连）。
  */
 class OfflineIndexStore(private val api: GitHubApi) {
 
@@ -34,11 +26,6 @@ class OfflineIndexStore(private val api: GitHubApi) {
     private fun dirFor(repo: String, account: String): File? =
         AppDirs.root?.let { File(it, "index_cache/$repo/$account") }
 
-    /**
-     * 加载某账号的推文列表。
-     * 返回 null 表示离线层完全无法提供（未初始化/彻底失败且无本地数据），
-     * 由调用方退回旧的直连路径。
-     */
     /** 每个账号一把锁：splitAndSave 会先清空目录再写，读写并发会拿到半截文件 */
     private val locks = java.util.concurrent.ConcurrentHashMap<String, Mutex>()
 
@@ -53,17 +40,15 @@ class OfflineIndexStore(private val api: GitHubApi) {
             if (force) fullRefresh(dir, repo, account) ?: readLocal(dir)
             else sync(dir, repo, account)
         } catch (e: Exception) {
-            readLocal(dir)          // 意外异常：能读本地就读本地
+            currentCoroutineContext().ensureActive()
+            readLocal(dir)
         }
     }
-
-    // ── 同步主流程 ──────────────────────────────────────────────────────────
 
     private suspend fun sync(dir: File, repo: String, account: String): List<Tweet>? {
         val manifest = api.fetchIndexManifest(repo)
             ?.takeIf { it.account.isBlank() || it.account == account }
 
-        // 清单不可用 / 不属于本账号 / 标记不可 Range：全量路径（失败退本地）
         if (manifest == null || !manifest.range || manifest.months.isEmpty()) {
             return fullRefresh(dir, repo, account) ?: readLocal(dir)
         }
@@ -74,13 +59,11 @@ class OfflineIndexStore(private val api: GitHubApi) {
         }
         val removed = state.months.keys - manifest.months.keys
 
-        // 全部命中：一次清单请求（几 KB）就完事
         if (changed.isEmpty() && removed.isEmpty()) {
             readLocal(dir)?.let { return it }
-            return fullRefresh(dir, repo, account)   // 本地文件损坏/丢失
+            return fullRefresh(dir, repo, account)
         }
 
-        // 增量：逐月 Range 取变化的字节段
         dir.mkdirs()
         for ((month, span) in changed) {
             val res = api.fetchIndexRange(repo, account, span.offset, span.length)
@@ -105,11 +88,14 @@ class OfflineIndexStore(private val api: GitHubApi) {
 
     /** 全量下载并按月落盘；网络失败返回 null */
     private suspend fun fullRefresh(dir: File, repo: String, account: String): List<Tweet>? {
-        val bytes = try { api.fetchIndexBytes(repo, account) } catch (e: Exception) { return null }
+        val bytes = try {
+            api.fetchIndexBytes(repo, account)
+        } catch (e: Exception) {
+            currentCoroutineContext().ensureActive()
+            return null
+        }
         return splitAndSave(dir, bytes) ?: parseWhole(bytes)
     }
-
-    // ── 本地读写 ────────────────────────────────────────────────────────────
 
     private fun readState(dir: File): LocalIndexState = try {
         json.decodeFromString<LocalIndexState>(File(dir, "_state.json").readText())
@@ -122,52 +108,62 @@ class OfflineIndexStore(private val api: GitHubApi) {
     }
 
     /** 读出全部本地月份文件并合并（时间倒序）。缺失/损坏返回 null */
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
     private fun readLocal(dir: File): List<Tweet>? {
         val files = dir.listFiles { f -> f.isFile && f.name.endsWith(".json") && f.name != "_state.json" }
             ?.takeIf { it.isNotEmpty() } ?: return null
-        // 月份倒序；unknown 固定排最后
         val ordered = files.sortedWith(
             compareBy<File> { it.name == "unknown.json" }.thenByDescending { it.name }
         )
         return try {
-            val sb = StringBuilder("[")
+            val parts = ArrayList<java.io.InputStream>(ordered.size * 2 + 2)
+            parts.add(java.io.ByteArrayInputStream(BRACKET_OPEN))
             ordered.forEachIndexed { i, f ->
-                if (i > 0) sb.append(',')
-                sb.append(f.readText())
+                if (i > 0) parts.add(java.io.ByteArrayInputStream(COMMA))
+                parts.add(f.inputStream())
             }
-            sb.append("]")
-            json.decodeFromString<List<Tweet>>(sb.toString())
+            parts.add(java.io.ByteArrayInputStream(BRACKET_CLOSE))
+            java.io.SequenceInputStream(java.util.Collections.enumeration(parts)).use { input ->
+                json.decodeFromStream<List<Tweet>>(input)
+            }
         } catch (e: Exception) { null }
+    }
+
+    private companion object {
+        val BRACKET_OPEN = "[".toByteArray()
+        val BRACKET_CLOSE = "]".toByteArray()
+        val COMMA = ",".toByteArray()
     }
 
     private fun parseWhole(bytes: ByteArray): List<Tweet>? = try {
         json.decodeFromString<List<Tweet>>(bytes.decodeToString())
     } catch (e: Exception) { null }
 
-    // ── 按月切分（与生成端 build-manifest 相同的字节级逻辑） ────────────────
-
     /** 把完整 index.json 字节按月切分落盘并写状态；月份交错等异常返回 null */
     private fun splitAndSave(dir: File, raw: ByteArray): List<Tweet>? {
         val spans = splitByMonth(raw) ?: run {
-            // 切不动：清掉状态，本次直接内存解析，下次再试
             File(dir, "_state.json").delete()
             return null
         }
         dir.mkdirs()
-        val staging = File(dir, ".staging").apply { deleteRecursively(); mkdirs() }
+        val staging = File(dir.parentFile, "${dir.name}.staging")
+            .apply { deleteRecursively(); mkdirs() }
         val hashes = HashMap<String, String>()
         for ((month, range) in spans) {
             val seg = raw.copyOfRange(range.first, range.last + 1)
             File(staging, "$month.json").writeBytes(seg)
             hashes[month] = sha16(seg)
         }
-        dir.listFiles()?.forEach {
-            if (it.name.endsWith(".json") && it.name != "_state.json") it.delete()
-        }
-        staging.listFiles()?.forEach { it.renameTo(File(dir, it.name)) }
-        staging.deleteRecursively()
+        writeState(staging, LocalIndexState(months = hashes))
 
-        writeState(dir, LocalIndexState(months = hashes))
+        val trash = File(dir.parentFile, "${dir.name}.trash")
+        trash.deleteRecursively()
+        val swapped = (!dir.exists() || dir.renameTo(trash)) && staging.renameTo(dir)
+        trash.deleteRecursively()
+        if (!swapped) {
+            staging.listFiles()?.forEach { it.copyTo(File(dir, it.name), overwrite = true) }
+            staging.deleteRecursively()
+        }
         return readLocal(dir)
     }
 
@@ -210,12 +206,11 @@ class OfflineIndexStore(private val api: GitHubApi) {
                 }
                 i++
             }
-            val end = i          // exclusive
+            val end = i
             val month = extractMonth(raw, start, end)
 
             if (month != curMonth) {
-                if (month in seen) return null          // 交错
-                // blockEnd 是开区间上界，IntRange 收闭区间，故减一
+                if (month in seen) return null
                 curMonth?.let { spans.add(it to IntRange(blockStart, blockEnd - 1)) }
                 seen.add(month)
                 curMonth = month

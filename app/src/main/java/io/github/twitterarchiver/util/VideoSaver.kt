@@ -7,9 +7,9 @@ import android.provider.MediaStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.net.URL
 import io.github.twitterarchiver.R
 import io.github.twitterarchiver.data.AppStrings
+import io.github.twitterarchiver.data.HttpClients
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 
@@ -39,12 +39,18 @@ object VideoSaver {
                 val out = resolver.openOutputStream(uri)
                     ?: throw java.io.IOException(AppStrings[R.string.io_open_output_failed])
                 out.use { o ->
-                    val conn = URL(url).openConnection().apply {
-                        connectTimeout = 15_000
-                        readTimeout = 30_000
-                    }
-                    conn.getInputStream().use { input ->
-                        input.copyTo(o, bufferSize = 64 * 1024)
+                    val req = okhttp3.Request.Builder().url(url).build()
+                    HttpClients.shared.newCall(req).execute().use { resp ->
+                        if (!resp.isSuccessful) throw java.io.IOException("HTTP ${resp.code}")
+                        resp.body.byteStream().use { input ->
+                            val buf = ByteArray(64 * 1024)
+                            while (true) {
+                                currentCoroutineContext().ensureActive()
+                                val n = input.read(buf)
+                                if (n < 0) break
+                                o.write(buf, 0, n)
+                            }
+                        }
                     }
                 }
                 values.clear()

@@ -79,8 +79,30 @@ object DateUtil {
         } catch (e: Exception) { null }
     }
 
-    /** 排序用的毫秒时间戳。解析不出来返回 0，排到最后 */
+    /** 排序用的毫秒时间戳。解析不出来返回 0，排序时由 [timeComparator] 兜到最后 */
     fun epochMillis(timestamp: String): Long = parse(timestamp)?.time ?: 0L
+
+    /**
+     * 时间排序比较器。
+     *
+     * 直接 `sortedBy { it.epochMs }` 有个坑：解析不出时间的记录 epochMs 是 0，
+     * 升序时它们会全部跑到最前面（降序才恰好在最后）。这里显式把 0 归到末尾，
+     * 升降序行为一致。
+     *
+     * [key] 只做字段读取，不要在里面算时间——比较器会被调用 O(n log n) 次。
+     */
+    fun <T> timeComparator(ascending: Boolean, key: (T) -> Long): Comparator<T> =
+        Comparator { a, b ->
+            val x = key(a)
+            val y = key(b)
+            when {
+                x == y -> 0
+                x == 0L -> 1        // a 无时间 → 排后
+                y == 0L -> -1       // b 无时间 → 排后
+                ascending -> x.compareTo(y)
+                else -> y.compareTo(x)
+            }
+        }
 
     /** 毫秒时间戳 → yyyy-MM（UTC）。分片是按 UTC 月份切的，这里必须用 UTC。 */
     fun utcMonthOf(ms: Long): String = monthFmt.get()!!.format(java.util.Date(ms))

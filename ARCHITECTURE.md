@@ -4,7 +4,7 @@
 
 | 项目   | 内容                                       |
 |------|------------------------------------------|
-| 代码规模 | 约 60 余个 Kotlin 文件                        |
+| 代码规模 | 83 个 Kotlin 文件（含 5 个测试），约 12,000 行       |
 | 技术栈  | Kotlin、Jetpack Compose、Material 3        |
 | 架构   | 单 Activity，自实现栈式导航，MVVM 分层               |
 | 构建   | AGP 9.3.1 / Gradle 9.7.0 / Kotlin 2.4.10 |
@@ -174,7 +174,7 @@ UI 层不直接访问 `GitHubApi`，ViewModel 层不引用 Compose API，`util` 
 |------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `Config.kt`            | 全部 URL 与身份常量的唯一定义处。包含组织名、申请仓库、模板仓库及各类 URL 构造函数                                                                                                                                              |
 | `GitHubApi.kt`         | 网络层，基于 Ktor + OkHttp。前半部分为 Pages 读取接口，后半部分为需 PAT 的 GitHub API 写操作。全站索引（`search-index/*.json`）采用 `android.util.JsonReader` 流式解析，避免几十万条一次性建对象；单账号 `index.json` 走 kotlinx.serialization 直接反序列化 |
-| `Repository.kt`        | 仓储层。含三级内存缓存（`reposCache` 单例与 `tweetsCache`、`profileCache` 两个 Map）、磁盘兜底读取，并转发管理操作                                                                                                            |
+| `Repository.kt`        | 仓储层，全应用单例（`Repository.shared`）。含有界 LRU 内存缓存（`tweetsCache` 4 个账号、`profileCache` 64 个）、按账号的 in-flight 去重（同一账号并发请求只下载一次）、`distinctBy` 去重、磁盘兜底读取，并转发管理操作。`clearMemoryCaches()` 供设置页清理缓存时调用      |
 | `Models.kt`            | 全部 `@Serializable` 数据类：`ArchiveRepo`、`Tweet`、`Profile`、`GitHubIssue`、`WorkflowRun`、`IndexManifest` 等                                                                                        |
 | `SearchIndex.kt`       | 全站索引模型。`GlobalPost` 负责解析紧凑数组，并按扩展名将媒体列表分流为图片与视频两组 URL                                                                                                                                       |
 | `GlobalIndexStore.kt`  | 全站索引分片的本地副本。含 `GlobalIndexMeta`、`GlobalShard` 模型与按年增删的磁盘操作，详见 5.5                                                                                                                           |
@@ -206,7 +206,6 @@ UI 层不直接访问 `GitHubApi`，ViewModel 层不引用 Compose API，`util` 
 | `SettingsViewModel.kt`       | 设置项读写                                                                             |
 | `ProfileStatsViewModel.kt`   | 单账号统计，供资料卡片展示                                                                     |
 | `RequestViewModel.kt`        | 访客提交存档申请                                                                          |
-| `AuthViewModel.kt`           | PAT 登录态与令牌校验                                                                      |
 | `BookmarkViewModel.kt`       | 书签增删与列表                                                                           |
 
 ### 4.4 导航
@@ -228,7 +227,8 @@ UI 层不直接访问 `GitHubApi`，ViewModel 层不引用 Compose API，`util` 
 | `ImagesScreen.kt`            | 媒体浏览页，支持保存至系统相册                                              |
 | `AdminEditProfileScreen.kt`  | 在线编辑 `profile.json`，输出保持 2 空格缩进且中文不转义，与原文件格式一致               |
 | `GlobalScreen.kt`            | 全站时间线                                                        |
-| `SettingsScreen.kt`          | 设置页，含缓存占用统计与清理                                               |
+| `SettingsScreen.kt`          | 设置页，含缓存占用统计与清理（同时清磁盘与 `Repository` 的内存缓存）                    |
+| `RepoHealthScreen.kt`        | 仓库健康检查：更新时间、体积、轮转超期判定，可按多种维度排序                               |
 | `ListScreen.kt`              | 账号列表                                                         |
 | `ThemeScreen.kt`             | 主题设置                                                         |
 | `AdminRequestsScreen.kt`     | 申请审批                                                         |
@@ -259,6 +259,9 @@ UI 层不直接访问 `GitHubApi`，ViewModel 层不引用 Compose API，`util` 
 | `SearchField.kt`         | 搜索框，使用 `BasicTextField` 自绘以规避 Material TextField 的固定高度限制        |
 | `Avatar.kt`              | 圆形头像                                                            |
 | `ConfirmDialog.kt`       | 通用二次确认对话框                                                       |
+| `GlobalDateTreeSheet.kt` | 全站页的年 → 月日期树面板，同时是历史分片的下载与清理入口                                  |
+| `SearchResultRow.kt`     | 搜索结果的紧凑条目                                                       |
+| `LifecyclePolling.kt`    | 跟随生命周期的轮询封装。仅在 STARTED 时轮询，单次 action 失败不会中断后续轮询                 |
 
 ### 4.7 util 包
 
@@ -290,7 +293,7 @@ UI 层不直接访问 `GitHubApi`，ViewModel 层不引用 Compose API，`util` 
          manifest/<repo>.json（各月哈希与字节区间）
               │
               ▼
-客户端   files/index_cache/<repo>/2026-07.json（按月拆分的本地文件）
+客户端   files/index_cache/<repo>/<账号>/2026-07.json（按月拆分的本地文件）
 ```
 
 更新流程：
@@ -351,31 +354,35 @@ if (BuildConfig.IS_ADMIN) { /* 渲染管理 Tab */ }
 
 启动顺序：
 
-1. 取 `search-index/meta.json`，拿到全站总条数、账号表与分片清单。此文件仅数十 KB。
-2. 加载最新一年的全部月度分片，首屏即可用。
-3. 若设置中开启「自动补全历史年份」，后台按年份从新到旧顺序补齐；关闭则停在第一年，其余年份由用户在「历史存档」页手动下载。
+1. 取 `timeline-recent.json` 渲染首屏（约 430 KB），用户立刻有内容可看。
+2. 取 `search-index/meta.json`，拿到全站总条数、账号表与分片清单。此文件仅数十 KB。
+3. **冷启动不主动下载任何分片**。只把上次已下载到本地的月份合入内存，其余月份一律由用户在日期树面板里按需下载。这是刻意的取舍：单个分片 3–12 MB，自动补齐会在用户没要求的情况下吃掉流量与内存。
 
 分片落盘于 `filesDir/global_index/`，命中时先比对 `meta.json` 中的 `hash`，一致则直接读盘不发请求。
 
-该目录**刻意不放在 `index_cache/` 下**：设置页的「清理缓存」会递归删除 `index_cache/`，而历史年份是用户主动下载的内容，不应被顺手清掉。它的清理入口在「设置 → 历史存档」页，可按年删除或整体清空。
+该目录**刻意不放在 `index_cache/` 下**：设置页的「清理缓存」会递归删除 `index_cache/`，而历史年份是用户主动下载的内容，不应被顺手清掉。它的清理入口在全站页的日期树面板（`GlobalDateTreeSheet`），可按年或按月删除。
 
 `GlobalIndexMeta.total` 始终是全站真实总条数，与本地已下载的年份无关，因此界面上「已加载 12,340 / 全站 486,201 条」中的后一个数字任何时候都是准确的。
 
 由于分片可能有几十 MB，`GitHubApi` 的 `HttpTimeout` 未设置 `requestTimeoutMillis`——该项限制的是整个请求的总时长，慢速网络下会在传输正常进行时误杀请求。真正的卡死由 `socketTimeoutMillis` 覆盖。
 
-合并新分片时需对全站数十万条按时间重排，该操作在 `Dispatchers.Default` 上执行；手动下载与后台补齐可能同时命中同一年，故 `loadYearInternal` 由 `Mutex` 串行化。
+合并新分片时需对全站数十万条按时间重排，该操作在 `Dispatchers.Default` 上执行；多处可能同时下载或删除月份，故 `loadShard`、`deleteMonth`、`deleteYear` 与 `rebuildFromLoaded` 统一由 `monthLock`（`Mutex`）串行化。
+
+逐月下载时只在全部就绪后重建一次总表：`downloadYear` 与 `searchAllMonths` 都显式传 `rebuild = false`，否则一年就是 12 次几十万条的全量重排。
+
+分片与 `meta.json` 落盘一律「写 `.tmp` → rename」。分片还有内容哈希兜底，`meta.json` 没有——半截的 meta 会让本地回退路径在解析处抛异常，整个全站页起不来。
 
 ---
 
 ## 6. 已知约束
 
-| 约束                                                    | 影响                   | 处理方式                                 |
-|-------------------------------------------------------|----------------------|--------------------------------------|
-| 少数历史记录的 `timestamp` 为推特原始格式（`Wed Sep 09 ... 2020`）    | 字符串比较取最大值会得到错误结果     | 涉及「最新」的判断改用聚合表 `av`，不做字符串比较          |
-| `text` 字段的换行被替换为空格                                    | 排版与网页版不一致            | 全部渲染路径优先采用 `body_text`               |
-| GitHub Pages 的 ETag 随部署变化                             | `If-Range` 导致非必要全量下载 | 改用内容哈希校验                             |
-| Contents API 列目录静默截断至 1000 条                          | 大目录下误判文件不存在          | 改用 Git Trees API                     |
-| 一个仓库可能对应多个账号                                          | 按仓库名做缓存键会串数据         | 磁盘缓存、离线索引目录、头像检测均以 `repo/account` 为键 |
+| 约束                                                 | 影响                   | 处理方式                                                                                                      |
+|----------------------------------------------------|----------------------|-----------------------------------------------------------------------------------------------------------|
+| 少数历史记录的 `timestamp` 为推特原始格式（`Wed Sep 09 ... 2020`） | 字符串比较会把它们整片排到错误位置    | `Tweet` / `ThreadItem` / `GlobalPost` 均在构造时算好 `epochMs`，全部排序统一走 `DateUtil.timeComparator`（解析不出的排最后，升降序一致） |
+| `text` 字段的换行被替换为空格                                 | 排版与网页版不一致            | 全部渲染路径优先采用 `body_text`                                                                                    |
+| GitHub Pages 的 ETag 随部署变化                          | `If-Range` 导致非必要全量下载 | 改用内容哈希校验                                                                                                  |
+| Contents API 列目录静默截断至 1000 条                       | 大目录下误判文件不存在          | 改用 Git Trees API                                                                                          |
+| 一个仓库可能对应多个账号                                       | 按仓库名做缓存键会串数据         | 磁盘缓存、离线索引目录、头像检测均以 `repo/account` 为键                                                                      |
 
 ---
 

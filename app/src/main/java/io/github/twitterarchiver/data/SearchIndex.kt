@@ -48,19 +48,10 @@ data class GlobalPost(
         get() = media.filter(::isVideoName)
             .map { "${Config.snapshotsBase(account.r, account.a)}/video/$it" }
 
-    /**
-     * 排序用的毫秒时间戳。放进比较器里现算的话是 O(n log n) 次日期解析，
-     * 48 万条的量级下开销比 displayDate 那几次读取加起来还大。
-     */
+    /** 排序用的毫秒时间戳。放进比较器里现算的话是 O(n log n) 次日期解析， */
     val epochMs: Long = io.github.twitterarchiver.util.DateUtil.epochMillis(time)
 
-    /**
-     * 本地时区日期。不能直接截 T 前面——那既是 UTC 日期，又会把老格式的 Tue/Thu 截断。
-     *
-     * 日计数、按日筛选、列表渲染都要读它，而它要跑一次日期解析。
-     * 用 get() 的话同一条会被解析三次以上；用 by lazy 又要为 48 万个实例
-     * 各分配一个 Lazy 对象。这里直接在构造时算好，零包装、只算一次。
-     */
+    /** 本地时区日期。不能直接截 T 前面——那既是 UTC 日期，又会把老格式的 Tue/Thu 截断。 */
     val displayDate: String = io.github.twitterarchiver.util.DateUtil.localDateOf(epochMs, time)
 
     /** 本地时区时间（HH:mm:ss），搜索结果条用来定位 */
@@ -93,11 +84,9 @@ data class ThreadItem(
     val images: List<String>,
     val time: String,
     val isOwner: Boolean,
-    val isQuoted: Boolean
-) {
-    /** 同 Tweet.epochMs：回复链里也可能混入老格式时间戳 */
-    val epochMs: Long get() = io.github.twitterarchiver.util.DateUtil.epochMillis(time)
-}
+    val isQuoted: Boolean,
+    val epochMs: Long = io.github.twitterarchiver.util.DateUtil.epochMillis(time)
+)
 
 /** 主推文的引用原推（转推/引用显示用） */
 data class QuotedTweet(

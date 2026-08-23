@@ -159,9 +159,12 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                         loadingRepo = null
                     ) }
                 }
-                .onFailure {
-                    _state.value = if (silent) _state.value.copy(loadingRepo = null)
-                    else _state.value.copy(loadingRepo = null, message = str(R.string.admin_load_failed, it.message.orEmpty()))
+                .onFailure { e ->
+                    _state.update { st ->
+                        if (silent) st.copy(loadingRepo = null)
+                        else st.copy(loadingRepo = null,
+                            message = str(R.string.admin_load_failed, e.message.orEmpty()))
+                    }
                 }
         }
     }

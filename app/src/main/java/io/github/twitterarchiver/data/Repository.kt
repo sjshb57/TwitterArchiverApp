@@ -14,11 +14,6 @@ import kotlinx.coroutines.async
 class Repository(private val api: GitHubApi = GitHubApi.shared) {
 
     companion object {
-        /**
-         * 全应用共享一个实例。之前每个 ViewModel 各持一个，
-         * 意味着 tweetsCache / profileCache 也各存一份——同一个账号的
-         * index.json 在内存里存了好几遍，缓存几乎白做。
-         */
         val shared: Repository by lazy { Repository() }
     }
 
@@ -31,12 +26,26 @@ class Repository(private val api: GitHubApi = GitHubApi.shared) {
         AppDirs.root?.let { java.io.File(it, "index_cache/_meta").apply { mkdirs() } }
             ?.let { java.io.File(it, name) }
 
-    // 改成单例共享之后，多个 ViewModel 的协程会并发读写这几个缓存，
-    // 裸 mutableMap 在 Dispatchers.IO 上会有结构损坏或 ConcurrentModificationException
     @Volatile
     private var reposCache: List<ArchiveRepo>? = null
-    private val tweetsCache = java.util.concurrent.ConcurrentHashMap<String, List<Tweet>>()
-    private val profileCache = java.util.concurrent.ConcurrentHashMap<String, Profile>()
+
+    private class Lru<V>(private val max: Int) {
+        private val map = object : LinkedHashMap<String, V>(16, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, V>) = size > max
+        }
+        @Synchronized fun get(key: String): V? = map[key]
+        @Synchronized fun put(key: String, value: V) { map[key] = value }
+        @Synchronized fun clear() = map.clear()
+    }
+
+    private val tweetsCache = Lru<List<Tweet>>(4)
+    private val profileCache = Lru<Profile>(64)
+
+    fun clearMemoryCaches() {
+        reposCache = null
+        tweetsCache.clear()
+        profileCache.clear()
+    }
 
     /** 所有存档账号（排除非账号仓库） */
     suspend fun getRepos(forceRefresh: Boolean = false): List<ArchiveRepo> =
@@ -47,7 +56,6 @@ class Repository(private val api: GitHubApi = GitHubApi.shared) {
                     .filter { it.repoName.isNotBlank() }
                     .distinctBy { it.repoName to it.account }
                     .also { fresh ->
-                    // 成功即落盘，断网时兜底
                     metaFile("repos.json")?.let { f ->
                         try { f.writeText(diskJson.encodeToString(
                             kotlinx.serialization.builtins.ListSerializer(ArchiveRepo.serializer()), fresh)) }
@@ -72,21 +80,18 @@ class Repository(private val api: GitHubApi = GitHubApi.shared) {
         forceRefresh: Boolean = false
     ): List<Tweet> = withContext(Dispatchers.IO) {
         val key = "$repo/$account"
-        if (!forceRefresh) tweetsCache[key]?.let { return@withContext it }
+        if (!forceRefresh) tweetsCache.get(key)?.let { return@withContext it }
 
-        val deferred = inFlight.compute(key) { _, running ->
-            if (running != null && !forceRefresh) running
-            else scope.async {
-                try {
-                    (offline.load(repo, account, forceRefresh) ?: api.fetchTweets(repo, account))
-                        .distinctBy { it.tweetId }
-                } finally {
-                    inFlight.remove(key)
-                }
+        val deferred = inFlight.computeIfAbsent(key) { k ->
+            scope.async {
+                (offline.load(repo, account, forceRefresh) ?: api.fetchTweets(repo, account))
+                    .distinctBy { it.tweetId }
+            }.also { d ->
+                d.invokeOnCompletion { inFlight.remove(k, d) }
             }
-        }!!
+        }
         val list = deferred.await()
-        tweetsCache[key] = list
+        tweetsCache.put(key, list)
         list
     }
 
@@ -97,7 +102,7 @@ class Repository(private val api: GitHubApi = GitHubApi.shared) {
     suspend fun getProfile(repo: String, account: String, forceRefresh: Boolean = false): Profile =
         withContext(Dispatchers.IO) {
             val key = "$repo/$account"
-            if (!forceRefresh) profileCache[key]?.let { return@withContext it }
+            if (!forceRefresh) profileCache.get(key)?.let { return@withContext it }
             var cacheable = true
             val p = try {
                 api.fetchProfile(repo, account).also { fresh ->
@@ -115,7 +120,7 @@ class Repository(private val api: GitHubApi = GitHubApi.shared) {
                     cacheable = false
                 }
             }
-            if (cacheable) profileCache[key] = p
+            if (cacheable) profileCache.put(key, p)
             p
         }
 
@@ -156,20 +161,6 @@ class Repository(private val api: GitHubApi = GitHubApi.shared) {
     suspend fun fetchWorkflowRuns(pat: String, repo: String) =
         api.fetchWorkflowRuns(pat, repo)
 
-    /**
-     * 修复"最新推文头像"缺失：把 profile.json 指向的主头像复制一份，
-     * 改名成最新推文引用的头像文件名（avatar_<pid>.jpg 之类）。
-     *
-     * 背景：主头像 avatar.jpg 基本都抓得到，但最新推文引用的按 pid 命名的
-     * 那个经常没抓到，导致 Feed / Reader 里最新推文头像破图。同一个人的头像，
-     * 用主头像顶上即可（可能不是同一版本，但远好过破图）。
-     *
-     * 不改任何 json：index.json 里已经写着那个文件名，我们只是把文件补上。
-     * 也不会被 archive.py 的 dedup 误删——去重按文件名里的 pid 分组，
-     * 主头像与 avatar_<pid> 不同组；孤儿清理只删没被 HTML 引用的，而它正被引用。
-     *
-     * 返回 Result<String>：成功时是提示文案，失败时带原因。
-     */
     suspend fun fixLatestAvatar(
         pat: String, repo: String, account: String, knownTarget: String? = null
     ): Result<String> =
@@ -191,17 +182,14 @@ class Repository(private val api: GitHubApi = GitHubApi.shared) {
                 if (srcName == targetName)
                     return@withContext Result.success(AppStrings[R.string.avatar_same_as_main])
 
-                // 3. 已存在则跳过，不产生无谓 commit
                 val targetPath = "$base/avatar/$targetName"
                 if (api.getFileSha(pat, repo, targetPath) != null)
                     return@withContext Result.success(AppStrings.get(R.string.avatar_exists, targetName))
 
-                // 4. 读源文件原始 base64，不解码以免二进制损坏
                 val srcPath = "$base/avatar/$srcName"
                 val (b64, _) = api.fetchFileBase64(pat, repo, srcPath)
                     ?: return@withContext Result.failure(Exception(AppStrings.get(R.string.avatar_src_unreadable, srcName)))
 
-                // 5. 以目标名新建
                 api.putNewFile(pat, repo, targetPath, b64,
                     AppStrings.get(R.string.avatar_commit_msg, targetName))
                     .map { AppStrings.get(R.string.avatar_copied, srcName, targetName) }
@@ -211,7 +199,6 @@ class Repository(private val api: GitHubApi = GitHubApi.shared) {
             }
         }
 
-    // 申请存档
     suspend fun submitRequest(token: String, account: String, note: String) =
         withContext(Dispatchers.IO) {
             api.createArchiveRequest(token, account, note)

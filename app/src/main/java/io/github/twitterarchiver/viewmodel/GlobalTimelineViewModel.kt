@@ -82,6 +82,13 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
     private var activeDate: String? = null
     private val monthLock = kotlinx.coroutines.sync.Mutex()
 
+    /**
+     * 已下载月份。GlobalIndexStore.downloadedMonths() 内部是 listFiles()，
+     * 这几个调用点全在 viewModelScope（Main）上，StrictMode 下会直接报磁盘读。
+     */
+    private suspend fun downloadedMonths(): Set<String> =
+        withContext(Dispatchers.IO) { GlobalIndexStore.downloadedMonths() }
+
     init { load() }
 
     /**
@@ -91,20 +98,25 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
     fun load(force: Boolean = false) {
         if (recentLoaded && !force) return
         viewModelScope.launch {
-            _state.value = GlobalState(loading = true)
+            _state.update { it.copy(loading = true, error = null) }
+            if (force) {
+                fullLoaded = false
+                activeDate = null
+                currentFilters = emptySet()
+                lastNarrow = null
+            }
             try {
                 val (accts, recent) = api.fetchRecentTimeline()
                 val recentUnique = recent.distinctBy { it.tweetId }
                 recentPosts = recentUnique
-                allPosts = recentUnique
-                filtered = recentUnique
                 allAccounts = accts.distinctBy { it.r to it.a }
                 recentLoaded = true
                 page = 0
-                emitPage()
+                monthLock.withLock { rebuildFromLoaded() }
                 loadFull()
                 loadCrossReplies()
             } catch (e: Exception) {
+                currentCoroutineContext().ensureActive()
                 loadFullAsInitial()
             }
         }
@@ -120,15 +132,15 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
                 meta = m
                 allAccounts = m.accounts.distinctBy { it.r to it.a }
                 fullLoaded = true
+                val local = downloadedMonths()
                 _state.update { it.copy(
                     loadingFull = false,
                     globalTotal = m.total,
                     shards = m.shards,
-                    downloadedMonths = GlobalIndexStore.downloadedMonths(),
+                    downloadedMonths = local,
                     indexError = null
                 ) }
                 // 上次已下载到本地的月份直接合入，无需联网
-                val local = GlobalIndexStore.downloadedMonths()
                 m.shards.filter { it.month in local }
                     .forEach { loadShard(it, silent = true, rebuild = false) }
                 monthLock.withLock { rebuildFromLoaded() }
@@ -169,7 +181,8 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
                 loadedMonths = loadedMonths - month
                 monthPosts.remove(month)
                 rebuildFromLoaded()
-                _state.update { it.copy(downloadedMonths = GlobalIndexStore.downloadedMonths()) }
+                val left = downloadedMonths()
+                _state.update { it.copy(downloadedMonths = left) }
             }
         }
     }
@@ -181,7 +194,8 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
                 loadedMonths = loadedMonths.filterNot { it.startsWith(year) }.toSet()
                 monthPosts.keys.filter { it.startsWith(year) }.forEach { monthPosts.remove(it) }
                 rebuildFromLoaded()
-                _state.update { it.copy(downloadedMonths = GlobalIndexStore.downloadedMonths()) }
+                val left = downloadedMonths()
+                _state.update { it.copy(downloadedMonths = left) }
             }
         }
     }
@@ -211,9 +225,10 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
             monthPosts[shard.month] = posts
             loadedMonths = loadedMonths + shard.month
             if (rebuild) rebuildFromLoaded()
+            val months = downloadedMonths()
             _state.update { it.copy(
                 monthProgress = it.monthProgress - shard.month,
-                downloadedMonths = GlobalIndexStore.downloadedMonths(),
+                downloadedMonths = months,
                 indexError = null
             ) }
         } catch (e: Exception) {
@@ -236,8 +251,8 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
             for (p in recentPosts) if (seen.add(p.tweetId)) out.add(p)
             for (month in monthPosts.keys.sortedDescending())
                 for (p in monthPosts[month].orEmpty()) if (seen.add(p.tweetId)) out.add(p)
-            // 两种时间格式并存，必须解析成时间戳再比，直接比字符串会把老格式全排到最前
-            out.sortByDescending { it.epochMs }
+            out.sortWith(io.github.twitterarchiver.util.DateUtil
+                .timeComparator(ascending = false) { it.epochMs })
             out
         }
         allPosts = merged
@@ -260,7 +275,9 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         viewModelScope.launch {
             try {
                 crossReplies = api.fetchCrossReplies()
-            } catch (e: Exception) { /* 忽略，回复功能降级 */ }
+            } catch (e: Exception) {
+                currentCoroutineContext().ensureActive()
+            }
         }
     }
 
@@ -287,11 +304,9 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         fun avatarUrl(av: String) = if (av.isBlank()) "" else
             "${io.github.twitterarchiver.data.Config.snapshotsBase(repo, account)}/${MediaUtil.sanitizeRelPath(av)}"
         fun imgUrls(t: io.github.twitterarchiver.data.Tweet): List<String> {
-            // 回复/推文的图在 images 字段（media_keys 为空但 images 有值的情况也要显示）
             if (t.images.isEmpty()) return emptyList()
             val base = io.github.twitterarchiver.data.Config.snapshotsBase(repo, account)
             return t.images.map { rel ->
-                // 路径形如 ../image/xxx.jpg，取文件名再拼，避免 image/ 重复
                 val name = rel.substringAfterLast('/')
                 "$base/image/$name"
             }
@@ -317,7 +332,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         var quoted: io.github.twitterarchiver.data.QuotedTweet? = null
         if (mainTweet != null) {
             if (mainTweet.hasQuoted && mainTweet.quotedId.isNotBlank()) {
-                // quote 类型：从 index.json 找被引用条目
                 idIndex[mainTweet.quotedId]?.let { q ->
                     quoted = io.github.twitterarchiver.data.QuotedTweet(
                         authorName = q.authorName,
@@ -328,13 +342,15 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
                     )
                 }
             }
-            // RT 转推类型：正文以 RT @ 开头 或 有 embedded 内容，解析 html
             if (quoted == null && (mainTweet.text.startsWith("RT @") ||
                         mainTweet.bodyText.startsWith("RT @") ||
                         mainTweet.embeddedImages.isNotEmpty())) {
                 quoted = try {
                     api.fetchEmbeddedTweet(repo, account, mainTweet.file, mainTweet.embeddedImages)
-                } catch (e: Exception) { null }
+                } catch (e: Exception) {
+                    currentCoroutineContext().ensureActive()
+                    null
+                }
             }
         }
 
@@ -347,7 +363,8 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
             }
         }
         val ownerReplies = (replyMap[post.tweetId] ?: emptyList())
-            .sortedBy { it.epochMs }
+            .sortedWith(io.github.twitterarchiver.util.DateUtil
+                .timeComparator(ascending = true) { it.epochMs })
         val chain = ArrayList<io.github.twitterarchiver.data.ThreadItem>()
         val seen = HashSet<String>()
         seen.add(post.tweetId)
@@ -382,7 +399,8 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         }
 
         // 按时间排序整个链
-        val sorted = chain.sortedBy { it.epochMs }
+        val sorted = chain.sortedWith(io.github.twitterarchiver.util.DateUtil
+            .timeComparator(ascending = true) { it.epochMs })
         return quoted to sorted
     }
 
@@ -454,7 +472,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         val debounce = q.isNotBlank() && q != lastNarrow?.query
         searchJob = viewModelScope.launch {
             if (debounce) delay(SEARCH_DEBOUNCE_MS.milliseconds)
-            // 一次读一个引用，四个值天然一致
             val prev = lastNarrow
             val result = withContext(Dispatchers.Default) { computeFiltered(q, prev) }
             lastNarrow = Narrow(q, result, activeDate, currentFilters)

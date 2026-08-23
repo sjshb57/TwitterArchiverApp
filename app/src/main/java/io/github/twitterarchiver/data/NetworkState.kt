@@ -35,7 +35,16 @@ object NetworkState {
 
     fun isFailed(url: String) = failed.containsKey(url)
 
-    fun markFailed(url: String) { failed[url] = Unit }
+    /**
+     * 失败 URL 上限。长时间离线浏览会不断累积，而只有恢复联网/下拉刷新才清。
+     * 超过上限就整体清空——最坏情况是少数图片多重试一次，好过无上限增长。
+     */
+    private const val FAILED_MAX = 2_000
+
+    fun markFailed(url: String) {
+        if (failed.size >= FAILED_MAX) failed.clear()
+        failed[url] = Unit
+    }
 
     /** 手动重试：下拉刷新时调用，不依赖系统回调 */
     fun clearFailed() {

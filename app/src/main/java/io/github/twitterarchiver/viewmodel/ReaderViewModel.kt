@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.twitterarchiver.data.Profile
 import io.github.twitterarchiver.data.Repository
 import io.github.twitterarchiver.data.Tweet
+import io.github.twitterarchiver.util.DateUtil
 import io.github.twitterarchiver.util.SearchUtil
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -47,20 +48,18 @@ class ReaderViewModel(private val repo: Repository = Repository.shared) : ViewMo
         this.repoName = repoName
         this.account = account
         viewModelScope.launch {
-            // 下拉刷新时保留现有内容与用户的筛选状态，避免闪白
             if (!forceRefresh) _state.value = ReaderState(loading = true)
             try {
                 val profile = repo.getProfile(repoName, account, forceRefresh)
                 val tweets = repo.getTweets(repoName, account, forceRefresh)
                     .filter { it.hasFile || it.isVirtual }
-                val prev = _state.value
-                _state.value = prev.copy(
+                _state.update { prev -> prev.copy(
                     loading = false,
                     error = null,
                     profile = profile,
                     allTweets = tweets,
                     visibleTweets = applyFilters(tweets, prev)
-                )
+                ) }
             } catch (e: Exception) {
                 currentCoroutineContext().ensureActive()
                 if (forceRefresh) _state.update { it.copy(loading = false) }
@@ -71,14 +70,14 @@ class ReaderViewModel(private val repo: Repository = Repository.shared) : ViewMo
 
     /** 选择某一天，只显示那天的推文 */
     fun selectDay(day: String?) {
-        val s = _state.value
-        val list = if (day == null) s.allTweets
-        else s.allTweets.filter { it.date == day }
-        _state.value = s.copy(
-            activeDay = day,
-            searchQuery = "",
-            visibleTweets = sortTweets(list, s.ascending)
-        )
+        _state.update { s ->
+            val list = if (day == null) s.allTweets else s.allTweets.filter { it.date == day }
+            s.copy(
+                activeDay = day,
+                searchQuery = "",
+                visibleTweets = sortTweets(list, s.ascending)
+            )
+        }
     }
 
     /** 搜索 */
@@ -86,14 +85,14 @@ class ReaderViewModel(private val repo: Repository = Repository.shared) : ViewMo
 
     fun search(q: String) {
         searchJob?.cancel()
-        val s = _state.value
         if (q.isBlank()) {
-            selectDay(s.activeDay)
+            selectDay(_state.value.activeDay)
             _state.update { it.copy(searchQuery = "") }
             return
         }
         searchJob = viewModelScope.launch {
             delay(SEARCH_DEBOUNCE_MS.milliseconds)
+            val s = _state.value
             val hit = withContext(Dispatchers.Default) { matchQuery(s.allTweets, q) }
             _state.update { it.copy(
                 searchQuery = q,
@@ -104,15 +103,13 @@ class ReaderViewModel(private val repo: Repository = Repository.shared) : ViewMo
 
     /** 切换时间排序：旧→新 / 新→旧 */
     fun toggleSort() {
-        val s = _state.value
-        _state.value = s.copy(
+        _state.update { s -> s.copy(
             ascending = !s.ascending,
             visibleTweets = sortTweets(s.visibleTweets, !s.ascending)
-        )
+        ) }
     }
 
     private fun matchQuery(list: List<Tweet>, q: String): List<Tweet> {
-        // 定位短码 ?t=后8位（reader.html 的分享链接格式）→ 按 tweetId 后缀匹配
         SearchUtil.extractTCode(q.trim())?.let { code ->
             return list.filter { it.tweetId.endsWith(code) }
         }
@@ -123,7 +120,7 @@ class ReaderViewModel(private val repo: Repository = Repository.shared) : ViewMo
             SearchUtil.matches(it.text, q, lower, hasAscii) ||
                 SearchUtil.matches(it.bodyText, q, lower, hasAscii) ||
                 it.date.contains(q) || it.time.contains(q) ||
-                it.tweetId.contains(q)   // 支持按完整/部分推文 ID 搜索
+                it.tweetId.contains(q)
         }
     }
 
@@ -135,6 +132,5 @@ class ReaderViewModel(private val repo: Repository = Repository.shared) : ViewMo
     }
 
     private fun sortTweets(list: List<Tweet>, asc: Boolean): List<Tweet> =
-        if (asc) list.sortedBy { it.epochMs }
-        else list.sortedByDescending { it.epochMs }
+        list.sortedWith(DateUtil.timeComparator(asc) { it.epochMs })
 }

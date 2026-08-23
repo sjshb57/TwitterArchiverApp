@@ -39,14 +39,26 @@ object GlobalIndexStore {
 
     fun readMetaRaw(): String? = metaFile()?.takeIf { it.isFile }?.readText()
 
+    private fun writeAtomic(target: File, write: (File) -> Unit): Boolean {
+        val tmp = File(target.parentFile, "${target.name}.tmp")
+        return try {
+            write(tmp)
+            if (target.exists()) target.delete()
+            tmp.renameTo(target)
+        } catch (e: java.io.IOException) {
+            tmp.delete()
+            throw e
+        }
+    }
+
     fun writeMetaRaw(text: String) {
-        metaFile()?.writeText(text)
+        metaFile()?.let { f -> writeAtomic(f) { it.writeText(text) } }
     }
 
     fun shardBytes(month: String): ByteArray? = shardFile(month)?.takeIf { it.isFile }?.readBytes()
 
     fun writeShard(month: String, bytes: ByteArray) {
-        shardFile(month)?.writeBytes(bytes)
+        shardFile(month)?.let { f -> writeAtomic(f) { it.writeBytes(bytes) } }
     }
 
     /** 分片是否已下载且内容与 meta 里的哈希一致 */

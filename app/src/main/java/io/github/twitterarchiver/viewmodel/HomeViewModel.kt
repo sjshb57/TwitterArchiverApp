@@ -35,7 +35,12 @@ class HomeViewModel(private val repo: Repository = Repository.shared) : ViewMode
             _state.update { it.copy(loading = true, error = null) }
             try {
                 val list = repo.getRepos(forceRefresh)
-                    .sortedByDescending { it.account.equals("AnIncandescence", ignoreCase = true) }
+                    .sortedByDescending {
+                        io.github.twitterarchiver.data.Config.PINNED_ACCOUNT.isNotBlank() &&
+                            it.account.equals(
+                                io.github.twitterarchiver.data.Config.PINNED_ACCOUNT,
+                                ignoreCase = true)
+                    }
                 _state.update { it.copy(
                     loading = false,
                     repos = list,

@@ -102,10 +102,8 @@ kotlin {
 }
 
 detekt {
-    // 在默认规则集之上叠加自定义配置，而不是完全替换
     buildUponDefaultConfig = true
     config.setFrom(files("$rootDir/config/detekt.yml"))
-    // 存量问题记进基线，只让新引入的问题失败
     baseline = file("$rootDir/config/detekt-baseline.xml")
     source.setFrom(files("src/main/java", "src/test/java"))
 }

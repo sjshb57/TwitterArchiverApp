@@ -41,7 +41,8 @@ class ImagesViewModel(private val repo: Repository = Repository.shared) : ViewMo
             try {
                 val tweets = repo.getTweets(repoName, account)
                     .filter { it.hasFile }
-                    .sortedByDescending { it.epochMs }
+                    .sortedWith(io.github.twitterarchiver.util.DateUtil
+                        .timeComparator(ascending = false) { it.epochMs })
                 val items = mutableListOf<MediaItem>()
                 for (t in tweets) {
                     MediaUtil.resolveImages(repoName, account, t.images).forEach {

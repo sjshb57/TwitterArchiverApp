@@ -111,6 +111,7 @@ private fun CacheRow() {
                 confirm = false
                 scope.launch(Dispatchers.IO) {
                     AppDirs.root?.let { File(it, "index_cache").deleteRecursively() }
+                    io.github.twitterarchiver.data.Repository.shared.clearMemoryCaches()
                     try { ctx.imageLoader.diskCache?.clear() } catch (e: Exception) { }
                     try { ctx.imageLoader.memoryCache?.clear() } catch (e: Exception) { }
                     refreshKey++

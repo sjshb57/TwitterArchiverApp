@@ -34,11 +34,18 @@ fun LifecyclePolling(
         if (!enabled) return@LaunchedEffect
         var firstStart = true
         owner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            if (!firstStart) current()
+            suspend fun tick() {
+                try {
+                    current()
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                }
+            }
+            if (!firstStart) tick()
             firstStart = false
             while (true) {
                 delay(interval)
-                current()
+                tick()
             }
         }
     }

@@ -39,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -70,7 +71,9 @@ import io.github.twitterarchiver.ui.components.GlobalPostCard
 import io.github.twitterarchiver.ui.components.SearchResultRow
 import io.github.twitterarchiver.viewmodel.GlobalTimelineViewModel
 import io.github.twitterarchiver.viewmodel.ReaderViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
 import io.github.twitterarchiver.util.MediaUtil
 import androidx.compose.ui.res.stringResource
@@ -90,7 +93,7 @@ fun AccountFeedScreen(
     displayName: String,
     onImageClick: (List<String>, Int) -> Unit,
     externalListState: androidx.compose.foundation.lazy.LazyListState? = null,
-    readerVm: ReaderViewModel = viewModel(),
+    readerVm: ReaderViewModel = viewModel(key = "reader/$repo/$account"),
     globalVm: GlobalTimelineViewModel = viewModel(),
     bookmarkVm: io.github.twitterarchiver.viewmodel.BookmarkViewModel = viewModel()
 ) {
@@ -134,7 +137,8 @@ fun AccountFeedScreen(
         val filtered = base.filter { t ->
             t.hasFile && !t.isVirtual && if (tab == 0) !t.isReply else t.isReply
         }.let { list ->
-            if (state.ascending) list.sortedBy { it.epochMs } else list.sortedByDescending { it.epochMs }
+            list.sortedWith(io.github.twitterarchiver.util.DateUtil
+                .timeComparator(state.ascending) { it.epochMs })
         }
         if (tab == 0) {
             // 置顶判断：profile.pinned 匹配 或 推文自身 is_pinned=true（兼容两种数据）
@@ -145,30 +149,40 @@ fun AccountFeedScreen(
     }
 
     // 日期树（当前 Tab）：年 → 月 → 日 → 数量
-    val dateTree = remember(state.allTweets, tab) {
-        val src = state.allTweets.filter { it.hasFile && !it.isVirtual &&
-            if (tab == 0) !it.isReply else it.isReply }
-        val tree = sortedMapOf<String, java.util.TreeMap<String, java.util.TreeMap<String, Int>>>(compareByDescending { it })
-        for (t in src) {
-            val parts = io.github.twitterarchiver.util.DateUtil.localDate(t.timestamp).split("-")
-            if (parts.size != 3) continue
-            val (y, m, d) = parts
-            val yMap = tree.getOrPut(y) { java.util.TreeMap(compareByDescending { it }) }
-            val mMap = yMap.getOrPut(m) { java.util.TreeMap(compareByDescending { it }) }
-            mMap[d] = (mMap[d] ?: 0) + 1
+    val emptyTree = remember {
+        sortedMapOf<String, java.util.TreeMap<String, java.util.TreeMap<String, Int>>>(
+            compareByDescending { it })
+    }
+    val dateTree by produceState(emptyTree, state.allTweets, tab) {
+        value = withContext(Dispatchers.Default) {
+            val src = state.allTweets.filter { it.hasFile && !it.isVirtual &&
+                if (tab == 0) !it.isReply else it.isReply }
+            val tree = sortedMapOf<String, java.util.TreeMap<String, java.util.TreeMap<String, Int>>>(compareByDescending { it })
+            for (t in src) {
+                val parts = io.github.twitterarchiver.util.DateUtil
+                    .localDateOf(t.epochMs, t.timestamp).split("-")
+                if (parts.size != 3) continue
+                val (y, m, d) = parts
+                val yMap = tree.getOrPut(y) { java.util.TreeMap(compareByDescending { it }) }
+                val mMap = yMap.getOrPut(m) { java.util.TreeMap(compareByDescending { it }) }
+                mMap[d] = (mMap[d] ?: 0) + 1
+            }
+            tree
         }
-        tree
     }
 
     // 日期 → feed 索引（跳转）。前置项：账号头(1) + 吸顶(1) = 2
     val headerCount = 2
-    val dateToIndex = remember(feed) {
-        val map = HashMap<String, Int>()
-        feed.forEachIndexed { i, t ->
-            val ld = io.github.twitterarchiver.util.DateUtil.localDate(t.timestamp)
-            if (ld.isNotBlank() && !map.containsKey(ld)) map[ld] = i + headerCount
+    val dateToIndex by produceState(emptyMap<String, Int>(), feed) {
+        value = withContext(Dispatchers.Default) {
+            val map = HashMap<String, Int>()
+            feed.forEachIndexed { i, t ->
+                val ld = io.github.twitterarchiver.util.DateUtil
+                    .localDateOf(t.epochMs, t.timestamp)
+                if (ld.isNotBlank() && !map.containsKey(ld)) map[ld] = i + headerCount
+            }
+            map
         }
-        map
     }
 
     var refreshing by remember(repo, account) { mutableStateOf(false) }

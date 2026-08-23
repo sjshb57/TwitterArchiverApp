@@ -38,6 +38,9 @@ object Config {
 
     // 从模板仓库创建新仓库（建档）
     const val TEMPLATE_REPO = "project-starter"
+
+    /** 账号列表页要置顶的账号（大小写不敏感）。留空表示不置顶。 */
+    const val PINNED_ACCOUNT = "AnIncandescence"
     fun apiGenerateRepo() = "https://api.github.com/repos/$ORG/$TEMPLATE_REPO/generate"
 
     /** reader 页 URL，带账号参数 ?a= 指定具体账号（一个 repo 可能多账号） */
@@ -52,8 +55,10 @@ object Config {
     fun profileJsonUrl(repo: String, account: String) =
         "${snapshotsBase(repo, account)}/profile.json"
 
+    /** file 来自 index.json，和其它路径拼接一样先过一遍清洗，保持一致 */
     fun tweetHtmlUrl(repo: String, account: String, file: String) =
-        "${snapshotsBase(repo, account)}/html/$file"
+        "${snapshotsBase(repo, account)}/html/" +
+            io.github.twitterarchiver.util.MediaUtil.sanitizeRelPath(file)
 
     fun apiRepoContents(repo: String, path: String) =
         "$API_BASE/repos/$ORG/$repo/contents/$path"

@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Android%2011%2B-3DDC84.svg)](#系统要求)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.4.10-7F52FF.svg)](https://kotlinlang.org)
-[![Compose](https://img.shields.io/badge/Jetpack%20Compose-2026.06-4285F4.svg)](https://developer.android.com/jetpack/compose)
+[![Compose](https://img.shields.io/badge/Jetpack%20Compose-2026.08-4285F4.svg)](https://developer.android.com/jetpack/compose)
 
 *互联网是现实的避难所。而这里，是那个避难所的避难所。*
 
@@ -124,7 +124,8 @@
 - **工作流控制** —— 增量更新 / 增量+全部重试 / 全量重试 / **仅重建索引**（改完置顶或资料后几十秒生效，不必等全量重跑）
 - **资料维护** —— 在线编辑 `profile.json`、上传 Banner 图
 - **申请审批** —— 一键批准即自动建仓 + 触发建档 + 关闭 Issue
-- **完整性检测** —— 扫出缺 Banner、缺置顶的仓库，可直接跳转修复，结果本地缓存
+- **完整性检测** —— 扫出缺 Banner、缺置顶、缺最新推文头像的仓库，可直接跳转修复，结果本地缓存
+- **仓库健康** —— 组织下全部仓库的最近更新时间、体积、轮转超期判定，可按多种维度排序
 - **运行记录** —— 工作流名 · 编号 · 状态 · 耗时 · 时间；仅在有任务运行时才轮询，不打断浏览
 
 ---
@@ -165,7 +166,7 @@ Kotlin + Jetpack Compose + Material 3，单 Activity，自己实现的栈式导�
 |-----|--------------------------------------------|
 | 构建  | AGP 9.3.1 / Gradle 9.7.0 / Kotlin 2.4.10   |
 | SDK | minSdk 30 · compileSdk 37 · targetSdk 37   |
-| UI  | Compose BOM 2026.06.01 · Material 3        |
+| UI  | Compose BOM 2026.08.00 · Material 3        |
 | 网络  | Ktor 3.5.2                                 |
 | 序列化 | kotlinx.serialization 1.11.0               |
 | 图片  | Coil 3.5（200 MB 磁盘缓存）                      |
@@ -202,6 +203,7 @@ app/src/main/java/io/github/twitterarchiver/
 │   ├── NetworkState.kt    全局网络状态
 │   ├── HttpClients.kt     Ktor 与 Coil 共用的 OkHttp
 │   ├── GitHubError.kt     接口错误转成给用户看的说法
+│   ├── AppStrings.kt      数据层与 ViewModel 的字符串取值入口
 │   ├── RepoHealth.kt      仓库健康（更新时间、体积）
 │   └── ThemeMirror.kt     主题设置的同步镜像，供启动时取用
 ├── viewmodel/       按页面划分
@@ -231,7 +233,18 @@ https://twitterarchiver.github.io/<仓库>/accounts/<账号>/wayback_snapshots/
 └── profile.json   账号资料（含置顶推文 ID）
 ```
 
-聚合数据在 [`TwitterArchiver/home`](https://github.com/TwitterArchiver/home)：`repos.json`（账号清单）、`search-index.json`（全站索引）、`cross-replies.json`（跨账号回复）。
+聚合数据在 [`TwitterArchiver/home`](https://github.com/TwitterArchiver/home)：
+
+| 文件                            | 用途                |
+|-------------------------------|-------------------|
+| `repos.json`                  | 账号清单              |
+| `timeline-recent.json`        | 近期推文与完整账号表，全站页首屏  |
+| `search-index/meta.json`      | 全站总条数、账号表、月度分片清单  |
+| `search-index/<YYYY-MM>.json` | 按月切分的全站索引分片，按需下载  |
+| `cross-replies.json`          | 跨账号回复索引           |
+| `manifest/<repo>.json`        | 各月哈希与字节区间，供离线增量更新 |
+
+> `search-index.json`（单文件全站索引）已被月度分片取代，当前版本不再读取，仅为未升级的旧版本保留。
 
 应用不上传、不修改任何存档内容——管理版的资料编辑与 Banner 上传除外。
 
