@@ -35,8 +35,8 @@ data class GlobalState(
     val error: String? = null,
     val totalCount: Int = 0,
     val canLoadMore: Boolean = false,
-    val loadingFull: Boolean = false,  // 后台在加载分片
-    val globalTotal: Int = 0,          // 全站推文总数（含尚未下载的月份）
+    val loadingFull: Boolean = false,
+    val globalTotal: Int = 0,
     val shards: List<GlobalShard> = emptyList(),
     val downloadedMonths: Set<String> = emptySet(),
     /** 正在下载的月份 → 已完成比例 0..1 */
@@ -101,8 +101,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
             _state.update { it.copy(loading = true, error = null) }
             if (force) {
                 fullLoaded = false
-                activeDate = null
-                currentFilters = emptySet()
                 lastNarrow = null
             }
             try {
@@ -140,7 +138,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
                     downloadedMonths = local,
                     indexError = null
                 ) }
-                // 上次已下载到本地的月份直接合入，无需联网
                 m.shards.filter { it.month in local }
                     .forEach { loadShard(it, silent = true, rebuild = false) }
                 monthLock.withLock { rebuildFromLoaded() }
@@ -161,7 +158,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
     fun downloadYear(year: String) {
         val m = meta ?: return
         viewModelScope.launch {
-            // 全部月份就绪后只重建一次：逐月重建的话，一年要把几十万条重排 12 遍。
             for (shard in m.shardsOf(year).sortedByDescending { it.month })
                 loadShard(shard, rebuild = false)
             monthLock.withLock { rebuildFromLoaded() }
@@ -281,8 +277,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         }
     }
 
-    // 账号 index.json 缓存（repo/account -> tweets），避免重复拉取。
-
     /**
      * 加载某主推文的完整对话：引用原推 + 回复链。
      * 回复链 = 主人自己的回复链（reader 逻辑）+ 别人的跨账号回复（cross-replies）。
@@ -292,7 +286,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         val account = post.account.a
         val ownerUname = post.account.u.removePrefix("@").lowercase()
 
-        // 1. 拉账号 index.json（缓存）
         val tweets = try {
             Repository.shared.getTweets(repo, account)
         } catch (e: Exception) {
@@ -327,7 +320,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
             )
         }
 
-        // 2. 引用原推：先试 quoted_id（quote 类型），再试 html embedded（RT 转推类型）
         val mainTweet = idIndex[post.tweetId]
         var quoted: io.github.twitterarchiver.data.QuotedTweet? = null
         if (mainTweet != null) {
@@ -354,7 +346,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
             }
         }
 
-        // 3. 主人自己的回复链（对齐网页版：replyMap 按 conversation_id 归组）
         val replyMap = HashMap<String, MutableList<io.github.twitterarchiver.data.Tweet>>()
         for (t in tweets) {
             if (t.isVirtual) continue
@@ -378,7 +369,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
             if (!seen.contains(rep.tweetId)) { chain.add(toItem(rep)); seen.add(rep.tweetId) }
         }
 
-        // 4. 合并别人的跨账号回复（cross-replies），去重
         crossReplies[post.tweetId]?.forEach { cr ->
             if (!seen.contains(cr.tweetId)) {
                 val acct = allAccounts.getOrNull(cr.acctIndex)

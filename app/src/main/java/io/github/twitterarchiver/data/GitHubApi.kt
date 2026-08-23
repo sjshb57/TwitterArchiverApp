@@ -35,7 +35,7 @@ import io.github.twitterarchiver.util.MediaUtil
 import io.github.twitterarchiver.R
 
 /** 统一的网络层：读公开数据 + 带 PAT 的写操作 */
-class GitHubApi {
+open class GitHubApi {
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
@@ -67,14 +67,12 @@ class GitHubApi {
             retryAfter = resp.headers["Retry-After"]
         )
 
-    // ---------- 公开数据（无需 PAT）----------
-
     /** 拉取所有存档账号列表 */
     suspend fun fetchRepos(): List<ArchiveRepo> =
         client.get(Config.reposJsonUrl()).body()
 
     /** 近期时间线(timeline-recent.json)。成功则落盘，断网时回读本地副本 */
-    suspend fun fetchRecentTimeline(): Pair<List<IndexAccount>, List<GlobalPost>> =
+    open suspend fun fetchRecentTimeline(): Pair<List<IndexAccount>, List<GlobalPost>> =
         withContext(Dispatchers.IO) {
             val cache = AppDirs.root?.let { java.io.File(it, "index_cache/_meta/timeline-recent.json") }
             try {
@@ -90,12 +88,10 @@ class GitHubApi {
             }
         }
 
-    // ---------- 全站索引分片 ----------
-
     /**
      * 取分片清单。网络失败时回退到本地副本，冷启动断网也能进全站页。
      */
-    suspend fun fetchGlobalMeta(): GlobalIndexMeta = withContext(Dispatchers.IO) {
+    open suspend fun fetchGlobalMeta(): GlobalIndexMeta = withContext(Dispatchers.IO) {
         val text = try {
             client.get(Config.globalIndexMetaUrl()).bodyAsText().also {
                 // 写盘只是缓存，失败不应该让整次拉取作废
@@ -290,7 +286,6 @@ class GitHubApi {
             val m = Regex("class=\"$cls\"[^>]*>\\s*([\\s\\S]*?)<").find(seg) ?: return ""
             return m.groupValues[1].trim()
         }
-        // tweet-content 可能含多行（<br/> 分隔），单独抓整段到 </div>，保留换行
         fun grabContent(): String {
             val m = Regex("class=\"tweet-content\"[^>]*>([\\s\\S]*?)</div>").find(seg) ?: return ""
             return m.groupValues[1]
@@ -301,12 +296,10 @@ class GitHubApi {
                 .replace(Regex("\n{2,}"), "\n")
                 .trim()
         }
-        // 作者头像
         val avatarRel = Regex("tweet-author-profile-image[\\s\\S]*?<img[^>]*src=\"([^\"]+)\"")
             .find(seg)?.groupValues?.get(1)?.trim() ?: ""
         val name = grab("tweet-author-name")
         val uname = grab("tweet-author-username")
-        // 正文（多行，去掉 t.co 链接）
         val content = grabContent()
         if (name.isBlank() && content.isBlank()) return null
 
@@ -329,7 +322,7 @@ class GitHubApi {
     }
 
     /** 拉取跨账号回复索引 cross-replies.json。key=主推文id, value=回复列表 */
-    suspend fun fetchCrossReplies(): Map<String, List<CrossReply>> = withContext(Dispatchers.IO) {
+    open suspend fun fetchCrossReplies(): Map<String, List<CrossReply>> = withContext(Dispatchers.IO) {
         val result = HashMap<String, List<CrossReply>>()
         val stream = client.get(Config.crossRepliesUrl()).bodyAsChannel().toInputStream()
         android.util.JsonReader(stream.reader(Charsets.UTF_8)).use { reader ->
@@ -411,8 +404,6 @@ class GitHubApi {
         null
     }
 
-    // ---------- 认证 ----------
-
     /**
      * 校验令牌。
      *
@@ -436,8 +427,6 @@ class GitHubApi {
             else Exception(AppStrings.get(R.string.token_verify_failed, e.message ?: e::class.java.simpleName))
         )
     }
-
-    // ---------- 管理操作（需 PAT）----------
 
     /** 取消正在运行的 workflow run（手动暂停增量更新） */
     suspend fun cancelRun(pat: String, repo: String, runId: Long): Result<Unit> = try {
@@ -580,7 +569,6 @@ class GitHubApi {
     /** 上传二进制文件（banner 图片，content 已是 base64）。会先查已有 sha */
     suspend fun putFileContentRaw(pat: String, repo: String, path: String,
                                    base64: String, shaHint: String, message: String): Result<Unit> = try {
-        // 若没传 sha，先尝试读现有文件的 sha（覆盖需要）
         var sha = shaHint
         if (sha.isBlank()) {
             fetchFileContent(pat, repo, path).onSuccess { sha = it.second }
@@ -688,7 +676,6 @@ class GitHubApi {
                 contentType(ContentType.Application.Json)
                 setBody(bodyObj)
             }
-            // workflow dispatch 成功返回 204
             if (resp.status == HttpStatusCode.NoContent || resp.status.isSuccess()) {
                 Result.success(Unit)
             } else {
@@ -758,8 +745,6 @@ class GitHubApi {
             null
         }
     }
-
-    // ---------- 申请存档（Issues）----------
 
     /** 访客提交存档申请（用受限 token 创建 Issue） */
     suspend fun createArchiveRequest(
@@ -834,7 +819,6 @@ class GitHubApi {
             fun num(o: kotlinx.serialization.json.JsonObject, k: String) =
                 (o[k] as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull?.toLongOrNull() ?: 0L
 
-            // 逐条容错：单个坏条目跳过即可，不该让整份清单作废
             val accts = (root["accts"] as? kotlinx.serialization.json.JsonArray)?.mapNotNull { el ->
                 val o = el as? kotlinx.serialization.json.JsonObject ?: return@mapNotNull null
                 IndexAccount(str(o, "r"), str(o, "a"), str(o, "u"), str(o, "n"), str(o, "av"))

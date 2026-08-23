@@ -6,12 +6,13 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import io.github.twitterarchiver.R
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 
 /** 数据仓库：统一入口，带简单内存缓存 */
-class Repository(private val api: GitHubApi = GitHubApi.shared) {
+open class Repository(private val api: GitHubApi = GitHubApi.shared) {
 
     companion object {
         val shared: Repository by lazy { Repository() }
@@ -74,22 +75,21 @@ class Repository(private val api: GitHubApi = GitHubApi.shared) {
         }
 
     /** 某账号的推文（过滤掉无文件的虚拟条目由 UI 决定是否显示） */
-    suspend fun getTweets(
+    open suspend fun getTweets(
         repo: String,
         account: String,
         forceRefresh: Boolean = false
     ): List<Tweet> = withContext(Dispatchers.IO) {
         val key = "$repo/$account"
         if (!forceRefresh) tweetsCache.get(key)?.let { return@withContext it }
-
-        val deferred = inFlight.computeIfAbsent(key) { k ->
-            scope.async {
+        val deferred = inFlight.computeIfAbsent(key) {
+            scope.async(start = CoroutineStart.LAZY) {
                 (offline.load(repo, account, forceRefresh) ?: api.fetchTweets(repo, account))
                     .distinctBy { it.tweetId }
-            }.also { d ->
-                d.invokeOnCompletion { inFlight.remove(k, d) }
             }
         }
+        deferred.invokeOnCompletion { inFlight.remove(key, deferred) }
+        deferred.start()
         val list = deferred.await()
         tweetsCache.put(key, list)
         list
@@ -99,7 +99,7 @@ class Repository(private val api: GitHubApi = GitHubApi.shared) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val inFlight = java.util.concurrent.ConcurrentHashMap<String, Deferred<List<Tweet>>>()
 
-    suspend fun getProfile(repo: String, account: String, forceRefresh: Boolean = false): Profile =
+    open suspend fun getProfile(repo: String, account: String, forceRefresh: Boolean = false): Profile =
         withContext(Dispatchers.IO) {
             val key = "$repo/$account"
             if (!forceRefresh) profileCache.get(key)?.let { return@withContext it }
@@ -142,7 +142,6 @@ class Repository(private val api: GitHubApi = GitHubApi.shared) {
     suspend fun verifyToken(pat: String): Result<AuthUser> =
         withContext(Dispatchers.IO) { api.verifyToken(pat) }
 
-    // 管理操作
     suspend fun cancelRun(pat: String, repo: String, runId: Long) = api.cancelRun(pat, repo, runId)
     suspend fun rerunRun(pat: String, repo: String, runId: Long) = api.rerunRun(pat, repo, runId)
     suspend fun fetchFileContent(pat: String, repo: String, path: String) = api.fetchFileContent(pat, repo, path)
