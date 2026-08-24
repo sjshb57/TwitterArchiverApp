@@ -2,9 +2,8 @@ package io.github.twitterarchiver.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,14 +12,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -28,28 +28,29 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.compose.AsyncImagePainter
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.video.videoFrameMillis
+import io.github.twitterarchiver.R
+import io.github.twitterarchiver.data.AppStrings
 import io.github.twitterarchiver.data.GlobalPost
 import io.github.twitterarchiver.data.NetworkState
 import io.github.twitterarchiver.data.QuotedTweet
 import io.github.twitterarchiver.data.ThreadItem
-import androidx.compose.ui.res.stringResource
-import io.github.twitterarchiver.R
-import io.github.twitterarchiver.data.AppStrings
+import io.github.twitterarchiver.util.DateUtil.localDateTime
 
 /** 全站推文卡片（含引用原推 + 完整回复链） */
 @Composable
@@ -78,7 +79,9 @@ fun GlobalPostCard(
         }
     }
 
-    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp)) {
+    Column(Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 14.dp, vertical = 12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Avatar(url = post.avatarUrl, size = 44.dp,
                 modifier = Modifier.clickable { onAvatarClick() })
@@ -92,9 +95,13 @@ fun GlobalPostCard(
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Text("↗", fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.clickable { showShare = true }.padding(start = 6.dp))
+                modifier = Modifier
+                    .clickable { showShare = true }
+                    .padding(start = 6.dp))
         }
-        Column(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        Column(Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)) {
             if (post.text.isNotBlank()) {
                 LinkedText(post.text, fontSize = 15.sp,
                     color = MaterialTheme.colorScheme.onBackground,
@@ -117,7 +124,7 @@ fun GlobalPostCard(
                 }
             }
 
-            val fullTime = post.displayDateTime
+            val fullTime = localDateTime(post.time)
             if (fullTime.isNotBlank()) {
                 Text(fullTime, fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -129,7 +136,9 @@ fun GlobalPostCard(
                     if (quoteExpanded) stringResource(R.string.post_card_15) else stringResource(R.string.post_card_18),
                     fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(top = 6.dp).clickable { quoteExpanded = !quoteExpanded }
+                    modifier = Modifier
+                        .padding(top = 6.dp)
+                        .clickable { quoteExpanded = !quoteExpanded }
                 )
                 AnimatedVisibility(visible = quoteExpanded) {
                     quoted?.let { QuotedCard(it, onImageClick) }
@@ -139,7 +148,9 @@ fun GlobalPostCard(
                 }
             }
 
-            Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier
+                .fillMaxWidth()
+                .padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (post.replyCount > 0 || (loaded && thread.isNotEmpty())) {
                     Text(
                         if (expanded) stringResource(R.string.post_card_14) else stringResource(R.string.post_card_07),
@@ -161,7 +172,9 @@ fun GlobalPostCard(
 
             AnimatedVisibility(visible = expanded) {
                 Column(
-                    Modifier.fillMaxWidth().padding(top = 8.dp)
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
                         .background(
                             MaterialTheme.colorScheme.onBackground.copy(alpha = 0.04f),
                             RoundedCornerShape(10.dp)
@@ -215,7 +228,9 @@ private fun PostImage(
         contentDescription = null,
         contentScale = ContentScale.Crop,
         onState = { st -> if (st is AsyncImagePainter.State.Error) NetworkState.markFailed(url) },
-        modifier = Modifier.fillMaxWidth().aspectRatio(16f / 10f)
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(16f / 10f)
             .clip(RoundedCornerShape(corner))
             .clickable(onClick = onClick)
             .padding(bottom = bottomGap)
@@ -230,7 +245,8 @@ private fun PostImage(
 private fun VideoThumb(url: String, onClick: () -> Unit) {
     val context = LocalContext.current
     Box(
-        Modifier.fillMaxWidth()
+        Modifier
+            .fillMaxWidth()
             .aspectRatio(16f / 10f)
             .clip(RoundedCornerShape(14.dp))
             .background(Color(0xFF11161B))
@@ -246,9 +262,12 @@ private fun VideoThumb(url: String, onClick: () -> Unit) {
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize()
         )
-        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.18f)))
+        Box(Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.18f)))
         Box(
-            Modifier.size(54.dp)
+            Modifier
+                .size(54.dp)
                 .clip(CircleShape)
                 .background(Color.Black.copy(alpha = 0.42f)),
             contentAlignment = Alignment.Center
@@ -264,7 +283,9 @@ private fun VideoThumb(url: String, onClick: () -> Unit) {
 @Composable
 private fun QuotedCard(q: QuotedTweet, onImageClick: (List<String>, Int) -> Unit) {
     Column(
-        Modifier.fillMaxWidth().padding(top = 6.dp)
+        Modifier
+            .fillMaxWidth()
+            .padding(top = 6.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f))
             .padding(10.dp)
@@ -301,7 +322,9 @@ private fun QuotedCard(q: QuotedTweet, onImageClick: (List<String>, Int) -> Unit
 /** 回复链里的一条卡片 */
 @Composable
 private fun ReplyCard(item: ThreadItem, onImageClick: (List<String>, Int) -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 5.dp)) {
+    Row(Modifier
+        .fillMaxWidth()
+        .padding(vertical = 5.dp)) {
         if (item.authorAvatarUrl.isNotBlank()) {
             Avatar(url = item.authorAvatarUrl, size = 26.dp)
         } else {
@@ -368,7 +391,9 @@ private fun ShareSheet(
 
     androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
-            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 8.dp)
         ) {
             Text(stringResource(R.string.post_card_02), fontSize = 16.sp, fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -395,18 +420,28 @@ private fun ShareSheet(
                 }
             }
             Box(
-                Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 20.dp)
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, bottom = 20.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
                     .clickable {
-                        val share = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(android.content.Intent.EXTRA_TEXT,
-                                twitterUrl.ifBlank { tweetId })
-                        }
-                        ctx.startActivity(android.content.Intent.createChooser(share, AppStrings[R.string.post_card_01]))
+                        val share =
+                            android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(
+                                    android.content.Intent.EXTRA_TEXT,
+                                    twitterUrl.ifBlank { tweetId })
+                            }
+                        ctx.startActivity(
+                            android.content.Intent.createChooser(
+                                share,
+                                AppStrings[R.string.post_card_01]
+                            )
+                        )
                         onDismiss()
-                    }.padding(14.dp),
+                    }
+                    .padding(14.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(stringResource(R.string.post_card_19), fontSize = 14.sp, fontWeight = FontWeight.Bold,
@@ -420,7 +455,9 @@ private fun ShareSheet(
 @Composable
 private fun ShareRow(label: String, value: String, onCopy: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
@@ -429,6 +466,8 @@ private fun ShareRow(label: String, value: String, onCopy: () -> Unit) {
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Text(stringResource(R.string.post_card_04), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.clickable { onCopy() }.padding(8.dp))
+            modifier = Modifier
+                .clickable { onCopy() }
+                .padding(8.dp))
     }
 }

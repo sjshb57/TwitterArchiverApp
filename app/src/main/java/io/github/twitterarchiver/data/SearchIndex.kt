@@ -14,11 +14,11 @@ data class IndexAccount(
 /** 视频扩展名，用于把 media 列表分流到 image/ 与 video/ 两个目录 */
 private val VIDEO_EXTS = setOf("mp4", "m4v", "mov", "webm")
 
-class GlobalPost(
+data class GlobalPost(
     val acctIndex: Int,
     val text: String,
     val tweetId: String,
-    time: String,
+    val time: String,
     val media: List<String>,
     val replyCount: Int,
     val hasQuote: Boolean,
@@ -51,11 +51,7 @@ class GlobalPost(
 
     /** 本地时区时间（HH:mm:ss），搜索结果条用来定位 */
     val displayTime: String
-        get() = io.github.twitterarchiver.util.DateUtil.localTimeOf(epochMs)
-
-    /** 本地时区完整时间（yyyy-MM-dd HH:mm:ss），卡片长按查看用 */
-    val displayDateTime: String
-        get() = io.github.twitterarchiver.util.DateUtil.localDateTimeOf(epochMs)
+        get() = io.github.twitterarchiver.util.DateUtil.localTime(time)
 
     /** 是否转推（RT @xxx: ...）。RT 的引用原推在 html 里，需按需解析 */
     val isRetweet: Boolean get() = text.startsWith("RT @")

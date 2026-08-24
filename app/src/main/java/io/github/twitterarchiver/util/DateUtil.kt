@@ -101,9 +101,4 @@ object DateUtil {
         return dateTimeFmt.get().format(d)
     }
 
-    fun localTimeOf(ms: Long): String =
-        if (ms > 0) timeFmt.get().format(java.util.Date(ms)) else ""
-
-    fun localDateTimeOf(ms: Long): String =
-        if (ms > 0) dateTimeFmt.get().format(java.util.Date(ms)) else ""
 }
