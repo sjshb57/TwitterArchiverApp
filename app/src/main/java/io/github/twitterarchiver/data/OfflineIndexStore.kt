@@ -9,6 +9,11 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
+/**
+ * 离线索引存储：把每个账号的 index.json 按月切成本地小文件，
+ * 依据 home/manifest/{repo}.json（月度哈希 + 字节区间）做增量更新——
+ * 只有发生变化的月份才通过 HTTP Range 重新下载对应字节段。
+ */
 class OfflineIndexStore(private val api: GitHubApi) {
 
     private val json = Json {
@@ -71,8 +76,14 @@ class OfflineIndexStore(private val api: GitHubApi) {
             when (status) {
                 206 if sha16(bytes) == span.hash ->
                     File(dir, "$month.json").writeBytes(bytes)
-                200 ->
-                    return fullRefresh(dir, repo, account, manifest) ?: readLocal(dir)
+                200 -> {
+                    val whole = splitAndSave(dir, bytes) ?: return parseWhole(bytes)
+                    writeState(dir, LocalIndexState(
+                        months = manifest.months.mapValues { it.value.hash },
+                        total = manifest.total,
+                    ))
+                    return whole
+                }
                 else ->
                     return fullRefresh(dir, repo, account, manifest) ?: readLocal(dir)
             }

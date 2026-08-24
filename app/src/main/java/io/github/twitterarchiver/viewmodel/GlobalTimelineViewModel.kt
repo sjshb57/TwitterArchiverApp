@@ -74,20 +74,13 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
     private val shardMonths: Set<String> get() = _state.value.shards.map { it.month }.toSet()
     private var activeDate: String? = null
     private val monthLock = kotlinx.coroutines.sync.Mutex()
+    private val deleteEpoch = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
-    /**
-     * 已下载月份。GlobalIndexStore.downloadedMonths() 内部是 listFiles()，
-     * 这几个调用点全在 viewModelScope（Main）上，StrictMode 下会直接报磁盘读。
-     */
     private suspend fun downloadedMonths(): Set<String> =
         withContext(Dispatchers.IO) { GlobalIndexStore.downloadedMonths() }
 
     init { load() }
 
-    /**
-     * [force] 为 true 时忽略"已加载过"的短路，用于下拉刷新——
-     * 不加这个参数的话下拉刷新是空操作：转圈几百毫秒然后收起，数据一条没变。
-     */
     fun load(force: Boolean = false) {
         if (recentLoaded && !force) return
         viewModelScope.launch {
@@ -164,6 +157,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
     }
 
     fun deleteMonth(month: String) {
+        deleteEpoch.merge(month, 1, Int::plus)
         viewModelScope.launch {
             monthLock.withLock {
                 withContext(Dispatchers.IO) { GlobalIndexStore.deleteMonth(month) }
@@ -177,6 +171,8 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
     }
 
     fun deleteYear(year: String) {
+        (_state.value.shards.map { it.month }.filter { it.startsWith(year) })
+            .forEach { deleteEpoch.merge(it, 1, Int::plus) }
         viewModelScope.launch {
             monthLock.withLock {
                 withContext(Dispatchers.IO) { GlobalIndexStore.deleteYear(year) }
@@ -198,6 +194,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         val m = meta ?: return
         if (!silent) _state.update { it.copy(
             monthProgress = it.monthProgress + (shard.month to 0f)) }
+        val epochBefore = deleteEpoch[shard.month]
         try {
             var lastPct = -1
             val posts = api.fetchGlobalShard(shard, m.accounts) { done ->
@@ -211,8 +208,8 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
                     }
                 }
             }
-            monthLock.withLock {
-                if (shard.month !in GlobalIndexStore.downloadedMonths()) return
+            val deletedMidway = deleteEpoch[shard.month] != epochBefore
+            if (!deletedMidway) monthLock.withLock {
                 monthPosts[shard.month] = posts
                 loadedMonths = loadedMonths + shard.month
                 if (rebuild) rebuildFromLoaded()
