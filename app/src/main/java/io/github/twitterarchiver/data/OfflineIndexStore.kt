@@ -9,11 +9,6 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/**
- * 离线索引存储：把每个账号的 index.json 按月切成本地小文件，
- * 依据 home/manifest/{repo}.json（月度哈希 + 字节区间）做增量更新——
- * 只有发生变化的月份才通过 HTTP Range 重新下载对应字节段。
- */
 class OfflineIndexStore(private val api: GitHubApi) {
 
     private val json = Json {
@@ -37,7 +32,11 @@ class OfflineIndexStore(private val api: GitHubApi) {
     private suspend fun loadLocked(repo: String, account: String, force: Boolean): List<Tweet>? {
         val dir = dirFor(repo, account) ?: return null
         return try {
-            if (force) fullRefresh(dir, repo, account) ?: readLocal(dir)
+            if (force) {
+                val mf = api.fetchIndexManifest(repo)
+                    ?.takeIf { it.account.isBlank() || it.account == account }
+                fullRefresh(dir, repo, account, mf) ?: readLocal(dir)
+            }
             else sync(dir, repo, account)
         } catch (e: Exception) {
             currentCoroutineContext().ensureActive()
@@ -61,21 +60,21 @@ class OfflineIndexStore(private val api: GitHubApi) {
 
         if (changed.isEmpty() && removed.isEmpty()) {
             readLocal(dir)?.let { return it }
-            return fullRefresh(dir, repo, account)
+            return fullRefresh(dir, repo, account, manifest)
         }
 
         dir.mkdirs()
         for ((month, span) in changed) {
             val res = api.fetchIndexRange(repo, account, span.offset, span.length)
-                ?: return fullRefresh(dir, repo, account) ?: readLocal(dir)
+                ?: return fullRefresh(dir, repo, account, manifest) ?: readLocal(dir)
             val (status, bytes) = res
             when (status) {
                 206 if sha16(bytes) == span.hash ->
                     File(dir, "$month.json").writeBytes(bytes)
                 200 ->
-                    return splitAndSave(dir, bytes) ?: parseWhole(bytes)
+                    return fullRefresh(dir, repo, account, manifest) ?: readLocal(dir)
                 else ->
-                    return fullRefresh(dir, repo, account) ?: readLocal(dir)
+                    return fullRefresh(dir, repo, account, manifest) ?: readLocal(dir)
             }
         }
         removed.forEach { File(dir, "$it.json").delete() }
@@ -83,18 +82,25 @@ class OfflineIndexStore(private val api: GitHubApi) {
             months = manifest.months.mapValues { it.value.hash },
             total = manifest.total,
         ))
-        return readLocal(dir) ?: fullRefresh(dir, repo, account)
+        return readLocal(dir) ?: fullRefresh(dir, repo, account, manifest)
     }
 
     /** 全量下载并按月落盘；网络失败返回 null */
-    private suspend fun fullRefresh(dir: File, repo: String, account: String): List<Tweet>? {
+    private suspend fun fullRefresh(
+        dir: File, repo: String, account: String, manifest: IndexManifest? = null
+    ): List<Tweet>? {
         val bytes = try {
             api.fetchIndexBytes(repo, account)
         } catch (e: Exception) {
             currentCoroutineContext().ensureActive()
             return null
         }
-        return splitAndSave(dir, bytes) ?: parseWhole(bytes)
+        val result = splitAndSave(dir, bytes) ?: return parseWhole(bytes)
+        if (manifest != null) writeState(dir, LocalIndexState(
+            months = manifest.months.mapValues { it.value.hash },
+            total = manifest.total,
+        ))
+        return result
     }
 
     private fun readState(dir: File): LocalIndexState = try {
@@ -167,10 +173,6 @@ class OfflineIndexStore(private val api: GitHubApi) {
         return readLocal(dir)
     }
 
-    /**
-     * 字节级扫描：定位每条顶层记录的区间，按 timestamp 前 7 位归组为连续月份块。
-     * 返回 [(月份, 字节区间)]；月份出现交错返回 null。
-     */
     private fun splitByMonth(raw: ByteArray): List<Pair<String, IntRange>>? {
         var i = raw.indexOfFirst { it == '['.code.toByte() }
         if (i < 0) return null

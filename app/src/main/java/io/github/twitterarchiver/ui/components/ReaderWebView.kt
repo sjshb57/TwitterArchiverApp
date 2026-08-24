@@ -25,13 +25,6 @@ private val HTTP_SCHEMES = setOf("http", "https")
 /**
  * 复用 reader.html 的 WebView（系统内核，不打包）。
  * 用 url 作为 key —— 不同账号是不同的 WebView 实例，彻底避免状态串账号(#15)。
- *
- * reloadTrigger：值每变化一次就重新加载当前页。
- * WebView 默认吃缓存，仓库内容更新后不刷新看不到变化。
- *
- * 需要 JavaScript：存档 HTML 的排版、图片网格、折叠引用都靠内联脚本实现，
- * 关掉就只剩裸文本。风险由 shouldOverrideUrlLoading 的白名单兜住——
- * 只有 twitterarchiver.github.io 能在此上下文内加载，其余一律拦下。
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -60,6 +53,8 @@ fun ReaderWebView(
                             }
                             override fun onPageFinished(view: WebView?, u: String?) {
                                 loading = false
+                                view?.settings?.cacheMode =
+                                    android.webkit.WebSettings.LOAD_DEFAULT
                                 val light = if (dark) "false" else "true"
                                 view?.evaluateJavascript(
                                     "try{localStorage.setItem('reader-theme','${if (dark) "dark" else "light"}');" +
@@ -90,17 +85,17 @@ fun ReaderWebView(
                             loadWithOverviewMode = true
                             useWideViewPort = true
                             cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
+                            allowFileAccess = false
+                            allowContentAccess = false
                         }
                         loadUrl(url)
                     }
                 },
                 update = { webView ->
-                    // 绕过缓存重新加载
                     if (reloadTrigger != lastTrigger) {
                         lastTrigger = reloadTrigger
                         webView.settings.cacheMode = android.webkit.WebSettings.LOAD_NO_CACHE
                         webView.reload()
-                        webView.settings.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
                     }
                 },
                 onRelease = { webView ->

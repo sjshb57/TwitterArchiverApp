@@ -82,6 +82,7 @@ open class Repository(private val api: GitHubApi = GitHubApi.shared) {
     ): List<Tweet> = withContext(Dispatchers.IO) {
         val key = "$repo/$account"
         if (!forceRefresh) tweetsCache.get(key)?.let { return@withContext it }
+        if (forceRefresh) inFlight.remove(key)
         val deferred = inFlight.computeIfAbsent(key) {
             scope.async(start = CoroutineStart.LAZY) {
                 (offline.load(repo, account, forceRefresh) ?: api.fetchTweets(repo, account))
@@ -124,24 +125,16 @@ open class Repository(private val api: GitHubApi = GitHubApi.shared) {
             p
         }
 
-    /** 检测 banner 图是否真实存在（传入 profile 的 banner 字段路径，避免重复读） */
     suspend fun bannerExists(repo: String, account: String, bannerPath: String): Boolean =
         withContext(Dispatchers.IO) { api.bannerExists(repo, account, bannerPath) }
-
-    /** 聚合的账号表（含最新推文头像文件名 av）。用 timeline-recent，比全站索引小得多 */
     suspend fun getRecentTimelineAccounts(): List<IndexAccount> =
         withContext(Dispatchers.IO) { api.fetchRecentTimeline().first }
-
     suspend fun snapshotFileExists(repo: String, account: String, relPath: String): Boolean =
         withContext(Dispatchers.IO) { api.snapshotFileExists(repo, account, relPath) }
-
-    /** 组织下仓库名是否已被占用（直查 GitHub，不受 repos.json 聚合滞后影响） */
     suspend fun repoExists(pat: String, name: String): Boolean? =
         withContext(Dispatchers.IO) { api.repoExists(pat, name) }
-
     suspend fun verifyToken(pat: String): Result<AuthUser> =
         withContext(Dispatchers.IO) { api.verifyToken(pat) }
-
     suspend fun cancelRun(pat: String, repo: String, runId: Long) = api.cancelRun(pat, repo, runId)
     suspend fun rerunRun(pat: String, repo: String, runId: Long) = api.rerunRun(pat, repo, runId)
     suspend fun fetchFileContent(pat: String, repo: String, path: String) = api.fetchFileContent(pat, repo, path)

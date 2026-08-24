@@ -54,6 +54,17 @@ open class GitHubApi {
         }
     }
 
+    private suspend fun getPages(
+        url: String,
+        block: io.ktor.client.request.HttpRequestBuilder.() -> Unit = {}
+    ): io.ktor.client.statement.HttpResponse {
+        val resp = client.get(url, block)
+        if (!resp.status.isSuccess()) {
+            throw java.io.IOException("HTTP ${resp.status.value} $url")
+        }
+        return resp
+    }
+
     /**
      * 把响应整理成给用户看的错误说明，并读取限流头。
      * 直接拼 bodyAsText() 会把 GitHub 的错误 JSON 原样显示到界面上。
@@ -69,14 +80,14 @@ open class GitHubApi {
 
     /** 拉取所有存档账号列表 */
     suspend fun fetchRepos(): List<ArchiveRepo> =
-        client.get(Config.reposJsonUrl()).body()
+        getPages(Config.reposJsonUrl()).body()
 
     /** 近期时间线(timeline-recent.json)。成功则落盘，断网时回读本地副本 */
     open suspend fun fetchRecentTimeline(): Pair<List<IndexAccount>, List<GlobalPost>> =
         withContext(Dispatchers.IO) {
             val cache = AppDirs.root?.let { java.io.File(it, "index_cache/_meta/timeline-recent.json") }
             try {
-                val bytes = client.get(Config.timelineRecentUrl()).body<ByteArray>()
+                val bytes = getPages(Config.timelineRecentUrl()).body<ByteArray>()
                 val parsed = parseIndexStream(bytes.inputStream())
                 cache?.let { runCatching { it.parentFile?.mkdirs(); it.writeBytes(bytes) } }
                 parsed
@@ -93,8 +104,7 @@ open class GitHubApi {
      */
     open suspend fun fetchGlobalMeta(): GlobalIndexMeta = withContext(Dispatchers.IO) {
         val text = try {
-            client.get(Config.globalIndexMetaUrl()).bodyAsText().also {
-                // 写盘只是缓存，失败不应该让整次拉取作废
+            getPages(Config.globalIndexMetaUrl()).bodyAsText().also {
                 try { GlobalIndexStore.writeMetaRaw(it) } catch (e: Exception) { }
             }
         } catch (e: Exception) {
@@ -112,9 +122,9 @@ open class GitHubApi {
         accounts: List<IndexAccount>,
         onProgress: ((Long) -> Unit)? = null
     ): List<GlobalPost> = withContext(Dispatchers.IO) {
-        val cached = if (GlobalIndexStore.isFresh(shard)) GlobalIndexStore.shardBytes(shard.month) else null
+        val cached = GlobalIndexStore.freshBytes(shard)
         val bytes = cached ?: run {
-            val stream = client.get(Config.globalIndexShardUrl(shard.month))
+            val stream = getPages(Config.globalIndexShardUrl(shard.month))
                 .bodyAsChannel().toInputStream()
             val out = java.io.ByteArrayOutputStream(shard.bytes.toInt().coerceAtLeast(8192))
             val buf = ByteArray(64 * 1024)
@@ -124,9 +134,12 @@ open class GitHubApi {
                 onProgress?.invoke(out.size().toLong())
                 read = stream.read(buf)
             }
-            out.toByteArray().also {
-                try { GlobalIndexStore.writeShard(shard.month, it) } catch (e: Exception) { }
+            val fresh = out.toByteArray()
+            if (shard.hash.isNotBlank() && GlobalIndexStore.hashOf(fresh) != shard.hash) {
+                throw java.io.IOException("分片 ${shard.month} 内容校验失败，可能下载不完整")
             }
+            try { GlobalIndexStore.writeShard(shard.month, fresh) } catch (e: Exception) { }
+            fresh
         }
         onProgress?.invoke(bytes.size.toLong())
         parsePostsStream(bytes.inputStream(), accounts)
@@ -229,7 +242,7 @@ open class GitHubApi {
 
     /** 拉取某账号的推文索引 */
     suspend fun fetchTweets(repo: String, account: String): List<Tweet> =
-        client.get(Config.indexJsonUrl(repo, account)).body()
+        getPages(Config.indexJsonUrl(repo, account)).body()
 
     /** 离线增量：拉取月度清单（不存在/失败返回 null，调用方退全量） */
     suspend fun fetchIndexManifest(repo: String): IndexManifest? = try {
@@ -243,7 +256,7 @@ open class GitHubApi {
 
     /** 离线增量：整个 index.json 的原始字节（用于全量落盘/分片） */
     suspend fun fetchIndexBytes(repo: String, account: String): ByteArray =
-        client.get(Config.indexJsonUrl(repo, account)).body()
+        getPages(Config.indexJsonUrl(repo, account)).body()
 
     /**
      * 离线增量：按字节区间取 index.json 片段。
@@ -272,7 +285,7 @@ open class GitHubApi {
     ): QuotedTweet? {
         if (file.isBlank()) return null
         val html = try {
-            client.get(Config.tweetHtmlUrl(repo, account, file)).bodyAsText()
+            getPages(Config.tweetHtmlUrl(repo, account, file)).bodyAsText()
         } catch (e: Exception) {
             currentCoroutineContext().ensureActive()
             return null
@@ -324,7 +337,7 @@ open class GitHubApi {
     /** 拉取跨账号回复索引 cross-replies.json。key=主推文id, value=回复列表 */
     open suspend fun fetchCrossReplies(): Map<String, List<CrossReply>> = withContext(Dispatchers.IO) {
         val result = HashMap<String, List<CrossReply>>()
-        val stream = client.get(Config.crossRepliesUrl()).bodyAsChannel().toInputStream()
+        val stream = getPages(Config.crossRepliesUrl()).bodyAsChannel().toInputStream()
         android.util.JsonReader(stream.reader(Charsets.UTF_8)).use { reader ->
             reader.beginObject()
             while (reader.hasNext()) {
@@ -358,7 +371,7 @@ open class GitHubApi {
 
     /** 拉取某账号的 profile */
     suspend fun fetchProfile(repo: String, account: String): Profile =
-        client.get(Config.profileJsonUrl(repo, account)).body()
+        getPages(Config.profileJsonUrl(repo, account)).body()
 
     /**
      * 检测 banner 是否真实存在：查 profile.json 的 banner 字段指向的文件是否存在。
@@ -569,10 +582,7 @@ open class GitHubApi {
     /** 上传二进制文件（banner 图片，content 已是 base64）。会先查已有 sha */
     suspend fun putFileContentRaw(pat: String, repo: String, path: String,
                                    base64: String, shaHint: String, message: String): Result<Unit> = try {
-        var sha = shaHint
-        if (sha.isBlank()) {
-            fetchFileContent(pat, repo, path).onSuccess { sha = it.second }
-        }
+        val sha = shaHint.ifBlank { getFileSha(pat, repo, path).orEmpty() }
         val body = buildJsonObject {
             put("message", message)
             put("content", base64)
@@ -662,7 +672,7 @@ open class GitHubApi {
     ): Result<Unit> {
         return try {
             val bodyObj = buildJsonObject {
-                put("ref", "main")
+                put("ref", defaultBranchOf(pat, repo))
                 if (inputs.isNotEmpty()) {
                     put("inputs", buildJsonObject {
                         inputs.forEach { (k, v) -> put(k, v) }
@@ -731,6 +741,29 @@ open class GitHubApi {
         currentCoroutineContext().ensureActive()
         false
     }
+
+    /**
+     * 仓库默认分支。workflow_dispatch 的 ref 原先写死 "main"，
+     * 默认分支是 master 的仓库触发会 404。
+     * 查不到时退回 "main"（本组织的模板仓库都是 main，退回后行为与从前一致）。
+     */
+    private val branchCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    private suspend fun defaultBranchOf(pat: String, repo: String): String =
+        branchCache.getOrPut(repo) {
+            try {
+                val resp = client.get("${Config.API_BASE}/repos/${Config.ORG}/$repo") {
+                    header("Authorization", "Bearer $pat")
+                    header("Accept", "application/vnd.github+json")
+                }
+                if (resp.status.isSuccess())
+                    resp.body<RepoMeta>().defaultBranch.ifBlank { "main" }
+                else "main"
+            } catch (e: Exception) {
+                currentCoroutineContext().ensureActive()
+                "main"
+            }
+        }
 
     /** 读取仓库某文件的 sha（用于更新文件时提供 sha） */
     suspend fun getFileSha(pat: String, repo: String, path: String): String? {

@@ -43,8 +43,12 @@ object GlobalIndexStore {
         val tmp = File(target.parentFile, "${target.name}.tmp")
         return try {
             write(tmp)
-            if (target.exists()) target.delete()
-            tmp.renameTo(target)
+            java.nio.file.Files.move(
+                tmp.toPath(), target.toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                java.nio.file.StandardCopyOption.ATOMIC_MOVE
+            )
+            true
         } catch (e: java.io.IOException) {
             tmp.delete()
             throw e
@@ -62,10 +66,15 @@ object GlobalIndexStore {
     }
 
     /** 分片是否已下载且内容与 meta 里的哈希一致 */
-    fun isFresh(shard: GlobalShard): Boolean {
-        val f = shardFile(shard.month) ?: return false
-        if (!f.isFile) return false
-        return hashOf(f.readBytes()) == shard.hash
+    fun freshBytes(shard: GlobalShard): ByteArray? {
+        val f = shardFile(shard.month)?.takeIf { it.isFile } ?: return null
+        val bytes = try {
+            f.readBytes()
+        } catch (e: java.io.IOException) {
+            android.util.Log.w("GlobalIndexStore", "分片读取失败: ${shard.month}", e)
+            return null
+        }
+        return bytes.takeIf { hashOf(it) == shard.hash }
     }
 
     fun downloadedMonths(): Set<String> =

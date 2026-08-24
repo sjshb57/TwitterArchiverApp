@@ -160,3 +160,9 @@ data class LocalIndexState(
     val months: Map<String, String> = emptyMap(),   // 月份 -> 清单哈希
     val total: Int = 0,
 )
+
+/** 仓库元数据，目前只用 default_branch（workflow_dispatch 的 ref） */
+@Serializable
+data class RepoMeta(
+    @SerialName("default_branch") val defaultBranch: String = "main"
+)

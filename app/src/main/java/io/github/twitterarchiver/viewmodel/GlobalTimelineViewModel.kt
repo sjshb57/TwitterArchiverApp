@@ -39,22 +39,15 @@ data class GlobalState(
     val globalTotal: Int = 0,
     val shards: List<GlobalShard> = emptyList(),
     val downloadedMonths: Set<String> = emptySet(),
-    /** 正在下载的月份 → 已完成比例 0..1 */
     val monthProgress: Map<String, Float> = emptyMap(),
     val indexError: String? = null,
-    /** 已加载进内存的每日条数：yyyy-MM-dd → 数量 */
     val dayCounts: Map<String, Int> = emptyMap(),
-    /** 当前日期筛选，yyyy-MM（整月）或 yyyy-MM-dd（某天） */
     val activeDate: String? = null,
     val filterAccounts: Set<Pair<String, String>> = emptySet(),
     val accounts: List<IndexAccount> = emptyList(),
-    /** 当前搜索命中的总条数（0 表示没有在搜索） */
     val searchTotal: Int = 0,
-    /** 搜索命中的推文所在月份尚未下载时，提示可以去下载它 */
     val searchMissingMonth: String? = null,
-    /** 从搜索结果跳转的目标推文，列表滚动到位后清空 */
     val jumpTarget: String? = null,
-    /** 正在逐月下载查找短码 */
     val fullSearchRunning: Boolean = false
 )
 
@@ -200,9 +193,9 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         shard: GlobalShard,
         silent: Boolean = false,
         rebuild: Boolean = true
-    ) = monthLock.withLock {
-        if (shard.month in loadedMonths) return@withLock
-        val m = meta ?: return@withLock
+    ) {
+        if (shard.month in loadedMonths) return
+        val m = meta ?: return
         if (!silent) _state.update { it.copy(
             monthProgress = it.monthProgress + (shard.month to 0f)) }
         try {
@@ -218,9 +211,12 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
                     }
                 }
             }
-            monthPosts[shard.month] = posts
-            loadedMonths = loadedMonths + shard.month
-            if (rebuild) rebuildFromLoaded()
+            monthLock.withLock {
+                if (shard.month !in GlobalIndexStore.downloadedMonths()) return
+                monthPosts[shard.month] = posts
+                loadedMonths = loadedMonths + shard.month
+                if (rebuild) rebuildFromLoaded()
+            }
             val months = downloadedMonths()
             _state.update { it.copy(
                 monthProgress = it.monthProgress - shard.month,
@@ -388,7 +384,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
             }
         }
 
-        // 按时间排序整个链
         val sorted = chain.sortedWith(io.github.twitterarchiver.util.DateUtil
             .timeComparator(ascending = true) { it.epochMs })
         return quoted to sorted
@@ -403,10 +398,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         }
     }
 
-    /**
-     * 选日期。传 yyyy-MM 是整月，yyyy-MM-dd 是某天。
-     * 所属月份还没下载就先下载，下完自动跳过去。
-     */
     fun pickDate(date: String) {
         val month = date.take(7)
         val shard = meta?.shards?.find { it.month == month }
@@ -441,13 +432,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
 
     /** 应用账号筛选 + 搜索词 */
     private var searchJob: Job? = null
-    /**
-     * 上一次搜索的快照，用于增量收窄。
-     *
-     * 四个值必须一起读：分开存的话，即便每个都 @Volatile，也可能读到
-     * "ab" 的 query 配上 "abc" 的结果集——基集比实际小，收窄后会漏结果，
-     * 而且这种错配恰好绕过了"不是前缀就全量重算"的兜底。
-     */
     private data class Narrow(
         val query: String,
         val result: List<GlobalPost>,
@@ -517,10 +501,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         }
     }
 
-    /**
-     * 从搜索结果跳到某条推文：清空搜索词、把日期筛选定位到它那一天，
-     * 并记下要高亮的 tweetId 供列表滚动定位。
-     */
     fun jumpToPost(post: GlobalPost) {
         val day = post.displayDate
         lastNarrow = null
@@ -534,11 +514,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         applyFilter("")
     }
 
-    /**
-     * 短码搜不到时的降级：从最新月份倒着逐个下载并检查，命中即停。
-     * 短码是推文 ID 的后 8 位，而雪花 ID 的时间戳在高位，
-     * 所以短码本身推不出日期，只能这样逐月找。
-     */
     fun searchAllMonths(code: String) {
         if (fullSearchJob?.isActive == true) return
         fullSearchJob = viewModelScope.launch {

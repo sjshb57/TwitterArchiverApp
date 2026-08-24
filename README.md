@@ -15,7 +15,7 @@
 
 [TwitterArchiver](https://github.com/TwitterArchiver) 是一个长期存档项目：当一个推特账号被封禁、注销，或者它的主人已经不在，那些文字和图片往往还留在互联网档案馆（Wayback Machine）的历史快照里。这个项目把它们从快照中一条条取出来，重新组织成可以正常翻阅的样子，托管在 GitHub Pages 上长期保存。
 
-> 目前收录 530 余个账号。项目最初是为了纪念 [@AnIncandescence](https://twitterarchiver.github.io/AnIncanescence/)（炽烈已极）。
+> 目前收录 540 余个账号（采样 2026-08）。项目最初是为了纪念 [@AnIncandescence](https://twitterarchiver.github.io/AnIncanescence/)（炽烈已极）。
 
 ### 成品示例：
 

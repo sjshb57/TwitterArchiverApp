@@ -70,7 +70,6 @@ fun GlobalPostCard(
     var thread by remember(post.tweetId) { mutableStateOf<List<ThreadItem>>(emptyList()) }
     var loading by remember(post.tweetId) { mutableStateOf(false) }
 
-    // 展开回复或展开引用时，按需加载对话数据（只加载一次）
     LaunchedEffect(expanded, quoteExpanded) {
         if ((expanded || quoteExpanded) && !loaded && !loading) {
             loading = true
@@ -80,7 +79,6 @@ fun GlobalPostCard(
     }
 
     Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp)) {
-        // 头像 + 名字 + 分享（顶部一行）
         Row(verticalAlignment = Alignment.CenterVertically) {
             Avatar(url = post.avatarUrl, size = 44.dp,
                 modifier = Modifier.clickable { onAvatarClick() })
@@ -93,11 +91,9 @@ fun GlobalPostCard(
                     fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            // 分享按钮（右上角）
             Text("↗", fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.clickable { showShare = true }.padding(start = 6.dp))
         }
-        // 以下内容占满全宽（reader 风格，不缩在头像右侧）
         Column(Modifier.fillMaxWidth().padding(top = 8.dp)) {
             if (post.text.isNotBlank()) {
                 LinkedText(post.text, fontSize = 15.sp,
@@ -121,15 +117,13 @@ fun GlobalPostCard(
                 }
             }
 
-            // 精确时间（本地时区 yyyy-MM-dd HH:mm:ss，对齐 reader post-time-label）
-            val fullTime = io.github.twitterarchiver.util.DateUtil.localDateTime(post.time)
+            val fullTime = post.displayDateTime
             if (fullTime.isNotBlank()) {
                 Text(fullTime, fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 8.dp))
             }
 
-            // 引用原推（默认折叠，点击展开）
             if (post.hasQuoteOrRt) {
                 Text(
                     if (quoteExpanded) stringResource(R.string.post_card_15) else stringResource(R.string.post_card_18),
@@ -201,10 +195,6 @@ fun GlobalPostCard(
 }
 
 /** 引用原推卡片（带边框，区别于主推文） */
-/**
- * 推文图片。加载失败（离线、文件缺失）时整块收起，
- * 否则会留下一片与图片等高的空白，离线时满屏都是。
- */
 @Composable
 private fun PostImage(
     url: String,
@@ -250,13 +240,12 @@ private fun VideoThumb(url: String, onClick: () -> Unit) {
         AsyncImage(
             model = ImageRequest.Builder(context)
                 .data(url)
-                .videoFrameMillis(1000)   // 取第 1 秒：开头常是黑场
+                .videoFrameMillis(1000)
                 .build(),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize()
         )
-        // 压一层暗色，保证白色播放按钮在亮画面上也看得清
         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.18f)))
         Box(
             Modifier.size(54.dp)
@@ -372,7 +361,6 @@ private fun ShareSheet(
     val uname = username.removePrefix("@")
     val twitterUrl = if (uname.isNotBlank() && tweetId.isNotBlank())
         "https://twitter.com/$uname/status/$tweetId" else ""
-    // 定位短码 = tweetId 后 8 位（对齐 reader openShare）
     val shortId = if (tweetId.length >= 8) tweetId.takeLast(8) else tweetId
     val locateUrl = if (shortId.isNotBlank() && repo.isNotBlank())
         "https://twitterarchiver.github.io/$repo/?t=$shortId" else ""
