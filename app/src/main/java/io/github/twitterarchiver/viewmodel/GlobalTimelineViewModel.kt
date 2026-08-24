@@ -2,31 +2,31 @@ package io.github.twitterarchiver.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.twitterarchiver.data.GitHubApi
-import io.github.twitterarchiver.data.GlobalPost
-import io.github.twitterarchiver.data.IndexAccount
+import io.github.twitterarchiver.R
+import io.github.twitterarchiver.data.AppStrings
 import io.github.twitterarchiver.data.CrossReply
+import io.github.twitterarchiver.data.GitHubApi
 import io.github.twitterarchiver.data.GlobalIndexStore
+import io.github.twitterarchiver.data.GlobalPost
 import io.github.twitterarchiver.data.GlobalShard
+import io.github.twitterarchiver.data.IndexAccount
+import io.github.twitterarchiver.data.Repository
+import io.github.twitterarchiver.util.MediaUtil
 import io.github.twitterarchiver.util.SearchUtil
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
-import io.github.twitterarchiver.util.MediaUtil
-import io.github.twitterarchiver.R
-import io.github.twitterarchiver.data.AppStrings
-import kotlinx.coroutines.flow.update
-import io.github.twitterarchiver.data.Repository
 
 data class GlobalState(
     val loading: Boolean = true,
@@ -74,7 +74,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
     private val shardMonths: Set<String> get() = _state.value.shards.map { it.month }.toSet()
     private var activeDate: String? = null
     private val monthLock = kotlinx.coroutines.sync.Mutex()
-    private val deleteEpoch = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
     private suspend fun downloadedMonths(): Set<String> =
         withContext(Dispatchers.IO) { GlobalIndexStore.downloadedMonths() }
@@ -157,7 +156,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
     }
 
     fun deleteMonth(month: String) {
-        deleteEpoch.merge(month, 1, Int::plus)
         viewModelScope.launch {
             monthLock.withLock {
                 withContext(Dispatchers.IO) { GlobalIndexStore.deleteMonth(month) }
@@ -171,8 +169,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
     }
 
     fun deleteYear(year: String) {
-        (_state.value.shards.map { it.month }.filter { it.startsWith(year) })
-            .forEach { deleteEpoch.merge(it, 1, Int::plus) }
         viewModelScope.launch {
             monthLock.withLock {
                 withContext(Dispatchers.IO) { GlobalIndexStore.deleteYear(year) }
@@ -189,12 +185,11 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         shard: GlobalShard,
         silent: Boolean = false,
         rebuild: Boolean = true
-    ) {
-        if (shard.month in loadedMonths) return
-        val m = meta ?: return
+    ) = monthLock.withLock {
+        if (shard.month in loadedMonths) return@withLock
+        val m = meta ?: return@withLock
         if (!silent) _state.update { it.copy(
             monthProgress = it.monthProgress + (shard.month to 0f)) }
-        val epochBefore = deleteEpoch[shard.month]
         try {
             var lastPct = -1
             val posts = api.fetchGlobalShard(shard, m.accounts) { done ->
@@ -208,12 +203,9 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
                     }
                 }
             }
-            val deletedMidway = deleteEpoch[shard.month] != epochBefore
-            if (!deletedMidway) monthLock.withLock {
-                monthPosts[shard.month] = posts
-                loadedMonths = loadedMonths + shard.month
-                if (rebuild) rebuildFromLoaded()
-            }
+            monthPosts[shard.month] = posts
+            loadedMonths = loadedMonths + shard.month
+            if (rebuild) rebuildFromLoaded()
             val months = downloadedMonths()
             _state.update { it.copy(
                 monthProgress = it.monthProgress - shard.month,

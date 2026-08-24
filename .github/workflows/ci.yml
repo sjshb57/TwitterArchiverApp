@@ -43,7 +43,7 @@ jobs:
         run: ./gradlew detekt
 
       - name: Lint
-        run: ./gradlew lintAdminDebug lintVisitorDebug lintVisitorDebug
+        run: ./gradlew lintAdminDebug lintVisitorDebug
 
       - name: 构建两个 flavor 的 release
         run: ./gradlew assembleAdminRelease assembleVisitorRelease

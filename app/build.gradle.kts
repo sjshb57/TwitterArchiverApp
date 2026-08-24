@@ -81,6 +81,11 @@ android {
         @Suppress("UnstableApiUsage")
         localeFilters += listOf("zh-rCN", "zh-rTW")
     }
+    testOptions {
+        unitTests {
+            isReturnDefaultValues = true
+        }
+    }
     packaging {
         dex {
             useLegacyPackaging = true
