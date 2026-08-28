@@ -80,6 +80,7 @@
     <string name="admin_account_empty">賬號名為空，無法建檔</string>
     <string name="admin_approved">已批准並建檔：%1$s</string>
     <string name="admin_create_failed">建檔失敗：%1$s</string>
+    <string name="admin_approve_exists">「%1$s」已經存檔過了，無需重複建檔</string>
     <string name="admin_request_rejected">已拒絕申請</string>
     <string name="admin_creating_repo">正在建立倉庫…</string>
     <string name="admin_repo_created">倉庫已建立，等待工作流就緒…</string>
@@ -384,6 +385,9 @@
     <string name="request_05">申請存檔</string>
     <string name="request_06">申請存檔一個推特賬號</string>
     <string name="request_07">賬號使用者名稱（如 @example）</string>
+    <string name="request_already_archived">「%1$s」已經存檔了，不用重複申請</string>
+    <string name="request_checking">正在核對已存檔賬號…</string>
+    <string name="request_go_read">去看 %1$s 的存檔 ›</string>
 
     <!-- SettingsScreen -->
     <string name="settings_01">「關注」標籤頁</string>

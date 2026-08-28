@@ -1,32 +1,32 @@
 package io.github.twitterarchiver.viewmodel
 
-import io.github.twitterarchiver.data.HealthSort
-import io.github.twitterarchiver.data.RepoHealth
-import io.github.twitterarchiver.data.RotationConfig
-import io.github.twitterarchiver.util.DateUtil
 import android.app.Application
+import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.twitterarchiver.R
+import io.github.twitterarchiver.data.ArchiveRepo
 import io.github.twitterarchiver.data.GitHubIssue
+import io.github.twitterarchiver.data.HealthSort
+import io.github.twitterarchiver.data.RepoHealth
 import io.github.twitterarchiver.data.Repository
+import io.github.twitterarchiver.data.RotationConfig
 import io.github.twitterarchiver.data.SecureStore
 import io.github.twitterarchiver.data.WorkflowRun
-import io.github.twitterarchiver.data.ArchiveRepo
+import io.github.twitterarchiver.util.DateUtil
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.sync.withPermit
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.launch
-import androidx.core.content.edit
-import kotlin.time.Duration.Companion.milliseconds
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.Job
-import io.github.twitterarchiver.R
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
+import kotlin.time.Duration.Companion.milliseconds
 
 /** 4 个仪表盘之一 */
 enum class DashRepo(val repo: String, @androidx.annotation.StringRes val titleRes: Int) {
@@ -360,7 +360,6 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                                     .ifBlank { "avatar.jpg" }
                                 val needAvatarCheck = av.isNotBlank() && av != listAv
 
-                                // 两个存在性检查互不依赖，并行发出
                                 val bannerJob = async { repo.bannerExists(arc.repoName, arc.account, prof.banner) }
                                 val avatarJob = async {
                                     needAvatarCheck &&
@@ -421,8 +420,6 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         val cur = (prefs.getString("newly_created", "") ?: "").split("\n").filter { it.isNotBlank() }
         _state.update { it.copy(newlyCreated = cur, pendingSetup = readPendingSetup()) }
     }
-
-    // ---------- 建档中途中断的恢复记录 ----------
 
     private fun readPendingSetup(): Map<String, PendingSetup> {
         val prefs = getApplication<Application>()
@@ -503,7 +500,6 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         _state.update { it.copy(checkDone = false) }
     }
 
-    // ---------- 运行操作 ----------
     fun cancelRun(repoName: String, runId: Long) = op(str(R.string.admin_pause_requested)) {
         repo.cancelRun(it, repoName, runId)
     }
@@ -530,11 +526,17 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
             _state.update { it.copy(busy = true) }
             action(pat)
                 .onSuccess { _state.update { it.copy(busy = false, message = successMsg) } }
-                .onFailure { _state.update { it.copy(busy = false, message = str(R.string.admin_action_failed, it.message.orEmpty())) } }
+                .onFailure { e ->
+                    _state.update {
+                        it.copy(
+                            busy = false,
+                            message = str(R.string.admin_action_failed, e.message.orEmpty())
+                        )
+                    }
+                }
         }
     }
 
-    // ---------- 申请处理 ----------
     fun loadRequests() {
         val pat = patValue ?: return
         viewModelScope.launch {
@@ -560,6 +562,14 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         pinRepo(account)
         viewModelScope.launch {
             _state.update { it.copy(busy = true) }
+            if (repo.repoExists(pat, account) == true) {
+                _state.update {
+                    it.copy(
+                        busy = false, message = str(R.string.admin_approve_exists, account)
+                    )
+                }
+                return@launch
+            }
             repo.generateRepo(pat, account)
                 .onSuccess {
                     addNewlyCreated(account)
@@ -572,7 +582,14 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                     }
                     loadRequests()
                 }
-                .onFailure { _state.update { it.copy(busy = false, message = str(R.string.admin_create_failed, it.message.orEmpty())) } }
+                .onFailure { e ->
+                    _state.update {
+                        it.copy(
+                            busy = false,
+                            message = str(R.string.admin_create_failed, e.message.orEmpty())
+                        )
+                    }
+                }
         }
     }
 
@@ -583,7 +600,14 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
             _state.update { it.copy(busy = true) }
             repo.closeIssue(pat, number)
                 .onSuccess { _state.update { it.copy(busy = false, message = str(R.string.admin_request_rejected)) }; loadRequests() }
-                .onFailure { _state.update { it.copy(busy = false, message = str(R.string.admin_action_failed, it.message.orEmpty())) } }
+                .onFailure { e ->
+                    _state.update {
+                        it.copy(
+                            busy = false,
+                            message = str(R.string.admin_action_failed, e.message.orEmpty())
+                        )
+                    }
+                }
         }
     }
 
@@ -704,7 +728,14 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                         busy = false, message = msg,
                         missingAvatar = st.missingAvatar.filterNot { m -> m.repo == repoName }) }
                 }
-                .onFailure { _state.update { it.copy(busy = false, message = str(R.string.admin_fix_failed, it.message.orEmpty())) } }
+                .onFailure { e ->
+                    _state.update {
+                        it.copy(
+                            busy = false,
+                            message = str(R.string.admin_fix_failed, e.message.orEmpty())
+                        )
+                    }
+                }
         }
     }
 

@@ -2,19 +2,23 @@ package io.github.twitterarchiver.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.twitterarchiver.R
+import io.github.twitterarchiver.data.AppStrings
+import io.github.twitterarchiver.data.ArchiveRepo
 import io.github.twitterarchiver.data.Repository
+import io.github.twitterarchiver.util.AccountUtil
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import io.github.twitterarchiver.util.AccountUtil
-import io.github.twitterarchiver.R
-import io.github.twitterarchiver.data.AppStrings
 
 data class RequestState(
     val submitting: Boolean = false,
     val result: String? = null,
-    val success: Boolean = false
+    val success: Boolean = false,
+    val existing: ArchiveRepo? = null,
+    val checking: Boolean = false
 )
 
 /**
@@ -25,44 +29,91 @@ class RequestViewModel(private val repo: Repository = Repository.shared) : ViewM
 
     private val _state = MutableStateFlow(RequestState())
     val state: StateFlow<RequestState> = _state.asStateFlow()
+    private var archives: List<ArchiveRepo>? = null
+    private var lastTyped: String = ""
 
     companion object {
-        /** 备注上限。不限长的话能往 Issue 正文里塞几 MB */
         const val NOTE_MAX = 100
-
-        /** 两次提交的最小间隔。挡的是误触和连点，真正的防护要靠服务端 */
         private const val COOLDOWN_MS = 60_000L
-
-        /**
-         * 放在伴生对象里而不是实例字段：退出申请页会销毁 ViewModel，
-         * 存在实例上的话退出再进来就绕过了冷却
-         */
         @Volatile
         private var lastSubmitAt = 0L
+    }
+
+    init {
+        loadArchives()
+    }
+
+    private fun loadArchives() {
+        viewModelScope.launch {
+            _state.update { it.copy(checking = true) }
+            val list = runCatching { repo.getRepos() }.getOrNull()
+            if (list != null) archives = list
+            _state.update { it.copy(checking = false, existing = match(lastTyped)) }
+        }
+    }
+
+    fun check(account: String) {
+        lastTyped = account
+        _state.update { it.copy(existing = match(account)) }
+    }
+
+    private fun match(raw: String): ArchiveRepo? {
+        val handle = AccountUtil.normalize(raw)
+        if (handle.isBlank() || !AccountUtil.isValidHandle(handle)) return null
+        return archives?.firstOrNull {
+            it.repoName.equals(handle, true) || it.account.equals(handle, true)
+        }
     }
 
     fun submit(restrictedToken: String, account: String, note: String) {
         val handle = AccountUtil.normalize(account)
         if (!AccountUtil.isValidHandle(handle)) {
-            _state.value = RequestState(result = AppStrings[R.string.request_invalid_handle])
+            _state.update {
+                it.copy(
+                    submitting = false, success = false,
+                    result = AppStrings[R.string.request_invalid_handle]
+                )
+            }
+            return
+        }
+        val hit = match(handle)
+        if (hit != null) {
+            _state.update {
+                it.copy(
+                    submitting = false, success = false, existing = hit,
+                    result = AppStrings.get(R.string.request_already_archived, hit.account)
+                )
+            }
             return
         }
         val since = System.currentTimeMillis() - lastSubmitAt
         if (lastSubmitAt > 0 && since < COOLDOWN_MS) {
-            _state.value = RequestState(
-                result = AppStrings.get(R.string.request_too_frequent, ((COOLDOWN_MS - since) / 1000) + 1))
+            _state.update {
+                it.copy(
+                    submitting = false, success = false,
+                    result = AppStrings.get(
+                        R.string.request_too_frequent,
+                        ((COOLDOWN_MS - since) / 1000) + 1
+                    )
+                )
+            }
             return
         }
         viewModelScope.launch {
-            _state.value = RequestState(submitting = true)
+            _state.update { it.copy(submitting = true, result = null, success = false) }
             val r = repo.submitRequest(restrictedToken, handle, note.take(NOTE_MAX))
             if (r.isSuccess) lastSubmitAt = System.currentTimeMillis()
-            _state.value = RequestState(
-                submitting = false,
-                success = r.isSuccess,
-                result = if (r.isSuccess) AppStrings[R.string.request_success]
-                else AppStrings.get(R.string.request_failed, r.exceptionOrNull()?.message.orEmpty())
-            )
+            _state.update {
+                it.copy(
+                    submitting = false,
+                    success = r.isSuccess,
+                    result = if (r.isSuccess) AppStrings[R.string.request_success]
+                    else AppStrings.get(
+                        R.string.request_failed,
+                        r.exceptionOrNull()?.message.orEmpty()
+                    )
+                )
+            }
         }
     }
 }
