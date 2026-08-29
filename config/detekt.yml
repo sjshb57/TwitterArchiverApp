@@ -13,11 +13,14 @@ complexity:
   TooManyFunctions:
     active: false
   CyclomaticComplexMethod:
-    active: false
+    active: true
+    threshold: 20
   NestedBlockDepth:
-    active: false
+    active: true
+    threshold: 5
   LargeClass:
-    active: false
+    active: true
+    threshold: 600
 
 style:
   active: true
@@ -28,7 +31,8 @@ style:
   MagicNumber:
     active: false
   MaxLineLength:
-    active: false
+    active: true
+    maxLineLength: 140
   ReturnCount:
     active: false
   WildcardImport:

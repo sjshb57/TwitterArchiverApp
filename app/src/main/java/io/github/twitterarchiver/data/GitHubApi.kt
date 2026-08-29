@@ -1,5 +1,7 @@
 package io.github.twitterarchiver.data
 
+import io.github.twitterarchiver.R
+import io.github.twitterarchiver.util.MediaUtil
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
@@ -22,6 +24,8 @@ import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.utils.io.jvm.javaio.toInputStream
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
@@ -29,10 +33,6 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
-import io.github.twitterarchiver.util.MediaUtil
-import io.github.twitterarchiver.R
 
 /** 统一的网络层：读公开数据 + 带 PAT 的写操作 */
 open class GitHubApi {
@@ -117,7 +117,7 @@ open class GitHubApi {
     /**
      * 取一个月度分片。本地副本哈希对得上就直接读盘，不发请求。
      */
-    suspend fun fetchGlobalShard(
+    open suspend fun fetchGlobalShard(
         shard: GlobalShard,
         accounts: List<IndexAccount>,
         onProgress: ((Long) -> Unit)? = null
@@ -245,7 +245,7 @@ open class GitHubApi {
         getPages(Config.indexJsonUrl(repo, account)).body()
 
     /** 离线增量：拉取月度清单（不存在/失败返回 null，调用方退全量） */
-    suspend fun fetchIndexManifest(repo: String): IndexManifest? = try {
+    open suspend fun fetchIndexManifest(repo: String): IndexManifest? = try {
         val resp = client.get(Config.indexManifestUrl(repo))
         if (resp.status.value != 200) null
         else json.decodeFromString<IndexManifest>(resp.bodyAsText())
@@ -255,7 +255,7 @@ open class GitHubApi {
     }
 
     /** 离线增量：整个 index.json 的原始字节（用于全量落盘/分片） */
-    suspend fun fetchIndexBytes(repo: String, account: String): ByteArray =
+    open suspend fun fetchIndexBytes(repo: String, account: String): ByteArray =
         getPages(Config.indexJsonUrl(repo, account)).body()
 
     /**
@@ -263,7 +263,7 @@ open class GitHubApi {
      * 返回 (HTTP 状态码, 字节)；206=片段，200=服务器给了全量（文件已变或不支持 Range）。
      * 失败返回 null。
      */
-    suspend fun fetchIndexRange(
+    open suspend fun fetchIndexRange(
         repo: String, account: String, offset: Long, length: Long
     ): Pair<Int, ByteArray>? = try {
         val resp = client.get(Config.indexJsonUrl(repo, account)) {

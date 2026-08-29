@@ -23,36 +23,43 @@ object NetworkState {
     var online by mutableStateOf(true)
         private set
 
-    /** 联网恢复时自增。可组合项读它即可在恢复后重新尝试加载 */
     var generation by mutableIntStateOf(0)
         private set
 
     private val failed = mutableStateMapOf<String, Unit>()
+
+    private val failedOrder = ArrayDeque<String>()
+
+    @Volatile
     private var cm: ConnectivityManager? = null
+    @Volatile
     private var registered = false
+    @Volatile
     private var lastValidated = false
     private val main = Handler(Looper.getMainLooper())
 
     fun isFailed(url: String) = failed.containsKey(url)
 
-    /**
-     * 失败 URL 上限。长时间离线浏览会不断累积，而只有恢复联网/下拉刷新才清。
-     * 超过上限就整体清空——最坏情况是少数图片多重试一次，好过无上限增长。
-     */
     private const val FAILED_MAX = 2_000
 
     fun markFailed(url: String) {
-        if (failed.size >= FAILED_MAX) failed.clear()
-        failed[url] = Unit
+        synchronized(failedOrder) {
+            if (failed.put(url, Unit) != null) return
+            failedOrder.addLast(url)
+            while (failedOrder.size > FAILED_MAX) {
+                failed.remove(failedOrder.removeFirst())
+            }
+        }
     }
 
-    /** 手动重试：下拉刷新时调用，不依赖系统回调 */
     fun clearFailed() {
-        failed.clear()
+        synchronized(failedOrder) {
+            failed.clear()
+            failedOrder.clear()
+        }
         generation++
     }
 
-    /** 实时连通性。onLost 有延迟，发请求前再查一次可少等一次超时 */
     fun isOnlineNow(): Boolean {
         val c = cm ?: return online
         val n = c.activeNetwork ?: return false
@@ -60,13 +67,11 @@ object NetworkState {
             ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
     }
 
-    /** 回到前台时复查：系统回调偶尔会漏，漏了就一直停在离线判断上 */
     fun recheck() {
         val up = isOnlineNow()
         if (up && !online) post(true) else online = up
     }
 
-    /** 幂等：Activity 重建（如旋转）会再次调用，重复注册会泄漏回调 */
     fun register(context: Context) {
         if (registered) return
         val c = context.applicationContext
@@ -78,11 +83,6 @@ object NetworkState {
             override fun onAvailable(network: Network) = post(true)
             override fun onLost(network: Network) = post(false)
 
-            /**
-             * 挂 VPN / 代理时，默认网络始终是 VPN 接口，底层断开重连不会走
-             * onAvailable / onLost（Network 对象没变），只有能力会变。
-             * 这里捕捉 VALIDATED（系统已探测到真正连通）来触发重试。
-             */
             override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
                 val validated = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
                 if (validated && !lastValidated) post(true)
@@ -91,11 +91,10 @@ object NetworkState {
         })
     }
 
-    /** 状态写回主线程：回调在别的线程上，直接改 Compose 状态传播不可靠 */
     private fun post(up: Boolean) {
         main.post {
             online = up
-            if (up) clearFailed()     // 触发已收起的图片重新加载
+            if (up) clearFailed()
         }
     }
 }

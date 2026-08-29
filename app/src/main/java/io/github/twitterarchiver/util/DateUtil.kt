@@ -1,63 +1,63 @@
 package io.github.twitterarchiver.util
 
-/** 日期时间工具：把 UTC timestamp 转本地显示 + 构建日期树 */
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+
+/**
+ * 日期时间工具：把 UTC timestamp 转本地显示 + 构建日期树。
+ *
+ * 用 java.time 而不是 SimpleDateFormat：
+ * - DateTimeFormatter 不可变、线程安全，不需要 ThreadLocal 各持一份；
+ * - 本地时区在 format 时才由 ZoneId.systemDefault() 现取，用户改时区
+ *   （跨时区移动、夏令时切换）下一次格式化自动生效，不需要监听
+ *   ACTION_TIMEZONE_CHANGED 再手工让缓存失效。
+ */
 object DateUtil {
 
     private val ISO_HEAD = Regex("^\\d{4}-")
 
-    private val isoFmt = ThreadLocal.withInitial {
-        java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US).apply {
-            timeZone = java.util.TimeZone.getTimeZone("UTC")
-        }
-    }
-    private val legacyFmt = ThreadLocal.withInitial {
-        java.text.SimpleDateFormat("EEE MMM dd HH:mm:ss Z yyyy", java.util.Locale.US)
-    }
-    private val monthFmt = ThreadLocal.withInitial {
-        java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.US).apply {
-            timeZone = java.util.TimeZone.getTimeZone("UTC")
-        }
-    }
-    private val dateFmt = LocalFmt("yyyy-MM-dd")
-    private val timeFmt = LocalFmt("HH:mm:ss")
-    private val dateTimeFmt = LocalFmt("yyyy-MM-dd HH:mm:ss")
+    /** ISO 主体，形如 2020-09-09T13:44:34。小数秒与时区后缀在 parse 里先截掉 */
+    private val ISO_FMT: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME
 
-    @Volatile
-    private var tzGeneration = 0
+    /** 推特原始格式，形如 Wed Sep 09 13:44:34 +0000 2020 */
+    private val LEGACY_FMT: DateTimeFormatter =
+        DateTimeFormatter.ofPattern("EEE MMM dd HH:mm:ss Z yyyy", Locale.US)
 
-    private class LocalFmt(pattern: String) {
-        private val tl = ThreadLocal.withInitial {
-            java.text.SimpleDateFormat(pattern, java.util.Locale.US) to intArrayOf(-1)
-        }
+    private val MONTH_FMT: DateTimeFormatter =
+        DateTimeFormatter.ofPattern("yyyy-MM", Locale.US)
+    private val DATE_FMT: DateTimeFormatter =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.US)
+    private val TIME_FMT: DateTimeFormatter =
+        DateTimeFormatter.ofPattern("HH:mm:ss", Locale.US)
+    private val DATE_TIME_FMT: DateTimeFormatter =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.US)
 
-        fun get(): java.text.SimpleDateFormat {
-            val (fmt, applied) = tl.get()!!
-            val cur = tzGeneration
-            if (applied[0] != cur) {
-                fmt.timeZone = java.util.TimeZone.getDefault()
-                applied[0] = cur
-            }
-            return fmt
-        }
-    }
-
-    fun onTimeZoneChanged() {
-        tzGeneration++
-        datePool.clear()
-    }
-
-    private fun parse(timestamp: String): java.util.Date? {
+    /**
+     * 解析时间戳为 epoch 毫秒，失败返回 null。
+     *
+     * ISO 分支按 UTC 解读：截掉小数秒和时区后缀后只取 yyyy-MM-ddTHH:mm:ss 这一段，
+     * 与旧的 SimpleDateFormat(UTC) + 宽松解析（忽略尾部多余字符）行为一致。
+     */
+    private fun parseMillis(timestamp: String): Long? {
         if (timestamp.isBlank()) return null
         return try {
             if (ISO_HEAD.containsMatchIn(timestamp)) {
-                isoFmt.get()!!.parse(timestamp.substringBefore(".").substringBefore("Z"))
+                val head = timestamp.substringBefore('.').substringBefore('Z').take(19)
+                LocalDateTime.parse(head, ISO_FMT).toInstant(ZoneOffset.UTC).toEpochMilli()
             } else {
-                legacyFmt.get()!!.parse(timestamp)
+                OffsetDateTime.parse(timestamp, LEGACY_FMT).toInstant().toEpochMilli()
             }
-        } catch (e: Exception) { null }
+        } catch (e: Exception) {
+            null
+        }
     }
 
-    fun epochMillis(timestamp: String): Long = parse(timestamp)?.time ?: 0L
+    fun epochMillis(timestamp: String): Long = parseMillis(timestamp) ?: 0L
 
     fun <T> timeComparator(ascending: Boolean, key: (T) -> Long): Comparator<T> =
         Comparator { a, b ->
@@ -72,33 +72,29 @@ object DateUtil {
             }
         }
 
-    fun utcMonthOf(ms: Long): String = monthFmt.get()!!.format(java.util.Date(ms))
+    fun utcMonthOf(ms: Long): String =
+        Instant.ofEpochMilli(ms).atZone(ZoneOffset.UTC).format(MONTH_FMT)
 
+    /** 本地时区日期，用于日期树与分组 */
     fun localDate(timestamp: String): String {
-        val d = parse(timestamp) ?: return ""
-        return dateFmt.get().format(d)
+        val ms = parseMillis(timestamp) ?: return ""
+        return formatLocal(ms, DATE_FMT)
     }
 
-    private const val DATE_POOL_MAX = 20_000
-    private val datePool = java.util.concurrent.ConcurrentHashMap<String, String>()
-
-    fun localDateOf(ms: Long, fallback: String): String {
-        val formatted = if (ms > 0) dateFmt.get().format(java.util.Date(ms))
-        else localDate(fallback)
-        if (formatted.isEmpty()) return formatted
-        datePool[formatted]?.let { return it }
-        if (datePool.size < DATE_POOL_MAX) datePool[formatted] = formatted
-        return formatted
-    }
+    fun localDateOf(ms: Long, fallback: String): String =
+        if (ms > 0) formatLocal(ms, DATE_FMT) else localDate(fallback)
 
     fun localTime(timestamp: String): String {
-        val d = parse(timestamp) ?: return ""
-        return timeFmt.get().format(d)
+        val ms = parseMillis(timestamp) ?: return ""
+        return formatLocal(ms, TIME_FMT)
     }
 
     fun localDateTime(timestamp: String): String {
-        val d = parse(timestamp) ?: return ""
-        return dateTimeFmt.get().format(d)
+        val ms = parseMillis(timestamp) ?: return ""
+        return formatLocal(ms, DATE_TIME_FMT)
     }
 
+    /** 时区在这里现取：系统时区变了下一次调用自然就是新的 */
+    private fun formatLocal(ms: Long, fmt: DateTimeFormatter): String =
+        Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()).format(fmt)
 }

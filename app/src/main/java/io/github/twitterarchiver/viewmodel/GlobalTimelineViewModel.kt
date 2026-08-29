@@ -15,6 +15,7 @@ import io.github.twitterarchiver.util.MediaUtil
 import io.github.twitterarchiver.util.SearchUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -74,6 +75,11 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
     private val shardMonths: Set<String> get() = _state.value.shards.map { it.month }.toSet()
     private var activeDate: String? = null
     private val monthLock = kotlinx.coroutines.sync.Mutex()
+    private val deleteEpoch = HashMap<String, Int>()
+
+    private fun bumpDeleteEpoch(month: String) {
+        deleteEpoch[month] = (deleteEpoch[month] ?: 0) + 1
+    }
 
     private suspend fun downloadedMonths(): Set<String> =
         withContext(Dispatchers.IO) { GlobalIndexStore.downloadedMonths() }
@@ -159,6 +165,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         viewModelScope.launch {
             monthLock.withLock {
                 withContext(Dispatchers.IO) { GlobalIndexStore.deleteMonth(month) }
+                bumpDeleteEpoch(month)
                 loadedMonths = loadedMonths - month
                 monthPosts.remove(month)
                 rebuildFromLoaded()
@@ -172,6 +179,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         viewModelScope.launch {
             monthLock.withLock {
                 withContext(Dispatchers.IO) { GlobalIndexStore.deleteYear(year) }
+                loadedMonths.filter { it.startsWith(year) }.forEach { bumpDeleteEpoch(it) }
                 loadedMonths = loadedMonths.filterNot { it.startsWith(year) }.toSet()
                 monthPosts.keys.filter { it.startsWith(year) }.forEach { monthPosts.remove(it) }
                 rebuildFromLoaded()
@@ -185,14 +193,15 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         shard: GlobalShard,
         silent: Boolean = false,
         rebuild: Boolean = true
-    ) = monthLock.withLock {
-        if (shard.month in loadedMonths) return@withLock
-        val m = meta ?: return@withLock
+    ) {
+        if (shard.month in loadedMonths) return
+        val m = meta ?: return
+        val epochBefore = deleteEpoch[shard.month] ?: 0
         if (!silent) _state.update { it.copy(
             monthProgress = it.monthProgress + (shard.month to 0f)) }
-        try {
+        val posts = try {
             var lastPct = -1
-            val posts = api.fetchGlobalShard(shard, m.accounts) { done ->
+            api.fetchGlobalShard(shard, m.accounts) { done ->
                 if (!silent && shard.bytes > 0) {
                     val p = (done.toFloat() / shard.bytes).coerceIn(0f, 1f)
                     val pct = (p * 100).toInt()
@@ -203,24 +212,33 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
                     }
                 }
             }
+        } catch (e: Exception) {
+            currentCoroutineContext().ensureActive()
+            _state.update {
+                it.copy(
+                    monthProgress = it.monthProgress - shard.month,
+                    indexError = AppStrings.get(
+                        R.string.shard_download_failed, shard.month,
+                        "${e::class.java.simpleName} ${e.message.orEmpty()}".trim()
+                    )
+                )
+            }
+            return
+        }
+        monthLock.withLock {
+            if (shard.month in loadedMonths) return@withLock
+            if ((deleteEpoch[shard.month] ?: 0) != epochBefore) return@withLock
             monthPosts[shard.month] = posts
             loadedMonths = loadedMonths + shard.month
             if (rebuild) rebuildFromLoaded()
-            val months = downloadedMonths()
-            _state.update { it.copy(
+        }
+        val months = downloadedMonths()
+        _state.update {
+            it.copy(
                 monthProgress = it.monthProgress - shard.month,
                 downloadedMonths = months,
                 indexError = null
-            ) }
-        } catch (e: Exception) {
-            currentCoroutineContext().ensureActive()
-            _state.update { it.copy(
-                monthProgress = it.monthProgress - shard.month,
-                indexError = AppStrings.get(
-                    R.string.shard_download_failed, shard.month,
-                    "${e::class.java.simpleName} ${e.message.orEmpty()}".trim()
-                )
-            ) }
+            )
         }
     }
 
@@ -237,6 +255,7 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
             out
         }
         allPosts = merged
+        lastNarrow = null
         val counts = withContext(Dispatchers.Default) {
             val m = HashMap<String, Int>()
             for (p in merged) {
@@ -510,14 +529,19 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
                 .filter { it !in loadedMonths }
                 .sortedDescending()
             _state.update { it.copy(fullSearchRunning = true) }
-            for (m in months) {
-                if (!isActive) break
-                val shard = meta?.shards?.find { it.month == m } ?: continue
-                loadShard(shard, rebuild = false)
-                if (monthPosts[m]?.any { p -> p.tweetId.endsWith(code) } == true) break
+            try {
+                for (m in months) {
+                    if (!isActive) break
+                    val shard = meta?.shards?.find { it.month == m } ?: continue
+                    loadShard(shard, rebuild = false)
+                    if (monthPosts[m]?.any { p -> p.tweetId.endsWith(code) } == true) break
+                }
+            } finally {
+                withContext(NonCancellable) {
+                    monthLock.withLock { rebuildFromLoaded() }
+                    _state.update { it.copy(fullSearchRunning = false) }
+                }
             }
-            monthLock.withLock { rebuildFromLoaded() }
-            _state.update { it.copy(fullSearchRunning = false) }
             applyFilter(_state.value.query)
         }
     }
@@ -526,6 +550,9 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         fullSearchJob?.cancel()
         _state.update { it.copy(fullSearchRunning = false) }
     }
+
+    fun pendingFullSearchBytes(): Long =
+        _state.value.shards.filter { it.month !in loadedMonths }.sumOf { it.bytes }
 
     private var fullSearchJob: Job? = null
 

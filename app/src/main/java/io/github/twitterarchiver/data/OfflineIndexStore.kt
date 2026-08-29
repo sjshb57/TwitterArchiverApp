@@ -1,13 +1,13 @@
 package io.github.twitterarchiver.data
 
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromStream
-import java.io.File
-import java.security.MessageDigest
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromStream
+import java.io.File
+import java.security.MessageDigest
 
 /**
  * 离线索引存储：把每个账号的 index.json 按月切成本地小文件，
@@ -26,7 +26,6 @@ class OfflineIndexStore(private val api: GitHubApi) {
     private fun dirFor(repo: String, account: String): File? =
         AppDirs.root?.let { File(it, "index_cache/$repo/$account") }
 
-    /** 每个账号一把锁：splitAndSave 会先清空目录再写，读写并发会拿到半截文件 */
     private val locks = java.util.concurrent.ConcurrentHashMap<String, Mutex>()
 
     suspend fun load(repo: String, account: String, force: Boolean = false): List<Tweet>? =
@@ -34,71 +33,67 @@ class OfflineIndexStore(private val api: GitHubApi) {
             loadLocked(repo, account, force)
         }
 
+    suspend fun clearAll() {
+        val held = locks.values.toList()
+        held.forEach { it.lock() }
+        try {
+            AppDirs.root?.let { File(it, "index_cache").deleteRecursively() }
+        } finally {
+            held.forEach { it.unlock() }
+        }
+    }
+
     private suspend fun loadLocked(repo: String, account: String, force: Boolean): List<Tweet>? {
         val dir = dirFor(repo, account) ?: return null
         return try {
-            if (force) {
-                val mf = api.fetchIndexManifest(repo)
-                    ?.takeIf { it.account.isBlank() || it.account == account }
-                fullRefresh(dir, repo, account, mf) ?: readLocal(dir)
-            }
-            else sync(dir, repo, account)
+            val manifest = api.fetchIndexManifest(repo)
+                ?.takeIf { it.account.isBlank() || it.account == account }
+            if (!force) incrementalSync(dir, repo, account, manifest)?.let { return it }
+            fullDownload(dir, repo, account, manifest)?.let { return it }
+            readLocal(dir)
         } catch (e: Exception) {
             currentCoroutineContext().ensureActive()
             readLocal(dir)
         }
     }
 
-    private suspend fun sync(dir: File, repo: String, account: String): List<Tweet>? {
-        val manifest = api.fetchIndexManifest(repo)
-            ?.takeIf { it.account.isBlank() || it.account == account }
-
-        if (manifest == null || !manifest.range || manifest.months.isEmpty()) {
-            return fullRefresh(dir, repo, account) ?: readLocal(dir)
-        }
+    private suspend fun incrementalSync(
+        dir: File, repo: String, account: String, manifest: IndexManifest?
+    ): List<Tweet>? {
+        if (manifest == null || !manifest.range || manifest.months.isEmpty()) return null
 
         val state = readState(dir)
         val changed = manifest.months.filter { (m, span) ->
             state.months[m] != span.hash || !File(dir, "$m.json").isFile
         }
         val removed = state.months.keys - manifest.months.keys
-
-        if (changed.isEmpty() && removed.isEmpty()) {
-            readLocal(dir)?.let { return it }
-            return fullRefresh(dir, repo, account, manifest)
-        }
+        if (changed.isEmpty() && removed.isEmpty()) return readLocal(dir)
 
         dir.mkdirs()
+        val months = state.months.toMutableMap()
         for ((month, span) in changed) {
-            val res = api.fetchIndexRange(repo, account, span.offset, span.length)
-                ?: return fullRefresh(dir, repo, account, manifest) ?: readLocal(dir)
-            val (status, bytes) = res
-            when (status) {
-                206 if sha16(bytes) == span.hash ->
+            val (status, bytes) =
+                api.fetchIndexRange(repo, account, span.offset, span.length) ?: return null
+            when {
+                status == 200 -> return saveWhole(dir, bytes, manifest)
+                status != 206 || sha16(bytes) != span.hash -> return null
+                else -> {
                     File(dir, "$month.json").writeBytes(bytes)
-                200 -> {
-                    val whole = splitAndSave(dir, bytes) ?: return parseWhole(bytes)
-                    writeState(dir, LocalIndexState(
-                        months = manifest.months.mapValues { it.value.hash },
-                        total = manifest.total,
-                    ))
-                    return whole
+                    months[month] = span.hash
+                    writeState(dir, LocalIndexState(months.toMap(), state.total))
                 }
-                else ->
-                    return fullRefresh(dir, repo, account, manifest) ?: readLocal(dir)
             }
         }
-        removed.forEach { File(dir, "$it.json").delete() }
-        writeState(dir, LocalIndexState(
-            months = manifest.months.mapValues { it.value.hash },
-            total = manifest.total,
-        ))
-        return readLocal(dir) ?: fullRefresh(dir, repo, account, manifest)
+        removed.forEach {
+            File(dir, "$it.json").delete()
+            months.remove(it)
+        }
+        writeState(dir, LocalIndexState(months.toMap(), manifest.total))
+        return readLocal(dir)
     }
 
-    /** 全量下载并按月落盘；网络失败返回 null */
-    private suspend fun fullRefresh(
-        dir: File, repo: String, account: String, manifest: IndexManifest? = null
+    private suspend fun fullDownload(
+        dir: File, repo: String, account: String, manifest: IndexManifest?
     ): List<Tweet>? {
         val bytes = try {
             api.fetchIndexBytes(repo, account)
@@ -106,13 +101,11 @@ class OfflineIndexStore(private val api: GitHubApi) {
             currentCoroutineContext().ensureActive()
             return null
         }
-        val result = splitAndSave(dir, bytes) ?: return parseWhole(bytes)
-        if (manifest != null) writeState(dir, LocalIndexState(
-            months = manifest.months.mapValues { it.value.hash },
-            total = manifest.total,
-        ))
-        return result
+        return saveWhole(dir, bytes, manifest)
     }
+
+    private fun saveWhole(dir: File, bytes: ByteArray, manifest: IndexManifest?): List<Tweet>? =
+        splitAndSave(dir, bytes, manifest) ?: parseWhole(bytes)
 
     private fun readState(dir: File): LocalIndexState = try {
         json.decodeFromString<LocalIndexState>(File(dir, "_state.json").readText())
@@ -157,7 +150,7 @@ class OfflineIndexStore(private val api: GitHubApi) {
     } catch (e: Exception) { null }
 
     /** 把完整 index.json 字节按月切分落盘并写状态；月份交错等异常返回 null */
-    private fun splitAndSave(dir: File, raw: ByteArray): List<Tweet>? {
+    private fun splitAndSave(dir: File, raw: ByteArray, manifest: IndexManifest?): List<Tweet>? {
         val spans = splitByMonth(raw) ?: run {
             File(dir, "_state.json").delete()
             return null
@@ -165,13 +158,15 @@ class OfflineIndexStore(private val api: GitHubApi) {
         dir.mkdirs()
         val staging = File(dir.parentFile, "${dir.name}.staging")
             .apply { deleteRecursively(); mkdirs() }
-        val hashes = HashMap<String, String>()
         for ((month, range) in spans) {
-            val seg = raw.copyOfRange(range.first, range.last + 1)
-            File(staging, "$month.json").writeBytes(seg)
-            hashes[month] = sha16(seg)
+            File(staging, "$month.json").writeBytes(raw.copyOfRange(range.first, range.last + 1))
         }
-        writeState(staging, LocalIndexState(months = hashes))
+        writeState(
+            staging, LocalIndexState(
+                months = manifest?.months?.mapValues { it.value.hash }.orEmpty(),
+                total = manifest?.total ?: 0,
+            )
+        )
 
         val trash = File(dir.parentFile, "${dir.name}.trash")
         trash.deleteRecursively()

@@ -1,15 +1,15 @@
 package io.github.twitterarchiver.data
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
 import io.github.twitterarchiver.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 
 /** 数据仓库：统一入口，带简单内存缓存 */
 open class Repository(private val api: GitHubApi = GitHubApi.shared) {
@@ -48,7 +48,11 @@ open class Repository(private val api: GitHubApi = GitHubApi.shared) {
         profileCache.clear()
     }
 
-    /** 所有存档账号（排除非账号仓库） */
+    suspend fun clearAllCaches() {
+        clearMemoryCaches()
+        offline.clearAll()
+    }
+
     suspend fun getRepos(forceRefresh: Boolean = false): List<ArchiveRepo> =
         withContext(Dispatchers.IO) {
             if (!forceRefresh) reposCache?.let { return@withContext it }

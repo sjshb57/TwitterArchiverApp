@@ -10,8 +10,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -27,7 +27,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,6 +36,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -46,11 +46,13 @@ import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.SuccessResult
 import coil3.request.allowHardware
-import io.github.twitterarchiver.util.ImageSaver
-import kotlinx.coroutines.launch
-import androidx.compose.ui.res.stringResource
 import io.github.twitterarchiver.R
 import io.github.twitterarchiver.data.AppStrings
+import io.github.twitterarchiver.util.AppScope
+import io.github.twitterarchiver.util.ImageSaver
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * 图片预览（方案B：卡片式）。
@@ -64,14 +66,13 @@ fun ImagePreviewOverlay(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val appContext = context.applicationContext
     val pagerState = rememberPagerState(initialPage = startIndex) { urls.size }
 
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
     ) {
-        // 让遮罩延伸到状态栏/导航栏后面（异形屏也全屏覆盖）
         val view = androidx.compose.ui.platform.LocalView.current
         androidx.compose.runtime.SideEffect {
             val dialogWindow = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
@@ -84,9 +85,9 @@ fun ImagePreviewOverlay(
                 it.makeSystemBarsTransparent()
             }
         }
-        // 半透明背景（不是纯黑铺满），点击空白关闭
         Box(
-            Modifier.fillMaxSize()
+            Modifier
+                .fillMaxSize()
                 .background(Color.Black.copy(alpha = 0.6f))
                 .clickable(
                     indication = null,
@@ -96,14 +97,15 @@ fun ImagePreviewOverlay(
         ) {
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.fillMaxWidth().wrapContentHeight(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(),
                 pageSpacing = 12.dp
             ) { page ->
                 var scale by remember { mutableFloatStateOf(1f) }
                 var offsetX by remember { mutableFloatStateOf(0f) }
                 var offsetY by remember { mutableFloatStateOf(0f) }
 
-                // 卡片：包裹图片，圆角，深色卡底（图片透明区域也好看）
                 Box(
                     Modifier
                         .fillMaxWidth()
@@ -127,15 +129,19 @@ fun ImagePreviewOverlay(
                             .pointerInput(Unit) {
                                 detectTransformGestures { _, pan, zoom, _ ->
                                     scale = (scale * zoom).coerceIn(1f, 5f)
-                                    if (scale > 1f) { offsetX += pan.x; offsetY += pan.y }
-                                    else { offsetX = 0f; offsetY = 0f }
+                                    if (scale > 1f) {
+                                        offsetX += pan.x; offsetY += pan.y
+                                    } else {
+                                        offsetX = 0f; offsetY = 0f
+                                    }
                                 }
                             }
                             .pointerInput(Unit) {
                                 detectTapGestures(
                                     onDoubleTap = {
-                                        if (scale > 1f) { scale = 1f; offsetX = 0f; offsetY = 0f }
-                                        else scale = 2.5f
+                                        if (scale > 1f) {
+                                            scale = 1f; offsetX = 0f; offsetY = 0f
+                                        } else scale = 2.5f
                                     }
                                 )
                             }
@@ -149,7 +155,10 @@ fun ImagePreviewOverlay(
 
             IconButton(
                 onClick = onDismiss,
-                modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(8.dp)
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .statusBarsPadding()
+                    .padding(8.dp)
             ) {
                 Icon(Icons.Filled.Close, stringResource(R.string.close), tint = Color.White)
             }
@@ -157,25 +166,33 @@ fun ImagePreviewOverlay(
                 Text(
                     "${pagerState.currentPage + 1} / ${urls.size}",
                     color = Color.White, fontSize = 13.sp,
-                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp)
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 16.dp)
                 )
             }
 
             IconButton(
                 onClick = {
-                    scope.launch {
-                        val url = urls[pagerState.currentPage]
+                    val url = urls[pagerState.currentPage]
+                    AppScope.launch {
                         val ok = try {
-                            val req = ImageRequest.Builder(context).data(url)
+                            val req = ImageRequest.Builder(appContext).data(url)
                                 .allowHardware(false).build()
-                            val result = context.imageLoader.execute(req)
+                            val result = appContext.imageLoader.execute(req)
                             val bmp = (result as? SuccessResult)?.image
                                 ?.let { it as? coil3.BitmapImage }?.bitmap
                             bmp != null && ImageSaver.saveBitmap(
-                                context, bmp, "TA_${System.currentTimeMillis()}.jpg")
+                                appContext, bmp, "TA_${System.currentTimeMillis()}.jpg"
+                            )
                         } catch (e: Exception) { false }
-                        Toast.makeText(context, if (ok) AppStrings[R.string.img_preview_02] else AppStrings[R.string.img_preview_01],
-                            Toast.LENGTH_SHORT).show()
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(
+                                appContext,
+                                if (ok) AppStrings[R.string.img_preview_02] else AppStrings[R.string.img_preview_01],
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
                     }
                 },
                 modifier = Modifier
@@ -190,11 +207,6 @@ fun ImagePreviewOverlay(
     }
 }
 
-/**
- * 让浮层窗口的系统栏透明。
- * statusBarColor/navigationBarColor 自 API 35 起废弃（35+ 强制边到边，调用为无操作），
- * 但 API 26–34 仍需要它们，否则全屏浮层会出现系统栏色条，故保留并抑制警告。
- */
 @Suppress("DEPRECATION")
 private fun android.view.Window.makeSystemBarsTransparent() {
     statusBarColor = android.graphics.Color.TRANSPARENT

@@ -24,9 +24,9 @@ class SearchUtilTest {
     @Test
     fun `不是完整 ID 的一律返回 null`() {
         assertNull(SearchUtil.monthFromTweetId(""))
-        assertNull(SearchUtil.monthFromTweetId("12345678"))      // 太短，是定位短码
+        assertNull(SearchUtil.monthFromTweetId("12345678"))
         assertNull(SearchUtil.monthFromTweetId("abcdefghijklmnop"))
-        assertNull(SearchUtil.monthFromTweetId("1234567890123456789012"))  // 超出合理时间范围
+        assertNull(SearchUtil.monthFromTweetId("1234567890123456789012"))
     }
 
     @Test

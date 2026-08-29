@@ -18,14 +18,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-/**
- * 全站页下拉刷新的回归测试。
- *
- * 曾经的 bug：load(force = true) 把整个 GlobalState 重建成默认值，
- * 而 fullLoaded 又不重置，导致 loadFull() 短路不再填回——
- * 日期树变空、已下载月份标记消失、全站总数归零，且不重启不恢复。
- * 这类问题不抛异常，只有真的下拉一次才看得见，所以必须由测试守住。
- */
+/** 全站页下拉刷新的回归测试 */
 @Suppress("NonAsciiCharacters")
 class GlobalTimelineRefreshTest {
 

@@ -4,40 +4,31 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.toDrawable
 import io.github.twitterarchiver.data.AppDirs
 import io.github.twitterarchiver.data.Settings
+import io.github.twitterarchiver.data.ThemeMirror
 import io.github.twitterarchiver.data.ThemeMode
 import io.github.twitterarchiver.ui.AppNav
 import io.github.twitterarchiver.ui.screens.SplashScreen
 import io.github.twitterarchiver.ui.theme.TwitterArchiverTheme
-import androidx.compose.runtime.saveable.rememberSaveable
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
-import io.github.twitterarchiver.util.DateUtil
-import androidx.core.content.ContextCompat
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.runtime.LaunchedEffect
-import androidx.core.graphics.drawable.toDrawable
-import io.github.twitterarchiver.data.ThemeMirror
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         AppDirs.init(this)
         io.github.twitterarchiver.data.NetworkState.register(this)
-        ContextCompat.registerReceiver(
-            this, tzReceiver, IntentFilter(Intent.ACTION_TIMEZONE_CHANGED),
-            ContextCompat.RECEIVER_NOT_EXPORTED
-        )
         window.setBackgroundDrawable(
             ContextCompat.getColor(
                 this,
@@ -47,18 +38,6 @@ class MainActivity : ComponentActivity() {
         )
         enableEdgeToEdge()
         setContent { App() }
-    }
-
-    /** 出国改时区、跨夏令时后，已缓存的格式化器和日期串都要失效 */
-    private val tzReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            DateUtil.onTimeZoneChanged()
-        }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        runCatching { unregisterReceiver(tzReceiver) }
     }
 
     override fun onResume() {
@@ -71,8 +50,6 @@ class MainActivity : ComponentActivity() {
 private fun App() {
     val ctx = LocalContext.current
     val settings = remember { Settings(ctx) }
-    // initial 用 null：DataStore 是异步的，用 SYSTEM 占位的话首帧会按系统深浅色
-    // 先写一次镜像，用户设 DARK 而系统浅色时那次是错的
     val themeMode by settings.themeMode.collectAsState(initial = null)
     val dynamicColor by settings.dynamicColor.collectAsState(initial = false)
 

@@ -1,12 +1,12 @@
 package io.github.twitterarchiver.ui.screens
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -20,24 +20,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.imageLoader
+import io.github.twitterarchiver.R
 import io.github.twitterarchiver.data.AppDirs
+import io.github.twitterarchiver.data.AppStrings
 import io.github.twitterarchiver.ui.components.ConfirmDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import androidx.compose.ui.res.stringResource
-import io.github.twitterarchiver.R
-import io.github.twitterarchiver.data.AppStrings
 
 /** Tab：设置（无 emoji，扁平分组） */
 @Composable
@@ -51,7 +50,10 @@ fun SettingsScreen(
     onOpenAbout: () -> Unit
 ) {
     Column(
-        Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState())
+        Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .verticalScroll(rememberScrollState())
     ) {
         Text(
             stringResource(R.string.tab_settings), fontSize = 17.sp, fontWeight = FontWeight.ExtraBold,
@@ -86,7 +88,6 @@ fun SettingsScreen(
 @Composable
 private fun CacheRow() {
     val ctx = LocalContext.current
-    val scope = rememberCoroutineScope()
     var sizeText by remember { mutableStateOf(AppStrings[R.string.health_08]) }
     var confirm by remember { mutableStateOf(false) }
     var refreshKey by remember { mutableIntStateOf(0) }
@@ -109,11 +110,17 @@ private fun CacheRow() {
             danger = true,
             onConfirm = {
                 confirm = false
-                scope.launch(Dispatchers.IO) {
-                    AppDirs.root?.let { File(it, "index_cache").deleteRecursively() }
-                    io.github.twitterarchiver.data.Repository.shared.clearMemoryCaches()
-                    try { ctx.imageLoader.diskCache?.clear() } catch (e: Exception) { }
-                    try { ctx.imageLoader.memoryCache?.clear() } catch (e: Exception) { }
+                val appCtx = ctx.applicationContext
+                io.github.twitterarchiver.util.AppScope.launch {
+                    io.github.twitterarchiver.data.Repository.shared.clearAllCaches()
+                    try {
+                        appCtx.imageLoader.diskCache?.clear()
+                    } catch (e: Exception) {
+                    }
+                    try {
+                        appCtx.imageLoader.memoryCache?.clear()
+                    } catch (e: Exception) {
+                    }
                     refreshKey++
                 }
             },
@@ -137,7 +144,9 @@ private fun SettingGroup(content: @Composable () -> Unit) {
     Surface(
         shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surface,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 6.dp)
     ) {
         Column { content() }
     }
@@ -146,7 +155,10 @@ private fun SettingGroup(content: @Composable () -> Unit) {
 @Composable
 private fun SettingRow(title: String, sub: String?, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable { onClick() }.padding(14.dp),
+        Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {

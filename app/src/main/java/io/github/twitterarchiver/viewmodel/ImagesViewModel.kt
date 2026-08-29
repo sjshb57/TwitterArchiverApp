@@ -2,16 +2,16 @@ package io.github.twitterarchiver.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.twitterarchiver.R
+import io.github.twitterarchiver.data.AppStrings
 import io.github.twitterarchiver.data.Repository
 import io.github.twitterarchiver.util.MediaUtil
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
-import io.github.twitterarchiver.R
-import io.github.twitterarchiver.data.AppStrings
 
 /** 媒体类型 */
 enum class MediaType { IMAGE, VIDEO, OTHER }
@@ -19,7 +19,6 @@ enum class MediaType { IMAGE, VIDEO, OTHER }
 data class MediaItem(
     val url: String,
     val type: MediaType,
-    /** 所属推文。url 本身不唯一（同一张图可能被多条推文引用），列表 key 要靠它区分 */
     val tweetId: String = ""
 )
 

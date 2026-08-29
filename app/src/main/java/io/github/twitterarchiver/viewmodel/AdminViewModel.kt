@@ -67,40 +67,30 @@ data class AdminState(
     val healthSort: HealthSort = HealthSort.STALE
 )
 
-/** 仓库已创建、setup.yml 尚未确认触发成功的条目 */
 data class PendingSetup(
     val repo: String,
     val since: String,
     val createdAt: Long
 )
 
-/** 列表用 repo/account 做 key，重复会崩，排序时一并去重 */
 private fun List<MissingItem>.uniqueSorted(): List<MissingItem> =
     distinctBy { it.repo to it.account }.sortedBy { it.displayName }
 
-/** 待完善项：某仓库缺 banner / 置顶 / 最新推文头像 */
 data class MissingItem(
     val repo: String,
     val account: String,
     val displayName: String,
-    /** 缺失的头像文件名，仅头像项使用 */
     val avatarName: String = ""
 )
 
 class AdminViewModel(app: Application) : AndroidViewModel(app) {
 
-    /** AndroidViewModel 能拿到 Application，直接取资源即可 */
     private fun str(@androidx.annotation.StringRes id: Int, vararg args: Any) =
         if (args.isEmpty()) getApplication<Application>().getString(id)
         else getApplication<Application>().getString(id, *args)
 
     private val repo = Repository.shared
 
-    /**
-     * 解密后的 PAT。不放进 AdminState：那是被 UI 观测的 StateFlow，
-     * 明文令牌留在里面既没必要（UI 只需要知道 hasPat），
-     * 也可能随状态快照进到崩溃日志里。
-     */
     @Volatile
     private var patValue: String? = null
     private val store = SecureStore(app)
@@ -110,7 +100,6 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
 
     fun clearMessage() { _state.update { it.copy(message = null) } }
 
-    // ---------- PAT ----------
     fun checkPat() {
         viewModelScope.launch {
             val pat = store.getPat()
@@ -118,10 +107,6 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
             _state.update { it.copy(hasPat = !pat.isNullOrBlank()) }
         }
     }
-    /**
-     * 先验证再保存。不验证的话错误的 PAT 会被原样存下来，
-     * 直到第一次触发工作流才报错，排查起来绕。
-     */
     fun savePat(pat: String) {
         viewModelScope.launch {
             _state.update { it.copy(patVerifying = true, message = null) }
@@ -146,8 +131,6 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ---------- 工作流运行状态 ----------
-    /** silent=true 用于后台轮询：不显示加载态，数据回来直接替换 */
     fun loadRuns(repoName: String, silent: Boolean = false) {
         val pat = patValue ?: return
         viewModelScope.launch {
@@ -169,17 +152,11 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** 加载所有存档账号（用 repos.json，含小号，共 141 个账号） */
-    /** 仓库名是否已被占用。null=查不到（未登录/网络问题），此时不提示占用 */
     suspend fun checkRepoExists(name: String): Boolean? {
         val pat = patValue ?: return null
         return repo.repoExists(pat, name)
     }
 
-    /**
-     * 刷新"新建记录"的真实状态。repoStatus 原先只在建档瞬间写入内存，
-     * 重启后即丢失，这里按各仓库最近一次运行结果重建。
-     */
     fun refreshNewlyCreatedStatus() {
         val pat = patValue ?: return
         val names = _state.value.newlyCreated
@@ -214,7 +191,6 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** 只刷新当前标记为运行中的仓库状态，供"所有存档"页轮询使用 */
     private val nonArchiveRepos = setOf("home", "Dispatcher", ".github", "project-starter")
 
     fun setHealthSort(sort: HealthSort) {
@@ -258,10 +234,7 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** 自动轮询用：只查运行中的，避免 500 多个仓库把接口打爆 */
     fun refreshRunningStatus() = refreshStatus(onlyRunning = true)
-
-    /** 手动刷新用：查所有已有状态标记的仓库 + 新建后尚未被 repos.json 收录的 */
     fun refreshAllStatus() = refreshStatus(onlyRunning = false)
 
     private fun refreshStatus(onlyRunning: Boolean) {
@@ -314,10 +287,6 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /**
-     * 完整性检测：并发读每个仓库的 profile.json，找出缺 banner 和缺置顶的仓库。
-     * banner 判断：profile.banner 字段为空；置顶判断：profile.pinned 字段为空。
-     */
     private var integrityJob: Job? = null
 
     fun runIntegrityCheck() {
@@ -393,7 +362,6 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** 加入"新建记录"（批准/手动新建后调用，存本地）*/
     fun addNewlyCreated(repoName: String) {
         val prefs = getApplication<Application>()
             .getSharedPreferences("integrity_check", android.content.Context.MODE_PRIVATE)
@@ -404,7 +372,6 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         _state.update { it.copy(newlyCreated = updated) }
     }
 
-    /** 从"新建记录"移除（完成整个流程后手动移除）*/
     fun removeNewlyCreated(repoName: String) {
         val prefs = getApplication<Application>()
             .getSharedPreferences("integrity_check", android.content.Context.MODE_PRIVATE)
@@ -453,7 +420,6 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         if (cur.remove(name) != null) writePendingSetup(cur)
     }
 
-    /** 从缓存加载待完善列表（进管理页时调用，秒开不检测） */
     fun loadMissingCache() {
         val prefs = getApplication<Application>()
             .getSharedPreferences("integrity_check", android.content.Context.MODE_PRIVATE)
@@ -489,7 +455,6 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** App 内传完 banner 后，从待完善列表移除该仓库（即时更新角标） */
     fun markBannerDone(repoName: String) {
         val mb = _state.value.missingBanner.filterNot { it.repo == repoName }
         _state.update { it.copy(missingBanner = mb) }
@@ -510,8 +475,6 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         pinRepo(repoName)
         op(str(R.string.admin_workflow_triggered, workflow)) { repo.dispatchWorkflow(it, repoName, workflow, inputs) }
     }
-
-    /** 把仓库置顶（最近操作的在最前） */
     fun pinRepo(repoName: String) {
         val newPinned = listOf(repoName) + _state.value.pinnedRepos.filter { it != repoName }
         _state.update { it.copy(
@@ -551,7 +514,6 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** 批准申请：建档 + 关闭 Issue */
     fun approveRequest(number: Int, rawAccount: String) {
         val pat = patValue ?: return
         val account = io.github.twitterarchiver.util.AccountUtil.normalize(rawAccount)
@@ -593,7 +555,6 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** 拒绝申请：关闭 Issue */
     fun rejectRequest(number: Int) {
         val pat = patValue ?: return
         viewModelScope.launch {
@@ -611,8 +572,6 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ---------- 建档 ----------
-    /** 完整建档：1.从模板创建仓库 2.触发 setup.yml */
     fun createArchive(rawName: String, since: String) {
         val pat = patValue ?: return
         val name = io.github.twitterarchiver.util.AccountUtil.normalize(rawName)
@@ -635,7 +594,6 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** 等 setup.yml 在 Actions 里注册出来再触发，最多等 40 秒 */
     private suspend fun awaitSetupReady(pat: String, name: String): Boolean {
         repeat(27) {
             if (repo.workflowExists(pat, name, "setup.yml")) return true
@@ -644,7 +602,6 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         return false
     }
 
-    /** 返回是否真的触发成功，调用方据此决定后续动作（比如关不关 Issue） */
     private suspend fun dispatchSetup(
         pat: String, name: String, since: String, fromUser: Boolean
     ): Boolean {
@@ -668,10 +625,6 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         return ok
     }
 
-    /**
-     * 对所有「仓库已建但 setup 没触发成功」的条目补一次触发。
-     * 只在确认该仓库确实没有任何运行记录时才补，避免重复建档。
-     */
     fun resumePendingSetups() {
         val pat = patValue ?: return
         val pending = _state.value.pendingSetup
@@ -688,7 +641,6 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ---------- 文件编辑 ----------
     suspend fun readFile(repoName: String, path: String): Result<Pair<String, String>> {
         val pat = patValue ?: return Result.failure(Exception(str(R.string.admin_no_token)))
         return repo.fetchFileContent(pat, repoName, path)
