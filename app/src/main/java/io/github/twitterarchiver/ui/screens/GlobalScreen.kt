@@ -3,6 +3,7 @@ package io.github.twitterarchiver.ui.screens
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,10 +18,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.ui.text.style.TextOverflow
-import io.github.twitterarchiver.ui.components.Avatar
-import io.github.twitterarchiver.ui.components.SearchResultRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,16 +28,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.twitterarchiver.R
 import io.github.twitterarchiver.data.GlobalPost
+import io.github.twitterarchiver.ui.components.Avatar
 import io.github.twitterarchiver.ui.components.GlobalPostCard
+import io.github.twitterarchiver.ui.components.SearchResultRow
 import io.github.twitterarchiver.viewmodel.GlobalTimelineViewModel
 import kotlinx.coroutines.launch
-import androidx.compose.ui.res.stringResource
-import io.github.twitterarchiver.R
 
 /** Tab 2：全站时间线（用 search-index.json，分页 + 搜索） */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -94,11 +94,15 @@ fun GlobalScreen(
             io.github.twitterarchiver.data.NetworkState.clearFailed()
             vm.load(force = true)
         },
-        modifier = Modifier.fillMaxSize().statusBarsPadding()
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
     ) {
     Column(Modifier.fillMaxSize()) {
         Column(
-            Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 8.dp),
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 14.dp, bottom = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
@@ -112,7 +116,8 @@ fun GlobalScreen(
                 ))
             state.indexError?.let { err ->
                 Text(err, fontSize = 9.sp, color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp, vertical = 2.dp)
                         .clickable { vm.clearIndexError() })
             }
             Row(
@@ -174,7 +179,9 @@ fun GlobalScreen(
             else -> LazyColumn(Modifier.fillMaxSize(), state = listState) {
                 if (state.query.isNotBlank()) {
                     item {
-                        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+                        Column(Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 10.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     stringResource(R.string.feed_found, state.searchTotal),
@@ -193,29 +200,14 @@ fun GlobalScreen(
                                     )
                                 }
                             }
-                            val missing = state.searchMissingMonth
-                            val tCode = tCodeOf(state.query)
-                            when {
-                                state.fullSearchRunning -> Text(
-                                    stringResource(R.string.global_06),
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(top = 4.dp)
-                                        .clickable { vm.cancelFullSearch() }
-                                )
-                                missing != null -> Text(
+                            state.searchMissingMonth?.let { missing ->
+                                Text(
                                     stringResource(R.string.global_month_missing, missing),
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(top = 4.dp)
+                                    modifier = Modifier
+                                        .padding(top = 4.dp)
                                         .clickable { vm.downloadMonth(missing) }
-                                )
-                                state.searchTotal == 0 && tCode != null -> Text(
-                                    stringResource(R.string.global_02),
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(top = 4.dp)
-                                        .clickable { vm.searchAllMonths(tCode) }
                                 )
                             }
                         }
@@ -271,7 +263,9 @@ fun GlobalScreen(
                 }
                 if (state.canLoadMore) {
                     item {
-                        Box(Modifier.fillMaxWidth().padding(16.dp), Alignment.Center) {
+                        Box(Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp), Alignment.Center) {
                             CircularProgressIndicator(modifier = Modifier.padding(8.dp))
                         }
                     }
@@ -312,6 +306,3 @@ fun GlobalScreen(
     }
 }
 
-/** 从查询里取定位短码（?t=xxxxxxxx），不是短码返回 null */
-private fun tCodeOf(q: String): String? =
-    io.github.twitterarchiver.util.SearchUtil.extractTCode(q)

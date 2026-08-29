@@ -15,7 +15,6 @@ import io.github.twitterarchiver.util.MediaUtil
 import io.github.twitterarchiver.util.SearchUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -23,7 +22,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -48,8 +46,7 @@ data class GlobalState(
     val accounts: List<IndexAccount> = emptyList(),
     val searchTotal: Int = 0,
     val searchMissingMonth: String? = null,
-    val jumpTarget: String? = null,
-    val fullSearchRunning: Boolean = false
+    val jumpTarget: String? = null
 )
 
 private const val SEARCH_DEBOUNCE_MS = 200L
@@ -487,9 +484,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         }
         if (raw.isBlank()) return base
 
-        SearchUtil.extractTCode(raw.trim())?.let { code ->
-            return base.filter { it.tweetId.endsWith(code) }
-        }
         if (SearchUtil.isFullTweetId(raw.trim())) {
             return base.filter { it.tweetId == raw.trim() }
         }
@@ -524,37 +518,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         ) }
         applyFilter("")
     }
-
-    fun searchAllMonths(code: String) {
-        if (fullSearchJob?.isActive == true) return
-        fullSearchJob = viewModelScope.launch {
-            val months = _state.value.shards.map { it.month }
-                .filter { it !in loadedMonths }
-                .sortedDescending()
-            _state.update { it.copy(fullSearchRunning = true) }
-            try {
-                for (m in months) {
-                    if (!isActive) break
-                    val shard = meta?.shards?.find { it.month == m } ?: continue
-                    loadShard(shard, rebuild = false)
-                    if (monthPosts[m]?.any { p -> p.tweetId.endsWith(code) } == true) break
-                }
-            } finally {
-                withContext(NonCancellable) {
-                    monthLock.withLock { rebuildFromLoaded() }
-                    _state.update { it.copy(fullSearchRunning = false) }
-                    applyFilter(_state.value.query)
-                }
-            }
-        }
-    }
-
-    fun cancelFullSearch() {
-        fullSearchJob?.cancel()
-        _state.update { it.copy(fullSearchRunning = false) }
-    }
-
-    private var fullSearchJob: Job? = null
 
     /** 列表滚动到目标后调用，避免返回时又跳一次 */
     fun clearJumpTarget() {

@@ -2,25 +2,25 @@ package io.github.twitterarchiver.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.twitterarchiver.R
+import io.github.twitterarchiver.data.AppStrings
 import io.github.twitterarchiver.data.Profile
 import io.github.twitterarchiver.data.Repository
 import io.github.twitterarchiver.data.Tweet
 import io.github.twitterarchiver.util.DateUtil
 import io.github.twitterarchiver.util.SearchUtil
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-import kotlin.time.Duration.Companion.milliseconds
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
-import io.github.twitterarchiver.R
-import io.github.twitterarchiver.data.AppStrings
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val SEARCH_DEBOUNCE_MS = 200L
 
@@ -68,10 +68,11 @@ class ReaderViewModel(private val repo: Repository = Repository.shared) : ViewMo
         }
     }
 
-    /** 选择某一天，只显示那天的推文 */
+    private fun localDayOf(t: Tweet): String = DateUtil.localDateOf(t.epochMs, t.timestamp)
+
     fun selectDay(day: String?) {
         _state.update { s ->
-            val list = if (day == null) s.allTweets else s.allTweets.filter { it.date == day }
+            val list = if (day == null) s.allTweets else s.allTweets.filter { localDayOf(it) == day }
             s.copy(
                 activeDay = day,
                 searchQuery = "",
@@ -119,14 +120,15 @@ class ReaderViewModel(private val repo: Repository = Repository.shared) : ViewMo
         return list.filter {
             SearchUtil.matches(it.text, q, lower, hasAscii) ||
                 SearchUtil.matches(it.bodyText, q, lower, hasAscii) ||
-                it.date.contains(q) || it.time.contains(q) ||
+                localDayOf(it).contains(q) || DateUtil.localTime(it.timestamp).contains(q) ||
                 it.tweetId.contains(q)
         }
     }
 
     /** 刷新后按用户当前的日期/搜索/排序重建可见列表 */
     private fun applyFilters(all: List<Tweet>, prev: ReaderState): List<Tweet> {
-        val byDay = if (prev.activeDay == null) all else all.filter { it.date == prev.activeDay }
+        val byDay =
+            if (prev.activeDay == null) all else all.filter { localDayOf(it) == prev.activeDay }
         val res = if (prev.searchQuery.isBlank()) byDay else matchQuery(all, prev.searchQuery)
         return sortTweets(res, prev.ascending)
     }

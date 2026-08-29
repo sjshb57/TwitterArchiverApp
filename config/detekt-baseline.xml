@@ -5,111 +5,42 @@
     <ID>ComplexCondition:GlobalPostCard.kt$(expanded || quoteExpanded) &amp;&amp; !loaded &amp;&amp; !loading</ID>
     <ID>ComplexCondition:GlobalTimelineViewModel.kt$GlobalTimelineViewModel$quoted == null &amp;&amp; (mainTweet.text.startsWith("RT @") || mainTweet.bodyText.startsWith("RT @") || mainTweet.embeddedImages.isNotEmpty())</ID>
     <ID>ComplexCondition:OfflineIndexStore.kt$OfflineIndexStore$b == ','.code || b == ' '.code || b == '\n'.code || b == '\r'.code || b == '\t'.code</ID>
-    <ID>CyclomaticComplexMethod:GlobalTimelineViewModel.kt$GlobalTimelineViewModel$suspend fun
-      loadThread(post: GlobalPost): Pair&lt;io.github.twitterarchiver.data.QuotedTweet?, List&lt;io.github.twitterarchiver.data.ThreadItem&gt;&gt;
-    </ID>
-    <ID>CyclomaticComplexMethod:OfflineIndexStore.kt$OfflineIndexStore$private fun splitByMonth(raw:
-      ByteArray): List&lt;Pair&lt;String, IntRange&gt;&gt;?
-    </ID>
+    <ID>CyclomaticComplexMethod:GlobalTimelineViewModel.kt$GlobalTimelineViewModel$suspend fun loadThread(post: GlobalPost): Pair&lt;io.github.twitterarchiver.data.QuotedTweet?, List&lt;io.github.twitterarchiver.data.ThreadItem&gt;&gt;</ID>
+    <ID>CyclomaticComplexMethod:OfflineIndexStore.kt$OfflineIndexStore$private fun splitByMonth(raw: ByteArray): List&lt;Pair&lt;String, IntRange&gt;&gt;?</ID>
     <ID>EmptyCatchBlock:GitHubApi.kt$GitHubApi${ }</ID>
     <ID>EmptyCatchBlock:Repository.kt$Repository${ }</ID>
     <ID>EmptyCatchBlock:SettingsScreen.kt${ }</ID>
     <ID>LargeClass:GitHubApi.kt$GitHubApi</ID>
     <ID>MaxLineLength:AccountFeedScreen.kt$Text</ID>
     <ID>MaxLineLength:AdminArchiveScreen.kt$Act</ID>
-    <ID>MaxLineLength:AdminArchiveScreen.kt$Act(AppStrings[R.string.admin_archive_26]) { pending =
-      Triple(AppStrings[R.string.admin_archive_05], AppStrings.get(R.string.admin_archive_c2, repo))
-      { vm.triggerWorkflow(repo, "retry_all.yml") } }
-    </ID>
-    <ID>MaxLineLength:AdminArchiveScreen.kt$Act(AppStrings[R.string.admin_archive_27]) { pending =
-      Triple(AppStrings[R.string.admin_archive_09], AppStrings.get(R.string.admin_archive_c3, repo))
-      { vm.triggerWorkflow(repo, "update.yml", mapOf("from_setup" to "true")) } }
-    </ID>
-    <ID>MaxLineLength:AdminArchiveScreen.kt$Act(AppStrings[R.string.admin_archive_28]) { pending =
-      Triple(AppStrings[R.string.admin_archive_10], AppStrings.get(R.string.admin_archive_c1, repo))
-      { vm.triggerWorkflow(repo, "update.yml") } }
-    </ID>
-    <ID>MaxLineLength:AdminArchiveScreen.kt$item { Text(stringResource(R.string.admin_archive_18),
-      fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier =
-      Modifier.padding(12.dp)) }
-    </ID>
-    <ID>MaxLineLength:AdminArchiveScreen.kt$modifier = Modifier.clickable { confirm =
-      AppStrings[R.string.admin_archive_23] to { vm.cancelRun(repo, run.id) } }.padding(6.dp)
-    </ID>
-    <ID>MaxLineLength:AdminArchiveScreen.kt$modifier = Modifier.clickable { confirm =
-      AppStrings[R.string.admin_archive_24] to { vm.rerunRun(repo, run.id) } }.padding(6.dp)
-    </ID>
-    <ID>MaxLineLength:AdminDetailScreen.kt$ActionItem(AppStrings[R.string.admin_detail_10]) {
-      pending = Triple(AppStrings[R.string.admin_detail_08],
-      AppStrings[R.string.admin_push_avatar_confirm]) { vm.triggerWorkflow("home",
-      "push_best_avatars.yml", mapOf("dry_run" to "false")) } }
-    </ID>
-    <ID>MaxLineLength:AdminDetailScreen.kt$ActionItem(AppStrings[R.string.admin_detail_11]) {
-      pending = Triple(AppStrings[R.string.admin_detail_39], AppStrings[R.string.admin_detail_06]) {
-      vm.triggerWorkflow("home", "push_best_avatars.yml", mapOf("dry_run" to "true")) } }
-    </ID>
-    <ID>MaxLineLength:AdminDetailScreen.kt$ActionItem(AppStrings[R.string.admin_detail_30]) {
-      pending = Triple(AppStrings[R.string.admin_detail_36], AppStrings[R.string.admin_detail_17]) {
-      vm.triggerWorkflow("Dispatcher", "dispatch.yml", mapOf("force_all" to "true")) } }
-    </ID>
-    <ID>MaxLineLength:AdminDetailScreen.kt$ActionItem(AppStrings[R.string.admin_detail_31]) {
-      pending = Triple(AppStrings[R.string.admin_detail_37], AppStrings[R.string.admin_detail_18]) {
-      vm.triggerWorkflow("home", "update-repos.yml") } }
-    </ID>
-    <ID>MaxLineLength:AdminDetailScreen.kt$ActionItem(AppStrings[R.string.admin_detail_32]) {
-      pending = Triple(AppStrings[R.string.admin_detail_37], AppStrings[R.string.admin_detail_19]) {
-      vm.triggerWorkflow("home", "build-manifest.yml") } }
-    </ID>
-    <ID>MaxLineLength:AdminDetailScreen.kt$ActionItem(AppStrings[R.string.admin_detail_33]) {
-      pending = Triple(AppStrings[R.string.admin_detail_38], AppStrings[R.string.admin_detail_20]) {
-      vm.triggerWorkflow("Dispatcher", "dispatch.yml") } }
-    </ID>
-    <ID>MaxLineLength:AdminDetailScreen.kt$ActionItem(AppStrings[R.string.admin_detail_34]) {
-      pending = Triple(AppStrings[R.string.admin_detail_37], AppStrings[R.string.admin_detail_21]) {
-      vm.triggerWorkflow("home", "aggregate_avatars.yml") } }
-    </ID>
-    <ID>MaxLineLength:AdminDetailScreen.kt$ActionItem(AppStrings[R.string.admin_detail_35]) {
-      pending = Triple(AppStrings[R.string.admin_detail_37], AppStrings[R.string.admin_detail_22]) {
-      vm.triggerWorkflow("home", "build_search_index.yml") } }
-    </ID>
+    <ID>MaxLineLength:AdminArchiveScreen.kt$Act(AppStrings[R.string.admin_archive_26]) { pending = Triple(AppStrings[R.string.admin_archive_05], AppStrings.get(R.string.admin_archive_c2, repo)) { vm.triggerWorkflow(repo, "retry_all.yml") } }</ID>
+    <ID>MaxLineLength:AdminArchiveScreen.kt$Act(AppStrings[R.string.admin_archive_27]) { pending = Triple(AppStrings[R.string.admin_archive_09], AppStrings.get(R.string.admin_archive_c3, repo)) { vm.triggerWorkflow(repo, "update.yml", mapOf("from_setup" to "true")) } }</ID>
+    <ID>MaxLineLength:AdminArchiveScreen.kt$Act(AppStrings[R.string.admin_archive_28]) { pending = Triple(AppStrings[R.string.admin_archive_10], AppStrings.get(R.string.admin_archive_c1, repo)) { vm.triggerWorkflow(repo, "update.yml") } }</ID>
+    <ID>MaxLineLength:AdminArchiveScreen.kt$item { Text(stringResource(R.string.admin_archive_18), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(12.dp)) }</ID>
+    <ID>MaxLineLength:AdminArchiveScreen.kt$modifier = Modifier.clickable { confirm = AppStrings[R.string.admin_archive_23] to { vm.cancelRun(repo, run.id) } }.padding(6.dp)</ID>
+    <ID>MaxLineLength:AdminArchiveScreen.kt$modifier = Modifier.clickable { confirm = AppStrings[R.string.admin_archive_24] to { vm.rerunRun(repo, run.id) } }.padding(6.dp)</ID>
+    <ID>MaxLineLength:AdminDetailScreen.kt$ActionItem(AppStrings[R.string.admin_detail_10]) { pending = Triple(AppStrings[R.string.admin_detail_08], AppStrings[R.string.admin_push_avatar_confirm]) { vm.triggerWorkflow("home", "push_best_avatars.yml", mapOf("dry_run" to "false")) } }</ID>
+    <ID>MaxLineLength:AdminDetailScreen.kt$ActionItem(AppStrings[R.string.admin_detail_11]) { pending = Triple(AppStrings[R.string.admin_detail_39], AppStrings[R.string.admin_detail_06]) { vm.triggerWorkflow("home", "push_best_avatars.yml", mapOf("dry_run" to "true")) } }</ID>
+    <ID>MaxLineLength:AdminDetailScreen.kt$ActionItem(AppStrings[R.string.admin_detail_30]) { pending = Triple(AppStrings[R.string.admin_detail_36], AppStrings[R.string.admin_detail_17]) { vm.triggerWorkflow("Dispatcher", "dispatch.yml", mapOf("force_all" to "true")) } }</ID>
+    <ID>MaxLineLength:AdminDetailScreen.kt$ActionItem(AppStrings[R.string.admin_detail_31]) { pending = Triple(AppStrings[R.string.admin_detail_37], AppStrings[R.string.admin_detail_18]) { vm.triggerWorkflow("home", "update-repos.yml") } }</ID>
+    <ID>MaxLineLength:AdminDetailScreen.kt$ActionItem(AppStrings[R.string.admin_detail_32]) { pending = Triple(AppStrings[R.string.admin_detail_37], AppStrings[R.string.admin_detail_19]) { vm.triggerWorkflow("home", "build-manifest.yml") } }</ID>
+    <ID>MaxLineLength:AdminDetailScreen.kt$ActionItem(AppStrings[R.string.admin_detail_33]) { pending = Triple(AppStrings[R.string.admin_detail_38], AppStrings[R.string.admin_detail_20]) { vm.triggerWorkflow("Dispatcher", "dispatch.yml") } }</ID>
+    <ID>MaxLineLength:AdminDetailScreen.kt$ActionItem(AppStrings[R.string.admin_detail_34]) { pending = Triple(AppStrings[R.string.admin_detail_37], AppStrings[R.string.admin_detail_21]) { vm.triggerWorkflow("home", "aggregate_avatars.yml") } }</ID>
+    <ID>MaxLineLength:AdminDetailScreen.kt$ActionItem(AppStrings[R.string.admin_detail_35]) { pending = Triple(AppStrings[R.string.admin_detail_37], AppStrings[R.string.admin_detail_22]) { vm.triggerWorkflow("home", "build_search_index.yml") } }</ID>
     <ID>MaxLineLength:AdminDetailScreen.kt$AllArchivesView</ID>
-    <ID>MaxLineLength:AdminDetailScreen.kt$item { Text(stringResource(R.string.admin_archive_18),
-      fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier =
-      Modifier.padding(12.dp)) }
-    </ID>
-    <ID>MaxLineLength:AdminDetailScreen.kt$val sub = if (r.repoName != r.account)
-      stringResource(R.string.admin_detail_repo_line, r.handle, r.repoName) else r.handle
-    </ID>
-    <ID>MaxLineLength:AdminEditProfileScreen.kt$navigationIcon = { IconButton(onClick = onBack) {
-      Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } }
-    </ID>
-    <ID>MaxLineLength:AdminViewModel.kt$AdminViewModel$noBanner.add(MissingItem(arc.repoName,
-      arc.account, str(R.string.admin_read_failed_suffix, arc.displayName)))
-    </ID>
-    <ID>MaxLineLength:AdminViewModel.kt$AdminViewModel$op(str(R.string.admin_file_uploaded, path)) {
-      repo.putFileContent(it, repoName, path, content, sha, str(R.string.admin_file_commit, path)) }
-    </ID>
-    <ID>MaxLineLength:AppNav.kt$android.widget.Toast.makeText(bmCtx,
-      AppStrings.get(R.string.nav_exported, list.size), android.widget.Toast.LENGTH_SHORT).show()
-    </ID>
-    <ID>MaxLineLength:AppNav.kt$dialogTarget = DialogTarget(it.repoName, it.account, it.displayName,
-      it.handle, it.description ?: "", it.avatar ?: "")
-    </ID>
-    <ID>MaxLineLength:AppNav.kt$dialogTarget = DialogTarget(post.account.r, post.account.a,
-      post.account.n, post.account.u, "", if (post.account.av.isNotBlank())
-      "avatar/${post.account.av}" else "")
-    </ID>
+    <ID>MaxLineLength:AdminDetailScreen.kt$item { Text(stringResource(R.string.admin_archive_18), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(12.dp)) }</ID>
+    <ID>MaxLineLength:AdminDetailScreen.kt$val sub = if (r.repoName != r.account) stringResource(R.string.admin_detail_repo_line, r.handle, r.repoName) else r.handle</ID>
+    <ID>MaxLineLength:AdminEditProfileScreen.kt$navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } }</ID>
+    <ID>MaxLineLength:AdminViewModel.kt$AdminViewModel$noBanner.add(MissingItem(arc.repoName, arc.account, str(R.string.admin_read_failed_suffix, arc.displayName)))</ID>
+    <ID>MaxLineLength:AdminViewModel.kt$AdminViewModel$op(str(R.string.admin_file_uploaded, path)) { repo.putFileContent(it, repoName, path, content, sha, str(R.string.admin_file_commit, path)) }</ID>
+    <ID>MaxLineLength:AppNav.kt$android.widget.Toast.makeText(bmCtx, AppStrings.get(R.string.nav_exported, list.size), android.widget.Toast.LENGTH_SHORT).show()</ID>
+    <ID>MaxLineLength:AppNav.kt$dialogTarget = DialogTarget(it.repoName, it.account, it.displayName, it.handle, it.description ?: "", it.avatar ?: "")</ID>
+    <ID>MaxLineLength:AppNav.kt$dialogTarget = DialogTarget(post.account.r, post.account.a, post.account.n, post.account.u, "", if (post.account.av.isNotBlank()) "avatar/${post.account.av}" else "")</ID>
     <ID>MaxLineLength:GlobalScreen.kt$Text</ID>
     <ID>MaxLineLength:GlobalTimelineViewModel.kt$GlobalTimelineViewModel$suspend</ID>
-    <ID>NestedBlockDepth:GitHubApi.kt$GitHubApi$private fun parseIndexStream(input:
-      java.io.InputStream): Pair&lt;List&lt;IndexAccount&gt;, List&lt;GlobalPost&gt;&gt;
-    </ID>
-    <ID>NestedBlockDepth:GitHubApi.kt$GitHubApi$private fun parsePostsStream( input:
-      java.io.InputStream, accounts: List&lt;IndexAccount&gt; ): List&lt;GlobalPost&gt;
-    </ID>
-    <ID>NestedBlockDepth:OfflineIndexStore.kt$OfflineIndexStore$private fun splitByMonth(raw:
-      ByteArray): List&lt;Pair&lt;String, IntRange&gt;&gt;?
-    </ID>
+    <ID>NestedBlockDepth:GitHubApi.kt$GitHubApi$private fun parseIndexStream(input: java.io.InputStream): Pair&lt;List&lt;IndexAccount&gt;, List&lt;GlobalPost&gt;&gt;</ID>
+    <ID>NestedBlockDepth:GitHubApi.kt$GitHubApi$private fun parsePostsStream( input: java.io.InputStream, accounts: List&lt;IndexAccount&gt; ): List&lt;GlobalPost&gt;</ID>
+    <ID>NestedBlockDepth:OfflineIndexStore.kt$OfflineIndexStore$private fun splitByMonth(raw: ByteArray): List&lt;Pair&lt;String, IntRange&gt;&gt;?</ID>
     <ID>SwallowedException:AdminArchiveScreen.kt$e: Exception</ID>
     <ID>SwallowedException:AdminDetailScreen.kt$e: Exception</ID>
     <ID>SwallowedException:AdminViewModel.kt$AdminViewModel$e: Exception</ID>
