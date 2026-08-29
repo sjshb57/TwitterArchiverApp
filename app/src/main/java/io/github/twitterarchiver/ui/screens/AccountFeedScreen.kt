@@ -228,9 +228,10 @@ fun AccountFeedScreen(
                 val stuck by remember {
                     androidx.compose.runtime.derivedStateOf { listState.firstVisibleItemIndex >= 1 }
                 }
-                Column(Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.background)) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.background)) {
                     Row(
                         Modifier
                             .fillMaxWidth()
@@ -320,7 +321,7 @@ fun AccountFeedScreen(
                     items(feed, key = { it.tweetId }) { t ->
                         SearchResultRow(
                             date = localDayOf(t),
-                            time = DateUtil.localTime(t.timestamp),
+                            time = DateUtil.localTimeOf(t.epochMs, t.timestamp),
                             text = t.text.ifBlank { t.bodyText },
                             keyword = state.searchQuery.trim(),
                             onClick = {
@@ -366,10 +367,11 @@ fun AccountFeedScreen(
             }
         }
 
-        Box(Modifier
-            .fillMaxWidth()
-            .height(statusBarH)
-            .background(MaterialTheme.colorScheme.background))
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(statusBarH)
+                .background(MaterialTheme.colorScheme.background))
 
     }
 
@@ -391,7 +393,6 @@ fun AccountFeedScreen(
     }
 }
 
-/** 细汉堡按钮：三条 17dp 宽、1.5dp 细线（对齐 reader menu-toggle） */
 @Composable
 private fun HamburgerIcon(onBanner: Boolean, modifier: Modifier = Modifier) {
     Column(
@@ -405,29 +406,31 @@ private fun HamburgerIcon(onBanner: Boolean, modifier: Modifier = Modifier) {
                 Box(Modifier
                     .width(17.dp)
                     .height(2.dp)) {
-                    Box(Modifier
-                        .fillMaxWidth()
-                        .height(2.dp)
-                        .clip(RoundedCornerShape(1.dp))
-                        .background(Color.Black.copy(alpha = 0.45f)))
-                    Box(Modifier
-                        .fillMaxWidth()
-                        .height(1.5.dp)
-                        .clip(RoundedCornerShape(1.dp))
-                        .background(Color.White.copy(alpha = 0.95f)))
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(2.dp)
+                            .clip(RoundedCornerShape(1.dp))
+                            .background(Color.Black.copy(alpha = 0.45f)))
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(1.5.dp)
+                            .clip(RoundedCornerShape(1.dp))
+                            .background(Color.White.copy(alpha = 0.95f)))
                 }
             } else {
-                Box(Modifier
-                    .width(17.dp)
-                    .height(1.5.dp)
-                    .clip(RoundedCornerShape(1.dp))
-                    .background(MaterialTheme.colorScheme.onSurfaceVariant))
+                Box(
+                    Modifier
+                        .width(17.dp)
+                        .height(1.5.dp)
+                        .clip(RoundedCornerShape(1.dp))
+                        .background(MaterialTheme.colorScheme.onSurfaceVariant))
             }
         }
     }
 }
 
-/** 搜索框内部：🔍 + 输入 + ✕（全圆，照搬 reader search-inner） */
 @Composable
 private fun SearchInner(
     value: String,
@@ -461,10 +464,11 @@ private fun SearchInner(
         }
         if (value.isNotEmpty()) {
             Spacer(Modifier.width(6.dp))
-            Box(Modifier
-                .size(22.dp)
-                .clip(CircleShape)
-                .clickable { onClear() },
+            Box(
+                Modifier
+                    .size(22.dp)
+                    .clip(CircleShape)
+                    .clickable { onClear() },
                 Alignment.Center) {
                 Icon(
                     Icons.Filled.Close, contentDescription = stringResource(R.string.acct_filter_01),
@@ -476,7 +480,6 @@ private fun SearchInner(
     }
 }
 
-/** Tab 按钮（推文/回复），选中有下划线 */
 @Composable
 private fun TabBtn(text: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     Column(
@@ -491,18 +494,18 @@ private fun TabBtn(text: String, selected: Boolean, modifier: Modifier, onClick:
             else MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(9.dp))
         if (selected) {
-            Box(Modifier
-                .width(56.dp)
-                .height(3.dp)
-                .clip(RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
-                .background(MaterialTheme.colorScheme.primary))
+            Box(
+                Modifier
+                    .width(56.dp)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
+                    .background(MaterialTheme.colorScheme.primary))
         } else {
             Spacer(Modifier.height(3.dp))
         }
     }
 }
 
-/** 账号资料头：照搬 reader 字号 + banner 渐变遮罩沉浸（延伸到状态栏） */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun ProfileHeader(
@@ -528,10 +531,11 @@ private fun ProfileHeader(
                         .height(170.dp)
                         .background(MaterialTheme.colorScheme.surfaceVariant))
             } else {
-                Box(Modifier
-                    .fillMaxWidth()
-                    .height(170.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant))
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(170.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant))
             }
             Box(
                 Modifier
@@ -638,7 +642,6 @@ private fun ProfileHeader(
     }
 }
 
-/** 日期树弹层：年→月→日折叠，每天带推文数（照搬 reader date-tree） */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DateTreeSheet(
@@ -653,9 +656,10 @@ private fun DateTreeSheet(
             .fillMaxWidth()
             .height(480.dp)) {
             item {
-                Row(Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.date_tree_04), fontSize = 15.sp, fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
@@ -731,10 +735,11 @@ private fun MonthNode(
                             else MaterialTheme.colorScheme.onSurface,
                             fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
                             modifier = Modifier.weight(1f))
-                        Box(Modifier
-                            .clip(RoundedCornerShape(999.dp))
-                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
-                            .padding(horizontal = 8.dp, vertical = 2.dp)) {
+                        Box(
+                            Modifier
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                                .padding(horizontal = 8.dp, vertical = 2.dp)) {
                             Text("$count", fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
@@ -745,7 +750,6 @@ private fun MonthNode(
     }
 }
 
-/** Tweet → GlobalPost */
 private fun Tweet.toGlobalPost(account: IndexAccount, replyCount: Int): GlobalPost {
     return GlobalPost(
         acctIndex = 0,
@@ -761,7 +765,6 @@ private fun Tweet.toGlobalPost(account: IndexAccount, replyCount: Int): GlobalPo
     )
 }
 
-/** bio 高亮：@用户名 + http/https 链接 显示为强调色（对齐 reader renderBioWithEntities） */
 private fun buildBioAnnotated(
     bio: String,
     accent: Color,

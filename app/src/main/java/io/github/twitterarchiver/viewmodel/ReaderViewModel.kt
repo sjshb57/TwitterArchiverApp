@@ -117,15 +117,21 @@ class ReaderViewModel(private val repo: Repository = Repository.shared) : ViewMo
         if (SearchUtil.isFullTweetId(q.trim())) return list.filter { it.tweetId == q.trim() }
         val hasAscii = SearchUtil.hasAsciiLetter(q)
         val lower = q.lowercase(java.util.Locale.ROOT)
+
+        val checkDateTime = q.any { it.isDigit() }
         return list.filter {
             SearchUtil.matches(it.text, q, lower, hasAscii) ||
                 SearchUtil.matches(it.bodyText, q, lower, hasAscii) ||
-                localDayOf(it).contains(q) || DateUtil.localTime(it.timestamp).contains(q) ||
-                it.tweetId.contains(q)
+                it.tweetId.contains(q) ||
+                (
+                    checkDateTime && (
+                        localDayOf(it).contains(q) ||
+                            DateUtil.localTimeOf(it.epochMs, it.timestamp).contains(q)
+                        )
+                    )
         }
     }
 
-    /** 刷新后按用户当前的日期/搜索/排序重建可见列表 */
     private fun applyFilters(all: List<Tweet>, prev: ReaderState): List<Tweet> {
         val byDay =
             if (prev.activeDay == null) all else all.filter { localDayOf(it) == prev.activeDay }

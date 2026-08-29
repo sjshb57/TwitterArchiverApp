@@ -91,6 +91,9 @@ object DateUtil {
         return formatLocal(ms, TIME_FMT)
     }
 
+    fun localTimeOf(ms: Long, fallback: String): String =
+        if (ms > 0) formatLocal(ms, TIME_FMT) else localTime(fallback)
+
     fun localDateTime(timestamp: String): String {
         val ms = parseMillis(timestamp) ?: return ""
         return formatLocal(ms, DATE_TIME_FMT)
