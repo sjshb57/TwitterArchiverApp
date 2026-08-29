@@ -484,6 +484,10 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         }
         if (raw.isBlank()) return base
 
+        SearchUtil.extractTCode(raw.trim())?.let { code ->
+            return base.filter { it.tweetId.endsWith(code) }
+        }
+
         if (SearchUtil.isFullTweetId(raw.trim())) {
             return base.filter { it.tweetId == raw.trim() }
         }
@@ -519,7 +523,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         applyFilter("")
     }
 
-    /** 列表滚动到目标后调用，避免返回时又跳一次 */
     fun clearJumpTarget() {
         if (_state.value.jumpTarget != null) {
             _state.update { it.copy(jumpTarget = null) }
