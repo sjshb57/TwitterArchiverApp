@@ -164,7 +164,7 @@ Kotlin + Jetpack Compose + Material 3，单 Activity，自己实现的栈式导�
 
 |     |                                            |
 |-----|--------------------------------------------|
-| 构建  | AGP 9.3.1 / Gradle 9.7.0 / Kotlin 2.4.10   |
+| 构建  | AGP 9.3.2 / Gradle 9.7.0 / Kotlin 2.4.10   |
 | SDK | minSdk 30 · compileSdk 37 · targetSdk 37   |
 | UI  | Compose BOM 2026.08.00 · Material 3        |
 | 网络  | Ktor 3.5.2                                 |
