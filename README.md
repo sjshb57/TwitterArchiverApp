@@ -136,7 +136,7 @@
 
 |      |                                 |
 |------|---------------------------------|
-| 运行环境 | Android 11（API 30）及以上，arm64-v8a |
+| 运行环境 | Android 10（API 29）及以上，arm64-v8a |
 | 构建环境 | JDK 21、Android SDK 37           |
 
 ### 步骤
@@ -164,8 +164,8 @@ Kotlin + Jetpack Compose + Material 3，单 Activity，自己实现的栈式导�
 
 |     |                                            |
 |-----|--------------------------------------------|
-| 构建  | AGP 9.3.2 / Gradle 9.7.0 / Kotlin 2.4.10   |
-| SDK | minSdk 30 · compileSdk 37 · targetSdk 37   |
+| 构建  | AGP 9.3.2 / Gradle 9.7.1 / Kotlin 2.4.10   |
+| SDK | minSdk 29 · compileSdk 37 · targetSdk 37   |
 | UI  | Compose BOM 2026.08.00 · Material 3        |
 | 网络  | Ktor 3.5.2                                 |
 | 序列化 | kotlinx.serialization 1.11.0               |

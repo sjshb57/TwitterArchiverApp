@@ -3,23 +3,16 @@ package io.github.twitterarchiver
 import io.github.twitterarchiver.util.DateUtil
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertSame
 import org.junit.Test
 import java.util.TimeZone
 
-/**
- * DateUtil 从 SimpleDateFormat 迁到 java.time 后的行为锁定测试。
- *
- * 迁移的动机是删掉那套「监听 ACTION_TIMEZONE_CHANGED → 代际计数 → 让每个
- * ThreadLocal 里的格式化器失效」的机制：java.time 在 format 时才取
- * ZoneId.systemDefault()，时区变了下一次自然就对。但解析这一侧必须和原来
- * 逐字等价，否则几万条推文的时间会整片偏移或直接归零，而且不报任何错。
- */
+/** DateUtil 从 SimpleDateFormat 迁到 java.time 后的行为锁定测试 */
 @Suppress("NonAsciiCharacters")
 class DateUtilParseTest {
 
     private val utc = TimeZone.getTimeZone("UTC")
 
-    /** 2020-09-09T13:44:34Z 的 epoch 毫秒 */
     private val sep09 = 1_599_659_074_000L
 
     @Test
@@ -31,16 +24,48 @@ class DateUtilParseTest {
 
     @Test
     fun ISO_尾部多余的时区偏移被忽略而不是报错() {
-        // 旧的 SimpleDateFormat 是宽松解析，匹配完 pattern 就停、忽略尾部；
-        // 这里靠先截断 19 位保持同样行为
         assertEquals(sep09, DateUtil.epochMillis("2020-09-09T13:44:34+08:00"))
     }
 
     @Test
     fun 推特原始格式按字符串里的偏移量解析() {
         assertEquals(sep09, DateUtil.epochMillis("Wed Sep 09 13:44:34 +0000 2020"))
-        // 带非零偏移：+0800 的 21:44:34 就是 UTC 的 13:44:34
         assertEquals(sep09, DateUtil.epochMillis("Wed Sep 09 21:44:34 +0800 2020"))
+    }
+
+    @Test
+    fun 旧格式的星期与日期不符时仍按日期解析() {
+        assertEquals(sep09, DateUtil.epochMillis("Mon Sep 09 13:44:34 +0000 2020"))
+    }
+
+    @Test
+    fun 旧格式忽略大小写() {
+        assertEquals(sep09, DateUtil.epochMillis("wed sep 09 13:44:34 +0000 2020"))
+        assertEquals(sep09, DateUtil.epochMillis("WED SEP 09 13:44:34 +0000 2020"))
+    }
+
+    @Test
+    fun 旧格式的日允许不补零() {
+        assertEquals(sep09, DateUtil.epochMillis("Wed Sep 9 13:44:34 +0000 2020"))
+    }
+
+    @Test
+    fun 旧格式缺少星期前缀也能解析() {
+        assertEquals(sep09, DateUtil.epochMillis("Sep 09 13:44:34 +0000 2020"))
+    }
+
+    @Test
+    fun 相同日期返回同一个字符串实例() {
+        val original = TimeZone.getDefault()
+        try {
+            TimeZone.setDefault(utc)
+            val a = DateUtil.localDateOf(sep09, "")
+            val b = DateUtil.localDateOf(sep09 + 60_000, "")
+            assertEquals(a, b)
+            assertSame("同一天的日期串应当被池化成同一个实例", a, b)
+        } finally {
+            TimeZone.setDefault(original)
+        }
     }
 
     @Test
@@ -55,7 +80,6 @@ class DateUtilParseTest {
     fun utcMonthOf_不受系统时区影响() {
         val original = TimeZone.getDefault()
         try {
-            // UTC 的 2020-09-01T00:30 在 UTC-10 是 8 月，月份分片必须按 UTC 归属
             TimeZone.setDefault(TimeZone.getTimeZone("Pacific/Honolulu"))
             val ms = DateUtil.epochMillis("2020-09-01T00:30:00.000Z")
             assertEquals("2020-09", DateUtil.utcMonthOf(ms))
@@ -71,8 +95,6 @@ class DateUtilParseTest {
             TimeZone.setDefault(utc)
             val asUtc = DateUtil.localDateTime("2020-09-09T13:44:34.000Z")
             assertEquals("2020-09-09 13:44:34", asUtc)
-
-            // 关键点：不做任何失效通知，直接改系统默认时区
             TimeZone.setDefault(TimeZone.getTimeZone("Asia/Tokyo"))
             val asTokyo = DateUtil.localDateTime("2020-09-09T13:44:34.000Z")
             assertEquals("2020-09-09 22:44:34", asTokyo)

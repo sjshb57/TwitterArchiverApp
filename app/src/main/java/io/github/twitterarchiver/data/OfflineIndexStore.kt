@@ -4,6 +4,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import java.io.File
@@ -27,19 +28,25 @@ class OfflineIndexStore(private val api: GitHubApi) {
         AppDirs.root?.let { File(it, "index_cache/$repo/$account") }
 
     private val locks = java.util.concurrent.ConcurrentHashMap<String, Mutex>()
+    private val gate = kotlinx.coroutines.sync.Semaphore(MAX_CONCURRENT_LOADS)
 
     suspend fun load(repo: String, account: String, force: Boolean = false): List<Tweet>? =
-        locks.getOrPut("$repo/$account") { Mutex() }.withLock {
-            loadLocked(repo, account, force)
+        gate.withPermit {
+            locks.getOrPut("$repo/$account") { Mutex() }.withLock {
+                loadLocked(repo, account, force)
+            }
         }
 
     suspend fun clearAll() {
-        val held = locks.values.toList()
-        held.forEach { it.lock() }
+        var acquired = 0
         try {
+            repeat(MAX_CONCURRENT_LOADS) {
+                gate.acquire()
+                acquired++
+            }
             AppDirs.root?.let { File(it, "index_cache").deleteRecursively() }
         } finally {
-            held.forEach { it.unlock() }
+            repeat(acquired) { gate.release() }
         }
     }
 
@@ -72,17 +79,15 @@ class OfflineIndexStore(private val api: GitHubApi) {
         dir.mkdirs()
         val months = state.months.toMutableMap()
         for ((month, span) in changed) {
-            val (status, bytes) =
-                api.fetchIndexRange(repo, account, span.offset, span.length) ?: return null
-            when {
-                status == 200 -> return saveWhole(dir, bytes, manifest)
-                status != 206 || sha16(bytes) != span.hash -> return null
-                else -> {
-                    File(dir, "$month.json").writeBytes(bytes)
-                    months[month] = span.hash
-                    writeState(dir, LocalIndexState(months.toMap(), state.total))
-                }
+            val res = api.fetchIndexRange(repo, account, span.offset, span.length)
+                ?: return abortIncremental(dir, months, state.total)
+            val (status, bytes) = res
+            if (status == 200) return saveWhole(dir, bytes, manifest)
+            if (status != 206 || sha16(bytes) != span.hash) {
+                return abortIncremental(dir, months, state.total)
             }
+            File(dir, "$month.json").writeBytes(bytes)
+            months[month] = span.hash
         }
         removed.forEach {
             File(dir, "$it.json").delete()
@@ -90,6 +95,13 @@ class OfflineIndexStore(private val api: GitHubApi) {
         }
         writeState(dir, LocalIndexState(months.toMap(), manifest.total))
         return readLocal(dir)
+    }
+
+    private fun abortIncremental(
+        dir: File, months: Map<String, String>, total: Int
+    ): List<Tweet>? {
+        writeState(dir, LocalIndexState(months.toMap(), total))
+        return null
     }
 
     private suspend fun fullDownload(
@@ -140,6 +152,8 @@ class OfflineIndexStore(private val api: GitHubApi) {
     }
 
     private companion object {
+        const val MAX_CONCURRENT_LOADS = 32
+
         val BRACKET_OPEN = "[".toByteArray()
         val BRACKET_CLOSE = "]".toByteArray()
         val COMMA = ",".toByteArray()

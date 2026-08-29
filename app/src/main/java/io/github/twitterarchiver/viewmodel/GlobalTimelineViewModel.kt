@@ -75,10 +75,10 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
     private val shardMonths: Set<String> get() = _state.value.shards.map { it.month }.toSet()
     private var activeDate: String? = null
     private val monthLock = kotlinx.coroutines.sync.Mutex()
-    private val deleteEpoch = HashMap<String, Int>()
+    private val deleteEpoch = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
     private fun bumpDeleteEpoch(month: String) {
-        deleteEpoch[month] = (deleteEpoch[month] ?: 0) + 1
+        deleteEpoch.merge(month, 1, Int::plus)
     }
 
     private suspend fun downloadedMonths(): Set<String> =
@@ -227,7 +227,10 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         }
         monthLock.withLock {
             if (shard.month in loadedMonths) return@withLock
-            if ((deleteEpoch[shard.month] ?: 0) != epochBefore) return@withLock
+            if ((deleteEpoch[shard.month] ?: 0) != epochBefore) {
+                withContext(Dispatchers.IO) { GlobalIndexStore.deleteMonth(shard.month) }
+                return@withLock
+            }
             monthPosts[shard.month] = posts
             loadedMonths = loadedMonths + shard.month
             if (rebuild) rebuildFromLoaded()
@@ -540,9 +543,9 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
                 withContext(NonCancellable) {
                     monthLock.withLock { rebuildFromLoaded() }
                     _state.update { it.copy(fullSearchRunning = false) }
+                    applyFilter(_state.value.query)
                 }
             }
-            applyFilter(_state.value.query)
         }
     }
 
@@ -550,9 +553,6 @@ class GlobalTimelineViewModel(private val api: GitHubApi = GitHubApi.shared) : V
         fullSearchJob?.cancel()
         _state.update { it.copy(fullSearchRunning = false) }
     }
-
-    fun pendingFullSearchBytes(): Long =
-        _state.value.shards.filter { it.month !in loadedMonths }.sumOf { it.bytes }
 
     private var fullSearchJob: Job? = null
 

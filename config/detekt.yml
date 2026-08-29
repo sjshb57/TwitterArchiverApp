@@ -15,6 +15,7 @@ complexity:
   CyclomaticComplexMethod:
     active: true
     threshold: 20
+    ignoreAnnotated: [ 'Composable' ]
   NestedBlockDepth:
     active: true
     threshold: 5

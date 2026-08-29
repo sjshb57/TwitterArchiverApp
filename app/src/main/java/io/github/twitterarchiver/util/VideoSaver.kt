@@ -4,16 +4,16 @@ import android.content.ContentValues
 import android.content.Context
 import android.os.Environment
 import android.provider.MediaStore
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import io.github.twitterarchiver.R
 import io.github.twitterarchiver.data.AppStrings
 import io.github.twitterarchiver.data.HttpClients
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 
-/** 下载视频保存到系统相册。minSdk 30，一律走分区存储，无需存储权限 */
+/** 下载视频保存到系统相册。minSdk 29，一律走分区存储，无需存储权限 */
 object VideoSaver {
 
     suspend fun saveVideo(context: Context, url: String, filename: String): Boolean =

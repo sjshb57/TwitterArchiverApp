@@ -4,11 +4,11 @@
 
 | 项目   | 内容                                       |
 |------|------------------------------------------|
-| 代码规模 | 80 余个 Kotlin 文件（含 5 个测试），约 12,000 行      |
+| 代码规模 | 89 个 Kotlin 文件（含 10 个测试），主代码约 12,100 行   |
 | 技术栈  | Kotlin、Jetpack Compose、Material 3        |
 | 架构   | 单 Activity，自实现栈式导航，MVVM 分层               |
-| 构建   | AGP 9.3.2 / Gradle 9.7.0 / Kotlin 2.4.10 |
-| SDK  | compileSdk 37 / minSdk 30 / targetSdk 37 |
+| 构建   | AGP 9.3.2 / Gradle 9.7.1 / Kotlin 2.4.10 |
+| SDK  | compileSdk 37 / minSdk 29 / targetSdk 37 |
 
 ---
 
@@ -268,7 +268,7 @@ UI 层不直接访问 `GitHubApi`，ViewModel 层不引用 Compose API，`util` 
 | 文件               | 职责                                              |
 |------------------|-------------------------------------------------|
 | `DateUtil.kt`    | UTC 时间戳转本地时区显示                                  |
-| `ImageSaver.kt`  | 保存图片至系统相册（MediaStore）。minSdk 30 一律走分区存储，无需存储权限  |
+| `ImageSaver.kt`  | 保存图片至系统相册（MediaStore）。minSdk 29 一律走分区存储，无需存储权限  |
 | `VideoSaver.kt`  | 保存视频至系统相册                                       |
 | `AccountUtil.kt` | 账号名规范化，容错 `@name`、`x.com/name`、全角空格等输入形式        |
 | `TweetIdUtil.kt` | 推文 ID 规范化，从完整推文链接中提取数字 ID                       |
