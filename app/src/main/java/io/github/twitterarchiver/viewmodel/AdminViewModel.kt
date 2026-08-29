@@ -589,8 +589,14 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                     _state.update { it.copy(message = str(R.string.admin_repo_created)) }
                     dispatchSetup(pat, name, since, fromUser = true)
                 }
-                .onFailure { _state.update { it.copy(busy = false,
-                    message = str(R.string.admin_create_repo_failed, it.message.orEmpty())) } }
+                .onFailure { e ->
+                    _state.update {
+                        it.copy(
+                            busy = false,
+                            message = str(R.string.admin_create_repo_failed, e.message.orEmpty())
+                        )
+                    }
+                }
         }
     }
 
@@ -617,10 +623,18 @@ class AdminViewModel(app: Application) : AndroidViewModel(app) {
                 clearPendingSetup(name)
                 _state.update { it.copy(busy = false, message = str(R.string.admin_setup_triggered, name)) }
             }
-            .onFailure {
-                _state.update { it.copy(busy = false,
-                    message = if (fromUser) str(R.string.admin_setup_failed, name, it.message.orEmpty())
-                              else str(R.string.admin_retry_setup_failed, name, it.message.orEmpty())) }
+            .onFailure { e ->
+                _state.update {
+                    it.copy(
+                        busy = false,
+                        message = if (fromUser) str(
+                            R.string.admin_setup_failed,
+                            name,
+                            e.message.orEmpty()
+                        )
+                        else str(R.string.admin_retry_setup_failed, name, e.message.orEmpty())
+                    )
+                }
             }
         return ok
     }
