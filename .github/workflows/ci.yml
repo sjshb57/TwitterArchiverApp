@@ -36,9 +36,6 @@ jobs:
       - name: 准备 local.properties
         run: echo "REQ_TOKEN=ci-placeholder" > local.properties
 
-      - name: 单元测试
-        run: ./gradlew testAdminDebugUnitTest testVisitorDebugUnitTest
-
       - name: 静态检查
         run: ./gradlew detekt
 

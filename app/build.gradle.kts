@@ -48,12 +48,14 @@ android {
             dimension = "mode"
             applicationIdSuffix = ".visitor"
             versionNameSuffix = "-visitor"
+            resValue("string", "app_name", "推文存档")
             buildConfigField("boolean", "IS_ADMIN", "false")
         }
         create("admin") {
             dimension = "mode"
             applicationIdSuffix = ".admin"
             versionNameSuffix = "-admin"
+            resValue("string", "app_name", "存档管理")
             buildConfigField("boolean", "IS_ADMIN", "true")
         }
     }
