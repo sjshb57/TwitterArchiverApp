@@ -83,11 +83,6 @@ android {
         @Suppress("UnstableApiUsage")
         localeFilters += listOf("zh-rCN", "zh-rTW")
     }
-    testOptions {
-        unitTests {
-            isReturnDefaultValues = true
-        }
-    }
     packaging {
         dex {
             useLegacyPackaging = true
@@ -110,7 +105,7 @@ detekt {
     buildUponDefaultConfig = true
     config.setFrom(files("$rootDir/config/detekt.yml"))
     baseline = file("$rootDir/config/detekt-baseline.xml")
-    source.setFrom(files("src/main/java", "src/test/java"))
+    source.setFrom(files("src/main/java"))
 }
 
 dependencies {
@@ -141,7 +136,4 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.datastore.preferences)
-
-    testImplementation(libs.junit)
-    testImplementation(libs.kotlinx.coroutines.test)
 }

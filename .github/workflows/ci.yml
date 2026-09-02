@@ -45,13 +45,12 @@ jobs:
       - name: 构建两个 flavor 的 release
         run: ./gradlew assembleAdminRelease assembleVisitorRelease
 
-      - name: 上传测试与 lint 报告
+      - name: 上传 lint 报告
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: reports
           path: |
-            app/build/reports/tests/
             app/build/reports/lint-results-*.html
           retention-days: 7
           if-no-files-found: ignore

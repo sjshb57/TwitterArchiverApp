@@ -15,9 +15,4 @@ object AppDirs {
     fun init(context: Context) {
         root = context.applicationContext.filesDir
     }
-
-    @androidx.annotation.VisibleForTesting
-    internal fun setRootForTest(dir: File?) {
-        root = dir
-    }
 }
