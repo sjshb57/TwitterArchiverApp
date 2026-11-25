@@ -25,12 +25,20 @@ tasks.matching { it.name == "assembleVisitorRelease" }.configureEach {
 
 android {
     namespace = "io.github.twitterarchiver"
-    compileSdk = 37
+    compileSdk {
+        version = release(37) {
+            minorApiLevel = 2
+        }
+    }
 
     defaultConfig {
         applicationId = "io.github.twitterarchiver"
-        minSdk = 29
-        targetSdk = 37
+        minSdk {
+            version = release(37)
+        }
+        targetSdk {
+            version = release(37)
+        }
         versionCode = 14
         versionName = "1.3.0"
         // 受限申请 token：只能对 requests 仓库开 Issue，权限极小
