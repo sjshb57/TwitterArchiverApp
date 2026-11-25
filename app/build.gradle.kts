@@ -34,7 +34,7 @@ android {
     defaultConfig {
         applicationId = "io.github.twitterarchiver"
         minSdk {
-            version = release(37)
+            version = release(29)
         }
         targetSdk {
             version = release(37)
