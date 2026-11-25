@@ -393,8 +393,7 @@ open class GitHubApi {
     /** 存档目录下某文件是否存在（Pages 直连，不耗 API 配额） */
     suspend fun snapshotFileExists(repo: String, account: String, relPath: String): Boolean = try {
         val p = MediaUtil.sanitizeRelPath(relPath.trim())
-        if (p.isBlank()) false
-        else client.head("${Config.snapshotsBase(repo, account)}/$p").status.isSuccess()
+        p.isNotBlank() && client.head("${Config.snapshotsBase(repo, account)}/$p").status.isSuccess()
     } catch (e: Exception) {
         currentCoroutineContext().ensureActive()
         false
